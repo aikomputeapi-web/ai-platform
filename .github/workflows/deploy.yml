@@ -18,8 +18,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          script_stop: true
+          port: 22
           command_timeout: 12m
           script: |
             cd ~/ai-platform
@@ -30,4 +29,4 @@ jobs:
 
             echo "══ Deploying ══"
             chmod +x deploy.sh manage.sh
-            sudo ./deploy.sh
+            ./deploy.sh

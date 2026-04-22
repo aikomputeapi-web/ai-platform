@@ -4,7 +4,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #
 #  Called by GitHub Actions CI/CD on every push to main.
-#  Can also be run manually:  sudo ./deploy.sh
+#  Can also be run manually:  ./deploy.sh
 #
 #  This does NOT re-run the full setup (no SSL, no OS tuning, no .env regen).
 #  It only rebuilds and restarts the Docker containers.
@@ -119,9 +119,9 @@ fi
 if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
     info "Nginx config changed — reloading"
     DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
-    cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
-    sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" /etc/nginx/nginx.conf
-    nginx -t 2>/dev/null && systemctl reload nginx && log "Nginx reloaded" || warn "Nginx reload failed"
+    sudo cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
+    sudo sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" /etc/nginx/nginx.conf
+    sudo nginx -t 2>/dev/null && sudo systemctl reload nginx && log "Nginx reloaded" || warn "Nginx reload failed"
 fi
 
 # ── Wait and verify ──
