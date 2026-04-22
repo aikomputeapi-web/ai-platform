@@ -1,0 +1,27 @@
+{
+  "id": "session_1776759333759_9s61v2",
+  "name": "hi",
+  "type": "chat",
+  "timestamp": 1776759333759,
+  "createdAt": 1776759333759,
+  "updatedAt": 1776759333767,
+  "status": "active",
+  "metadata": {
+    "queryRuntime": {
+      "updatedAt": 1776759333767,
+      "boundaries": [],
+      "flowId": "flow-1776759333758-xtqlblhm1",
+      "turnId": "flow-1776759333758-xtqlblhm1:turn:1776759333767",
+      "phase": "start"
+    }
+  },
+  "messages": [
+    {
+      "id": "msg_1776759333763_jgz11e",
+      "timestamp": 1776759333763,
+      "role": "user",
+      "content": "hi",
+      "fileReferences": []
+    }
+  ]
+}

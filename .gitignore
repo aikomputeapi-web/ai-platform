@@ -1,0 +1,27 @@
+# ── Secrets (NEVER commit these) ──
+.env
+*.env
+!.env.unified.example
+
+# ── Data volumes ──
+data/
+postgres_data/
+redis_data/
+backups/
+
+# ── OS / Editor ──
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── Logs ──
+*.log
+logs/
+
+# ── Node ──
+node_modules/
+
+# ── Docker ──
+.docker/

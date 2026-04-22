@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  name            String?
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  verifyToken     String?   @map("verify_token")
+  resetToken      String?   @map("reset_token")
+  resetTokenExp   DateTime? @map("reset_token_exp")
+  stripeCustomerId String?  @map("stripe_customer_id")
+  planId          String    @default("free") @map("plan_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  apiKeys   UserApiKey[]
+  payments  Payment[]
+  plan      Plan         @relation(fields: [planId], references: [id])
+
+  @@map("users")
+}
+
+model Plan {
+  id                  String  @id
+  name                String
+  priceCents          Int     @default(0) @map("price_cents")
+  requestsPerDay      Int     @default(100) @map("requests_per_day")
+  requestsPerMinute   Int     @default(5) @map("requests_per_minute")
+  allowedModels       String  @default("*") @map("allowed_models")
+  stripePriceId       String? @map("stripe_price_id")
+  featured            Boolean @default(false)
+  sortOrder           Int     @default(0) @map("sort_order")
+
+  users User[]
+
+  @@map("plans")
+}
+
+model UserApiKey {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  omnirouteKeyId  String   @map("omniroute_key_id")
+  name            String   @default("Default Key")
+  lastFour        String?  @map("last_four")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_api_keys")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  stripePaymentId String?  @map("stripe_payment_id")
+  amountCents     Int      @map("amount_cents")
+  planId          String?  @map("plan_id")
+  status          String   @default("pending")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}

@@ -1,0 +1,245 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  AI Platform — Docker Compose (Unified Stack)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#  ONE dashboard to rule them all: OmniRoute
+#
+#  Architecture:
+#    OmniRoute (dashboard + API gateway + routing + account management)
+#      └── CLIProxyAPI (invisible sidecar for CLI OAuth accounts)
+#      └── PostgreSQL + Redis (infrastructure)
+#
+#  All account management happens in the OmniRoute dashboard:
+#    - OAuth logins: Claude, Gemini, Antigravity, Codex, Copilot, Kiro, Qwen, Kimi, Qoder
+#    - API keys: DeepSeek, Groq, xAI, Mistral, Perplexity, Together, etc.
+#    - Routing rules, circuit breakers, rate limits
+#    - Account health monitoring, usage logs
+#
+#  Usage:
+#    cp .env.example .env   (or let setup.sh generate it)
+#    docker compose up -d
+#
+# ══════════════════════════════════════════════════════════════════════════════
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 15 — Persistent storage for user data & billing
+  # ─────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-postgres
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiplatform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-aiplatform}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiplatform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Redis 7 — Session cache, rate-limit state, account cooldowns
+  # ─────────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ai-redis
+    restart: unless-stopped
+    logging: *logging
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-changeme_redis}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # OmniRoute — THE dashboard. Everything in one place.
+  #
+  # This is your single admin panel for:
+  #   ✓ Adding OAuth accounts (Claude, Gemini, Antigravity, Copilot, etc.)
+  #   ✓ Adding API key providers (DeepSeek, Groq, xAI, etc.)
+  #   ✓ Managing routing rules and fallback chains
+  #   ✓ Circuit breakers and account health monitoring
+  #   ✓ Usage logs and analytics
+  #   ✓ Virtual API keys for your users
+  #   ✓ Anti-detection fingerprinting
+  # ─────────────────────────────────────────────────────────────────────────
+  omniroute:
+    build:
+      context: ./OmniRoute
+      target: runner-cli
+    image: omniroute:cli
+    container_name: omniroute
+    restart: unless-stopped
+    stop_grace_period: 40s
+    logging: *logging
+    env_file: ./OmniRoute/.env
+    depends_on:
+      cliproxyapi:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # ── Core ──
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      PORT: 20128
+      DASHBOARD_PORT: 20128
+      API_PORT: 20129
+      API_HOST: 0.0.0.0
+
+      # ── Security ──
+      JWT_SECRET: ${OMNIROUTE_JWT_SECRET:?OMNIROUTE_JWT_SECRET is required}
+      API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET:?OMNIROUTE_API_KEY_SECRET is required}
+      INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-admin123}
+      STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:-}
+
+      # ── Public URL (for OAuth callbacks) ──
+      NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+      BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+
+      # ── Auth settings ──
+      REQUIRE_API_KEY: "true"
+      AUTH_COOKIE_SECURE: ${SSL_ENABLED:-false}
+
+      # ── CLIProxyAPI sidecar bridge ──
+      CLIPROXYAPI_HOST: cliproxyapi
+      CLIPROXYAPI_PORT: 8317
+
+      # ── Anti-Detection: match official CLI fingerprints ──
+      CLI_COMPAT_ALL: "1"
+      ENABLE_TLS_FINGERPRINT: "true"
+      ENABLE_SOCKS5_PROXY: "true"
+
+      # ── Performance ──
+      OMNIROUTE_MEMORY_MB: 512
+      STREAM_IDLE_TIMEOUT_MS: 600000
+      FETCH_TIMEOUT_MS: 600000
+
+      # ── Logging ──
+      APP_LOG_TO_FILE: "true"
+      APP_LOG_LEVEL: info
+
+      # ── Provider Settings ──
+      OPENROUTER_FREE_ONLY: "true"
+      NVIDIA_FREE_ONLY: "true"
+    ports:
+      - "127.0.0.1:${OMNIROUTE_DASHBOARD_PORT:-20128}:20128"
+      - "127.0.0.1:${OMNIROUTE_API_PORT:-20129}:20129"
+    volumes:
+      - omniroute_data:/app/data
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CLIProxyAPI — Invisible sidecar, managed through OmniRoute
+  #
+  # You never need to touch this directly. OmniRoute's dashboard
+  # talks to it internally to manage CLI-based OAuth accounts.
+  # ─────────────────────────────────────────────────────────────────────────
+  cliproxyapi:
+    image: ghcr.io/router-for-me/cliproxyapi:v6.9.7
+    container_name: cliproxyapi
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      PORT: 8317
+      HOST: 0.0.0.0
+    # No external ports exposed — only accessible within Docker network
+    # OmniRoute connects to it at cliproxyapi:8317
+    expose:
+      - "8317"
+    volumes:
+      - cliproxyapi_data:/root/.cli-proxy-api
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8317/v1/models"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Customer Portal — Self-service for your customers
+  #
+  # This is the customer-facing layer:
+  #   ✓ Signup / Login / Account management
+  #   ✓ Self-service API key creation
+  #   ✓ Per-user usage analytics
+  #   ✓ Billing & plan management (Stripe)
+  # ─────────────────────────────────────────────────────────────────────────
+  customer-portal:
+    build: ./customer-portal
+    container_name: customer-portal
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      omniroute:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aiplatform}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aiplatform}
+      JWT_SECRET: ${PORTAL_JWT_SECRET:-portal-change-me}
+      OMNIROUTE_INTERNAL_URL: http://omniroute:20128
+      OMNIROUTE_ADMIN_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-admin123}
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:3000}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
+    networks:
+      - ai-network
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Volumes
+# ═══════════════════════════════════════════════════════════════════════════════
+volumes:
+  postgres_data:
+    name: ai-postgres-data
+  redis_data:
+    name: ai-redis-data
+  omniroute_data:
+    name: ai-omniroute-data
+  cliproxyapi_data:
+    name: ai-cliproxyapi-data
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Network
+# ═══════════════════════════════════════════════════════════════════════════════
+networks:
+  ai-network:
+    name: ai-platform-network
+    driver: bridge
+
