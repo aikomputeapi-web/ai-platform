@@ -42,7 +42,7 @@ cmd_status() {
     echo ""
 
     echo -e "${BOLD}Health:${NC}"
-    for svc in "OmniRoute Dashboard:20128" "OmniRoute API:20129"; do
+    for svc in "OmniRoute Dashboard:20128" "OmniRoute API:20129" "Customer Portal:3000"; do
         local name="${svc%%:*}" port="${svc##*:}"
         if curl -sf -o /dev/null --max-time 3 "http://127.0.0.1:${port}" 2>/dev/null; then
             echo -e "  ${GREEN}●${NC} ${name} — ${GREEN}OK${NC}"

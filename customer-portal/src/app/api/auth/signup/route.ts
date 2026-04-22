@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { hashPassword, createSessionToken, generateVerifyToken } from '@/lib/auth';
+import { sendVerificationEmail, sendWelcomeEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
@@ -49,13 +50,27 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Auto-verify for now (in production, send email)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { emailVerified: true, verifyToken: null },
-    });
+    const hasEmailProvider = !!process.env.RESEND_API_KEY;
+
+    if (hasEmailProvider) {
+      // Production: send verification email, don't log in yet
+      await sendVerificationEmail(user.email, verifyToken);
+      return NextResponse.json({
+        success: true,
+        requiresVerification: true,
+        message: 'Check your email to verify your account.',
+      });
+    } else {
+      // Dev mode: auto-verify and log in
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true, verifyToken: null },
+      });
+    }
 
     const token = await createSessionToken(user.id);
+    // Fire welcome email async — don't block signup
+    sendWelcomeEmail(user.email, name || undefined).catch(() => {});
 
     const response = NextResponse.json({
       success: true,
@@ -67,7 +82,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 30 * 24 * 60 * 60,
     });
 
     return response;

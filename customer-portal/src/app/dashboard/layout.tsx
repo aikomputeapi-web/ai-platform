@@ -10,6 +10,7 @@ const navItems = [
   { href: '/dashboard/usage', label: 'Usage', icon: '📈' },
   { href: '/dashboard/billing', label: 'Billing', icon: '💳' },
   { href: '/dashboard/docs', label: 'API Docs', icon: '📖' },
+  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
