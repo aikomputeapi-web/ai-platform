@@ -219,7 +219,7 @@ else
     log "SSL ready (domain + admin subdomain)"
 
     # Auto-renewal
-    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+    { crontab -l 2>/dev/null | grep -v certbot || true; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"; } | crontab -
     log "Auto-renewal scheduled"
 fi
 
