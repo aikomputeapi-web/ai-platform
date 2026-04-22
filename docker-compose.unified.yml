@@ -166,7 +166,7 @@ services:
   # talks to it internally to manage CLI-based OAuth accounts.
   # ─────────────────────────────────────────────────────────────────────────
   cliproxyapi:
-    image: ghcr.io/router-for-me/cliproxyapi:v6.9.7
+    image: eceasy/cli-proxy-api:latest
     container_name: cliproxyapi
     restart: unless-stopped
     logging: *logging
