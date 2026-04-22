@@ -173,18 +173,21 @@ services:
     environment:
       PORT: 8317
       HOST: 0.0.0.0
-    # No external ports exposed — only accessible within Docker network
+    # No external ports exposed for API — only accessible within Docker network
     # OmniRoute connects to it at cliproxyapi:8317
     expose:
       - "8317"
+    ports:
+      - "127.0.0.1:8085:8085"  # Management UI for OAuth login flows
     volumes:
+      - ./cliproxyapi-config.yaml:/CLIProxyAPI/config.yaml:ro
       - cliproxyapi_data:/root/.cli-proxy-api
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8317/v1/models"]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - ai-network
 

@@ -1,0 +1,9 @@
+# CLIProxyAPI Configuration
+# Managed by OmniRoute — do not expose externally
+host: ""
+port: 8317
+auth-dir: "/root/.cli-proxy-api"
+api-keys: []
+debug: false
+routing:
+  strategy: "round-robin"
