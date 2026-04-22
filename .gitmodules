@@ -1,3 +1,15 @@
 [submodule "OmniRoute"]
 	path = OmniRoute
 	url = https://github.com/diegosouzapw/OmniRoute.git
+
+[submodule "augment2api"]
+	path = augment2api
+	url = https://github.com/linqiu919/augment2api.git
+
+[submodule "nvidia-balance"]
+	path = nvidia-balance
+	url = https://github.com/JinLin-Yu/nvidia-balance
+
+[submodule "plexus"]
+	path = plexus
+	url = https://github.com/mcowger/plexus.git
