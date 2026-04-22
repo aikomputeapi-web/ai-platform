@@ -55,7 +55,7 @@ cmd_status() {
         echo -e "  ${GREEN}●${NC} PostgreSQL — ${GREEN}Ready${NC}" || \
         echo -e "  ${RED}●${NC} PostgreSQL — ${RED}Down${NC}"
 
-    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} 2>/dev/null | cut -d= -f2)" ping 2>/dev/null | grep -q PONG && \
+    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} 2>/dev/null | cut -d= -f2-)" ping 2>/dev/null | grep -q PONG && \
         echo -e "  ${GREEN}●${NC} Redis — ${GREEN}PONG${NC}" || \
         echo -e "  ${RED}●${NC} Redis — ${RED}Down${NC}"
 
@@ -90,7 +90,7 @@ cmd_backup() {
 
     dc exec -T postgres pg_dump -U aiplatform aiplatform > "${BK}/postgres.sql" 2>/dev/null || true
 
-    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} | cut -d= -f2)" BGSAVE 2>/dev/null
+    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} | cut -d= -f2-)" BGSAVE 2>/dev/null
     sleep 2
     docker cp ai-redis:/data/dump.rdb "${BK}/redis.rdb" 2>/dev/null || true
 

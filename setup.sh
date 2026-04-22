@@ -244,34 +244,87 @@ header "Step 5/5 — Building & Starting"
 cd "${SCRIPT_DIR}"
 
 # Bootstrap OmniRoute .env
-if [[ ! -f "./OmniRoute/.env" ]] && [[ -f "./OmniRoute/.env.example" ]]; then
+# Always regenerate OmniRoute .env from example to pick up secret changes
+if [[ -f "./OmniRoute/.env.example" ]]; then
     cp "./OmniRoute/.env.example" "./OmniRoute/.env"
 
     # Inject our generated secrets into OmniRoute's .env
-    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(grep OMNIROUTE_JWT_SECRET ${ENV_FILE} | cut -d= -f2)|" ./OmniRoute/.env
-    sed -i "s|^API_KEY_SECRET=.*|API_KEY_SECRET=$(grep OMNIROUTE_API_KEY_SECRET ${ENV_FILE} | cut -d= -f2)|" ./OmniRoute/.env
+    # NOTE: cut -d= -f2- (not -f2) preserves '=' chars in base64 values
+    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(grep OMNIROUTE_JWT_SECRET ${ENV_FILE} | cut -d= -f2-)|" ./OmniRoute/.env
+    sed -i "s|^API_KEY_SECRET=.*|API_KEY_SECRET=$(grep OMNIROUTE_API_KEY_SECRET ${ENV_FILE} | cut -d= -f2-)|" ./OmniRoute/.env
     sed -i "s|^INITIAL_PASSWORD=.*|INITIAL_PASSWORD=${ADMIN_PASS}|" ./OmniRoute/.env
-    sed -i "s|^STORAGE_ENCRYPTION_KEY=.*|STORAGE_ENCRYPTION_KEY=$(grep OMNIROUTE_STORAGE_ENCRYPTION_KEY ${ENV_FILE} | cut -d= -f2)|" ./OmniRoute/.env
+    sed -i "s|^STORAGE_ENCRYPTION_KEY=.*|STORAGE_ENCRYPTION_KEY=$(grep OMNIROUTE_STORAGE_ENCRYPTION_KEY ${ENV_FILE} | cut -d= -f2-)|" ./OmniRoute/.env
 
     # Set public URL for OAuth callbacks
-    PUBLIC=$(grep PUBLIC_URL ${ENV_FILE} | cut -d= -f2)
+    PUBLIC=$(grep PUBLIC_URL ${ENV_FILE} | cut -d= -f2-)
     sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${PUBLIC}|" ./OmniRoute/.env
     sed -i "s|^BASE_URL=.*|BASE_URL=${PUBLIC}|" ./OmniRoute/.env
 
     # Enable all anti-detection
     sed -i 's|^# CLI_COMPAT_ALL=.*|CLI_COMPAT_ALL=1|' ./OmniRoute/.env
+    sed -i 's|^CLI_COMPAT_ALL=.*|CLI_COMPAT_ALL=1|' ./OmniRoute/.env
 
     log "OmniRoute .env configured"
+else
+    error "OmniRoute/.env.example not found. Is the OmniRoute submodule cloned?"
 fi
 
 info "Building images (first run takes 5-10 min)..."
-docker compose -f docker-compose.unified.yml build --parallel 2>&1 | tail -3
+set +e
+docker compose --env-file "${ENV_FILE}" -f docker-compose.unified.yml build --parallel 2>&1
+BUILD_RC=$?
+set -e
+if [[ $BUILD_RC -ne 0 ]]; then
+    echo ""
+    error "Docker build failed (exit code ${BUILD_RC}). Check the output above."
+fi
+log "Images built successfully"
 
 info "Starting services..."
-docker compose -f docker-compose.unified.yml up -d
+docker compose --env-file "${ENV_FILE}" -f docker-compose.unified.yml up -d
 
-log "Waiting for services..."
-sleep 15
+log "Waiting for services to become healthy..."
+MAX_WAIT=120
+ELAPSED=0
+while [[ $ELAPSED -lt $MAX_WAIT ]]; do
+    RUNNING=$(docker compose -f docker-compose.unified.yml ps --status running -q 2>/dev/null | wc -l || echo 0)
+    TOTAL=$(docker compose -f docker-compose.unified.yml ps -q 2>/dev/null | wc -l || echo 0)
+    EXITED=$(docker compose -f docker-compose.unified.yml ps --status exited -q 2>/dev/null | wc -l || echo 0)
+
+    echo -ne "\r  ${BLUE}[i]${NC} Containers: ${RUNNING}/${TOTAL} running (${ELAPSED}s elapsed)...  "
+
+    # Check for crashed containers
+    if [[ $EXITED -gt 0 ]]; then
+        echo ""
+        warn "Some containers exited unexpectedly:"
+        docker compose -f docker-compose.unified.yml ps --format "table {{.Name}}\t{{.Status}}"
+        echo ""
+        warn "Showing logs from failed containers:"
+        for CID in $(docker compose -f docker-compose.unified.yml ps --status exited -q 2>/dev/null); do
+            CNAME=$(docker inspect --format '{{.Name}}' "$CID" | sed 's/^\///')
+            echo -e "\n${YELLOW}── ${CNAME} ──${NC}"
+            docker logs --tail 30 "$CID" 2>&1
+        done
+        echo ""
+        warn "Fix the issues above, then run: ./manage.sh rebuild"
+        break
+    fi
+
+    # All running = success
+    if [[ $RUNNING -ge $TOTAL ]] && [[ $TOTAL -gt 0 ]]; then
+        echo ""
+        log "All ${TOTAL} containers are running"
+        break
+    fi
+
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+done
+
+if [[ $ELAPSED -ge $MAX_WAIT ]]; then
+    echo ""
+    warn "Timed out waiting for containers (${MAX_WAIT}s). Some may still be starting."
+fi
 
 echo ""
 docker compose -f docker-compose.unified.yml ps --format "table {{.Name}}\t{{.Status}}"
