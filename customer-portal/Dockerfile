@@ -9,6 +9,7 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache openssl libc6-compat
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
