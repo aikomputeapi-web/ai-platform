@@ -172,6 +172,8 @@ EMAIL_FROM=noreply@${DOMAIN}
 ENV
 
 chmod 600 "${ENV_FILE}"
+# setup.sh runs as root via sudo — give the real user ownership so CI/CD can read it
+[[ -n "${SUDO_USER:-}" ]] && chown "${SUDO_USER}:${SUDO_USER}" "${ENV_FILE}"
 log "Secrets generated"
 
 echo ""
