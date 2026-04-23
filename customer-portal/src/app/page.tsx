@@ -15,7 +15,8 @@ export default function Home() {
             <span className="font-bold text-lg tracking-tight">AI API Platform</span>
           </div>
           <nav className="flex items-center gap-6">
-            <Link href="#features" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Features</Link>
+            <Link href="/features" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Features</Link>
+            <Link href="/docs" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Docs</Link>
             <Link href="#pricing" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Pricing</Link>
             <Link href="/login" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Sign In</Link>
             <Link href="/signup" className="btn-primary py-2 px-4 text-sm">Get Started</Link>
@@ -53,7 +54,7 @@ export default function Home() {
             <Link href="/signup" className="btn-primary text-lg px-8 py-4 w-full sm:w-auto shadow-lg shadow-indigo-500/20">
               Start Building for Free
             </Link>
-            <Link href="#docs" className="btn-secondary text-lg px-8 py-4 w-full sm:w-auto">
+            <Link href="/docs" className="btn-secondary text-lg px-8 py-4 w-full sm:w-auto">
               View Documentation
             </Link>
           </div>
