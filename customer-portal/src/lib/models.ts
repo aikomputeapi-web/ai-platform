@@ -111,7 +111,7 @@ export const MODEL_CATALOGUE = [
     badge:     'Top Intelligence',
     tier:      'frontier',
     aaUrl:     `https://artificialanalysis.ai/models/${MODELS.GOOGLE_PRO_ID}`,
-    blurb:     'Google's frontier model with 2M token context and multimodal capabilities.',
+    blurb:     "Google's frontier model with 2M token context and multimodal capabilities.",
   },
   {
     key:       'GOOGLE_FLASH',
@@ -155,7 +155,7 @@ export const MODEL_CATALOGUE = [
     badge:     '1M Context',
     tier:      'frontier',
     aaUrl:     `https://artificialanalysis.ai/models/${MODELS.GROK_FLAGSHIP_ID}`,
-    blurb:     'xAI's flagship with massive context window and strong reasoning.',
+    blurb:     "xAI's flagship with massive context window and strong reasoning.",
   },
   {
     key:       'META_MAVERICK',
@@ -166,7 +166,7 @@ export const MODEL_CATALOGUE = [
     badge:     'Open Source',
     tier:      'open',
     aaUrl:     `https://artificialanalysis.ai/models/${MODELS.META_MAVERICK_ID}`,
-    blurb:     'Meta's best open-source model. Self-host or use via API.',
+    blurb:     "Meta's best open-source model. Self-host or use via API.",
   },
   {
     key:       'KIMI_FLAGSHIP',
