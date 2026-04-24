@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MODELS } from '@/lib/models';
 
 export default function Docs() {
   return (
@@ -35,6 +36,7 @@ export default function Docs() {
               <li><a href="#making-requests" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Making Requests</a></li>
               <li><a href="#models" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Supported Models</a></li>
               <li><a href="#rate-limits" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Rate Limits</a></li>
+              <li><Link href="/models" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Full Model Browser</Link></li>
             </ul>
           </div>
         </aside>
@@ -100,6 +102,71 @@ export default function Docs() {
                 &#125;);
               </pre>
             </div>
+          </section>
+
+          <section id="models" className="mb-16">
+            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Supported Models</h2>
+            <p className="text-[var(--color-text-secondary)] mb-6 leading-relaxed">
+              Our unified API routes your requests to the best available backend provider. We support all major models seamlessly.
+            </p>
+            <div className="glass-card overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
+                    <th className="p-4 font-semibold text-white">Model Name</th>
+                    <th className="p-4 font-semibold text-white">API ID</th>
+                    <th className="p-4 font-semibold text-white">Provider</th>
+                    <th className="p-4 font-semibold text-white">Best For</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-secondary)]">
+                  {[
+                    [MODELS.OPENAI_FLAGSHIP,  MODELS.OPENAI_FLAGSHIP_ID,  'OpenAI',    'Top intelligence, complex reasoning'],
+                    [MODELS.ANTHROPIC_OPUS,   MODELS.ANTHROPIC_OPUS_ID,   'Anthropic', 'Best coding, safe outputs'],
+                    [MODELS.ANTHROPIC_SONNET, MODELS.ANTHROPIC_SONNET_ID, 'Anthropic', 'Balanced speed and intelligence'],
+                    [MODELS.GOOGLE_PRO,       MODELS.GOOGLE_PRO_ID,       'Google',    'Long-context, multimodal tasks'],
+                    [MODELS.GOOGLE_FLASH,     MODELS.GOOGLE_FLASH_ID,     'Google',    'High-speed, low-cost production use'],
+                    [MODELS.DEEPSEEK_V3,      MODELS.DEEPSEEK_V3_ID,      'DeepSeek',  'Open-weights at ultra-low cost'],
+                    [MODELS.GROK_FLAGSHIP,    MODELS.GROK_FLAGSHIP_ID,    'xAI',       'Massive context window, reasoning'],
+                    [MODELS.META_MAVERICK,    MODELS.META_MAVERICK_ID,    'Meta',      'Open-source, self-hostable'],
+                  ].map(([name, id, provider, useCase], i) => (
+                    <tr key={i} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                      <td className="p-4 font-medium text-white">{name}</td>
+                      <td className="p-4"><code className="text-green-400 text-xs bg-green-400/10 px-2 py-0.5 rounded">{id}</code></td>
+                      <td className="p-4">{provider}</td>
+                      <td className="p-4 text-sm">{useCase}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-[var(--color-text-muted)] mt-3">
+              See the full list on the <Link href="/models" className="text-indigo-400 hover:underline">Models page</Link> — including speed, cost, and benchmark rankings from Artificial Analysis.
+            </p>
+          </section>
+
+          <section id="rate-limits" className="mb-16">
+            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Rate Limits</h2>
+            <p className="text-[var(--color-text-secondary)] mb-4 leading-relaxed">
+              Rate limits depend on your current subscription plan. If you exceed your rate limits, the API will respond with a <code className="text-red-400 bg-red-400/10 px-1 rounded">429 Too Many Requests</code> status code.
+            </p>
+            <ul className="space-y-3 text-[var(--color-text-secondary)] mb-6">
+              <li className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
+                <strong>Free Tier:</strong> 5 requests per minute, 100 requests per day.
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                <strong>Basic Tier:</strong> 20 requests per minute, 1,000 requests per day.
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                <strong>Pro Tier:</strong> 60 requests per minute, 10,000 requests per day.
+              </li>
+            </ul>
+            <p className="text-[var(--color-text-secondary)] leading-relaxed">
+              You can track your current usage and remaining quota in the dashboard. Need higher limits? Contact our support team for an Enterprise plan.
+            </p>
           </section>
         </div>
       </main>
