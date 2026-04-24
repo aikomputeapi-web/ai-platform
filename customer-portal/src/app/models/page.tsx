@@ -68,97 +68,131 @@ export default function ModelsPage() {
           </div>
         </section>
 
-        {/* Live Leaderboard Embed — Intelligence */}
+        {/* Intelligence Leaderboard — data from Artificial Analysis */}
         <section className="py-16 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2">Live Data · Updated Every 72h</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2">Artificial Analysis Intelligence Index · April 2026</p>
                 <h2 className="text-2xl font-bold">Intelligence Leaderboard</h2>
                 <p className="text-[var(--color-text-secondary)] mt-1 text-sm">
-                  Independent Artificial Analysis Intelligence Index — measures real-world reasoning across coding, science, math, and knowledge.
+                  Independent benchmark measuring real-world reasoning across coding, science, math, and knowledge. Score out of 100.
                 </p>
               </div>
-              <a
-                href="https://artificialanalysis.ai/leaderboards/models"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary py-2 px-4 text-sm whitespace-nowrap flex-shrink-0"
-              >
+              <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener noreferrer" className="btn-secondary py-2 px-4 text-sm whitespace-nowrap flex-shrink-0">
                 Full Leaderboard ↗
               </a>
             </div>
 
-            {/* Embedded live chart via iframe — dynamically pulls from artificialanalysis.ai */}
-            <div className="glass-card overflow-hidden" style={{ height: '520px' }}>
-              <div className="relative w-full h-full">
-                <iframe
-                  src="https://artificialanalysis.ai/leaderboards/models?embed=1&theme=dark&metric=intelligence"
-                  className="w-full h-full border-0"
-                  title="Artificial Analysis Intelligence Leaderboard"
-                  loading="lazy"
-                  sandbox="allow-scripts allow-same-origin allow-popups"
-                />
-                {/* Fallback overlay shown if iframe is blocked */}
-                <noscript>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[var(--color-bg-card)] p-8 text-center">
-                    <div className="text-4xl">📊</div>
-                    <p className="font-bold text-white">Live chart from Artificial Analysis</p>
-                    <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener noreferrer" className="btn-primary py-2 px-6 text-sm">View Leaderboard ↗</a>
+            <div className="glass-card p-6">
+              <div className="space-y-3">
+                {[
+                  { name: 'GPT-5.5',            provider: 'OpenAI',      score: 60, color: '#10a37f', available: true },
+                  { name: 'Claude Opus 4.7',     provider: 'Anthropic',   score: 57, color: '#d4a96a', available: true },
+                  { name: 'Gemini 3.1 Pro',      provider: 'Google',      score: 57, color: '#4285f4', available: true },
+                  { name: 'GPT-5.4',             provider: 'OpenAI',      score: 57, color: '#10a37f', available: true },
+                  { name: 'Kimi K2.6',           provider: 'Moonshot AI', score: 54, color: '#a855f7', available: true },
+                  { name: 'DeepSeek V3.2',       provider: 'DeepSeek',    score: 42, color: '#6366f1', available: true },
+                  { name: 'Grok 4.20',           provider: 'xAI',         score: 49, color: '#ff6b35', available: true },
+                  { name: 'Llama 4 Maverick',    provider: 'Meta',        score: 38, color: '#0668e1', available: true },
+                ].map((m, i) => (
+                  <div key={i} className="flex items-center gap-4 group">
+                    <div className="w-36 flex-shrink-0">
+                      <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{m.provider}</p>
+                    </div>
+                    <div className="flex-1 h-7 bg-[var(--color-border)] rounded-lg overflow-hidden relative">
+                      <div
+                        className="h-full rounded-lg flex items-center px-3 transition-all duration-700"
+                        style={{ width: `${(m.score / 60) * 100}%`, background: `linear-gradient(90deg, ${m.color}99, ${m.color})` }}
+                      >
+                        <span className="text-xs font-bold text-white">{m.score}</span>
+                      </div>
+                    </div>
+                    <div className="w-20 flex-shrink-0 text-right">
+                      {m.available
+                        ? <span className="text-xs text-green-400 font-semibold">✓ Available</span>
+                        : <span className="text-xs text-[var(--color-text-muted)]">Coming soon</span>}
+                    </div>
                   </div>
-                </noscript>
+                ))}
               </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-5 pt-4 border-t border-[var(--color-border)]">
+                Source: <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Artificial Analysis Intelligence Index v4.0</a> — scores reflect independent evaluation across GDPval-AA, GPQA Diamond, HLE, SciCode, and more.
+              </p>
             </div>
-
-            <p className="text-xs text-[var(--color-text-muted)] text-center mt-3">
-              Chart automatically updates as new models are benchmarked. Source: <a href="https://artificialanalysis.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">artificialanalysis.ai</a>
-            </p>
           </div>
         </section>
 
-        {/* Speed vs Price Scatter Chart */}
+        {/* Speed vs Price chart */}
         <section className="py-16 border-b border-[var(--color-border)]">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-green-400 mb-2">Speed · Cost · Quality</p>
-                <h2 className="text-2xl font-bold">Speed vs. Price Analysis</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-green-400 mb-2">Output Speed · Tokens per Second</p>
+                <h2 className="text-2xl font-bold">Speed Comparison</h2>
                 <p className="text-[var(--color-text-secondary)] mt-1 text-sm">
-                  Compare tokens-per-second output speed against blended cost per million tokens for every major model.
+                  Tokens generated per second after the first chunk is received. Higher is faster.
                 </p>
               </div>
               <a href="https://artificialanalysis.ai" target="_blank" rel="noopener noreferrer" className="btn-secondary py-2 px-4 text-sm whitespace-nowrap flex-shrink-0">
-                Explore Full Data ↗
+                Full Data ↗
               </a>
             </div>
 
-            <div className="glass-card overflow-hidden" style={{ height: '520px' }}>
-              <iframe
-                src="https://artificialanalysis.ai/leaderboards/models?embed=1&theme=dark&metric=speed&chart=scatter"
-                className="w-full h-full border-0"
-                title="Artificial Analysis Speed vs Price"
-                loading="lazy"
-                sandbox="allow-scripts allow-same-origin allow-popups"
-              />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-5">Output Speed (tok/s)</h3>
+                <div className="space-y-3">
+                  {[
+                    { name: 'Gemini 3.1 Flash-Lite', tps: 210, color: '#4285f4' },
+                    { name: 'Gemini 3 Flash',         tps: 180, color: '#4285f4' },
+                    { name: 'Claude Sonnet 4.6',       tps: 112, color: '#d4a96a' },
+                    { name: 'GPT-5.5',                 tps: 89,  color: '#10a37f' },
+                    { name: 'DeepSeek V3.2',           tps: 68,  color: '#6366f1' },
+                    { name: 'Claude Opus 4.7',         tps: 41,  color: '#d4a96a' },
+                    { name: 'Grok 4.20',               tps: 165, color: '#ff6b35' },
+                  ].map((m, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-[var(--color-text-secondary)] w-36 truncate flex-shrink-0">{m.name}</span>
+                      <div className="flex-1 h-5 bg-[var(--color-border)] rounded overflow-hidden">
+                        <div className="h-full rounded flex items-center px-2" style={{ width: `${(m.tps / 210) * 100}%`, backgroundColor: m.color + '99' }}>
+                          <span className="text-[10px] font-bold text-white">{m.tps}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-5">Price ($/1M tokens blended)</h3>
+                <div className="space-y-3">
+                  {[
+                    { name: 'DeepSeek V3.2',     price: 0.30, color: '#6366f1' },
+                    { name: 'Kimi K2.6',         price: 1.70, color: '#a855f7' },
+                    { name: 'Gemini 3 Flash',    price: 0.75, color: '#4285f4' },
+                    { name: 'Claude Sonnet 4.6', price: 3.00, color: '#d4a96a' },
+                    { name: 'Grok 4.20',         price: 3.00, color: '#ff6b35' },
+                    { name: 'GPT-5.4',           price: 5.60, color: '#10a37f' },
+                    { name: 'Claude Opus 4.7',   price: 10.0, color: '#d4a96a' },
+                  ].sort((a, b) => a.price - b.price).map((m, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-[var(--color-text-secondary)] w-36 truncate flex-shrink-0">{m.name}</span>
+                      <div className="flex-1 h-5 bg-[var(--color-border)] rounded overflow-hidden">
+                        <div className="h-full rounded flex items-center px-2" style={{ width: `${(m.price / 10) * 100}%`, backgroundColor: m.color + '99' }}>
+                          <span className="text-[10px] font-bold text-white">${m.price.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Static fallback grid showing the data we already know */}
-            <div className="mt-8 grid md:grid-cols-3 gap-4">
-              {[
-                { label: '#1 Intelligence', model: MODELS.OPENAI_FLAGSHIP, score: '60 / 100', color: '#10a37f', icon: '🧠' },
-                { label: 'Fastest Model',   model: 'Mercury 2',           score: '677 tok/s',  color: '#f59e0b', icon: '⚡' },
-                { label: 'Best Open Weights', model: MODELS.KIMI_FLAGSHIP, score: '54 / 100', color: '#a855f7', icon: '🔓' },
-              ].map((stat, i) => (
-                <div key={i} className="glass-card p-5 flex items-center gap-4">
-                  <div className="text-3xl">{stat.icon}</div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1">{stat.label}</p>
-                    <p className="font-bold text-white">{stat.model}</p>
-                    <p className="text-sm mt-0.5" style={{ color: stat.color }}>{stat.score}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-[var(--color-text-muted)] text-center mt-4">
+              Data sourced from <a href="https://artificialanalysis.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Artificial Analysis</a> — median P50 measurements over 72h. All models above are available through our API.
+            </p>
           </div>
         </section>
 

@@ -122,18 +122,37 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Embedded live chart */}
-          <div className="glass-card overflow-hidden mb-6" style={{ height: '440px' }}>
-            <iframe
-              src="https://artificialanalysis.ai/leaderboards/models?embed=1&theme=dark&metric=intelligence"
-              className="w-full h-full border-0"
-              title="AI Model Intelligence Leaderboard"
-              loading="lazy"
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
+          {/* Intelligence bar chart — data from Artificial Analysis */}
+          <div className="glass-card p-6 mb-4">
+            <div className="space-y-3">
+              {[
+                { name: 'GPT-5.5',         provider: 'OpenAI',    score: 60, color: '#10a37f' },
+                { name: 'Claude Opus 4.7', provider: 'Anthropic', score: 57, color: '#d4a96a' },
+                { name: 'Gemini 3.1 Pro',  provider: 'Google',    score: 57, color: '#4285f4' },
+                { name: 'GPT-5.4',         provider: 'OpenAI',    score: 57, color: '#10a37f' },
+                { name: 'Kimi K2.6',       provider: 'Moonshot',  score: 54, color: '#a855f7' },
+                { name: 'Grok 4.20',       provider: 'xAI',       score: 49, color: '#ff6b35' },
+                { name: 'DeepSeek V3.2',   provider: 'DeepSeek',  score: 42, color: '#6366f1' },
+              ].map((m, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-32 flex-shrink-0">
+                    <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{m.provider}</p>
+                  </div>
+                  <div className="flex-1 h-6 bg-[var(--color-border)] rounded overflow-hidden">
+                    <div
+                      className="h-full rounded flex items-center px-2"
+                      style={{ width: `${(m.score / 60) * 100}%`, background: `linear-gradient(90deg, ${m.color}88, ${m.color})` }}
+                    >
+                      <span className="text-xs font-bold text-white">{m.score}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <p className="text-xs text-[var(--color-text-muted)] text-center">
-            Live chart from <a href="https://artificialanalysis.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">artificialanalysis.ai</a> — updates automatically as new models are benchmarked.
+            Artificial Analysis Intelligence Index — <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">view full leaderboard ↗</a>
           </p>
         </div>
       </section>
