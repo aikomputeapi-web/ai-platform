@@ -89,7 +89,7 @@ export const MODEL_CATALOGUE = [
     badge:     'Best Coding',
     tier:      'frontier',
     aaUrl:     `https://artificialanalysis.ai/models/${MODELS.ANTHROPIC_OPUS_ID}`,
-    blurb:     'Anthropic's most capable model. Exceptional at complex reasoning and safe outputs.',
+    blurb:     "Anthropic's most capable model. Exceptional at complex reasoning and safe outputs.",
   },
   {
     key:       'ANTHROPIC_SONNET',
