@@ -13,6 +13,10 @@ export default function DashboardOverview() {
     fetch('/api/keys').then(r => r.json()).then(d => setKeys(d.keys || []));
   }, []);
 
+  const isMonthlyPlan = !!user?.plan?.requestsPerMonth && user.plan.requestsPerMonth > 0;
+  const requestLimitLabel = isMonthlyPlan ? 'req/month' : 'req/day';
+  const requestLimitValue = isMonthlyPlan ? user?.plan?.requestsPerMonth : user?.plan?.requestsPerDay;
+
   const stats = [
     {
       label: 'Total Requests',
@@ -35,7 +39,7 @@ export default function DashboardOverview() {
     {
       label: 'Plan',
       value: user?.plan?.name || 'Free',
-      sub: `${user?.plan?.requestsPerDay || 100} req/day`,
+      sub: `${requestLimitValue || (isMonthlyPlan ? 50 : 100)} ${requestLimitLabel}`,
       icon: '📋',
     },
   ];
@@ -93,13 +97,25 @@ export default function DashboardOverview() {
         <h2 className="text-lg font-semibold mb-4">📊 Your Limits</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-[var(--color-bg-primary)] rounded-lg p-4">
-            <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests / Day</div>
-            <div className="text-xl font-bold">{usage?.summary?.totalRequests || 0} <span className="text-sm font-normal text-[var(--color-text-muted)]">/ {user?.plan?.requestsPerDay || 100}</span></div>
+            <div className="text-xs text-[var(--color-text-muted)] mb-1">
+              {isMonthlyPlan ? 'Requests / Month' : 'Requests / Day'}
+            </div>
+            <div className="text-xl font-bold">
+              {usage?.summary?.totalRequests || 0}{' '}
+              <span className="text-sm font-normal text-[var(--color-text-muted)]">
+                / {requestLimitValue || (isMonthlyPlan ? 50 : 100)}
+              </span>
+            </div>
             <div className="mt-2 h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${Math.min(100, ((usage?.summary?.totalRequests || 0) / (user?.plan?.requestsPerDay || 100)) * 100)}%`,
+                  width: `${Math.min(
+                    100,
+                    ((usage?.summary?.totalRequests || 0) /
+                      (requestLimitValue || (isMonthlyPlan ? 50 : 100))) *
+                      100
+                  )}%`,
                   background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
                 }}
               />

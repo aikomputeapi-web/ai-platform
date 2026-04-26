@@ -153,7 +153,7 @@ export default function Docs() {
             <ul className="space-y-3 text-[var(--color-text-secondary)] mb-6">
               <li className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
-                <strong>Free Tier:</strong> 5 requests per minute, 100 requests per day.
+                <strong>Free Tier:</strong> 5 requests per minute, 50 requests per month (total across any model).
               </li>
               <li className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-purple-500"></span>

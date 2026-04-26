@@ -5,6 +5,7 @@ CREATE TABLE "plans" (
     "price_cents" INTEGER NOT NULL DEFAULT 0,
     "requests_per_day" INTEGER NOT NULL DEFAULT 100,
     "requests_per_minute" INTEGER NOT NULL DEFAULT 5,
+    "requests_per_month" INTEGER NOT NULL DEFAULT 0,
     "allowed_models" TEXT NOT NULL DEFAULT '*',
     "stripe_price_id" TEXT,
     "featured" BOOLEAN NOT NULL DEFAULT false,
@@ -61,10 +62,10 @@ CREATE TABLE "payments" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- Seed default plans
-INSERT INTO "plans" ("id", "name", "price_cents", "requests_per_day", "requests_per_minute", "allowed_models", "sort_order") VALUES
-('free', 'Free', 0, 100, 5, '*', 0),
-('basic', 'Basic', 1900, 1000, 20, '*', 1),
-('pro', 'Pro', 4900, 10000, 60, '*', 2);
+INSERT INTO "plans" ("id", "name", "price_cents", "requests_per_day", "requests_per_minute", "requests_per_month", "allowed_models", "sort_order") VALUES
+('free', 'Free', 0, 0, 5, 50, '*', 0),
+('basic', 'Basic', 1900, 1000, 20, 0, '*', 1),
+('pro', 'Pro', 4900, 10000, 60, 0, '*', 2);
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

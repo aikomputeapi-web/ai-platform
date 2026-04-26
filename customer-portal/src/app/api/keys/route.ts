@@ -48,9 +48,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (userWithPlan?.plan) {
+      const isFree = userWithPlan.plan.id === 'free';
       await updateKeyLimits(omniKey.id, {
-        maxRequestsPerDay: userWithPlan.plan.requestsPerDay,
+        maxRequestsPerDay: isFree ? null : userWithPlan.plan.requestsPerDay,
         maxRequestsPerMinute: userWithPlan.plan.requestsPerMinute,
+        maxRequestsPerMonth: isFree ? userWithPlan.plan.requestsPerMonth : null,
         allowedModels: userWithPlan.plan.allowedModels === '*' 
           ? [] 
           : JSON.parse(userWithPlan.plan.allowedModels),

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 const plans = [
-  { id: 'free', name: 'Free', price: '$0', period: 'forever', requests: '100/day', rpm: '5 rpm', models: 'Free-tier models', features: ['2 API keys', 'Basic analytics', 'Community support'] },
+  { id: 'free', name: 'Free', price: '$0', period: 'forever', requests: '50/month', rpm: '5 rpm', models: 'Free-tier models', features: ['2 API keys', 'Basic analytics', 'Community support'] },
   { id: 'basic', name: 'Basic', price: '$19', period: '/month', requests: '1,000/day', rpm: '20 rpm', models: 'All free models', features: ['5 API keys', 'Full analytics', 'Email support'], featured: true },
   { id: 'pro', name: 'Pro', price: '$49', period: '/month', requests: '10,000/day', rpm: '60 rpm', models: 'All models', features: ['20 API keys', 'Full analytics', 'Priority support', 'Webhooks'] },
 ];

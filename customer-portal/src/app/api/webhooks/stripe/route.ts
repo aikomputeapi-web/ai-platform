@@ -53,9 +53,11 @@ export async function POST(req: NextRequest) {
       });
 
       for (const key of userKeys) {
+        const isFree = plan.id === 'free';
         await updateKeyLimits(key.omnirouteKeyId, {
-          maxRequestsPerDay: plan.requestsPerDay,
+          maxRequestsPerDay: isFree ? null : plan.requestsPerDay,
           maxRequestsPerMinute: plan.requestsPerMinute,
+          maxRequestsPerMonth: isFree ? plan.requestsPerMonth : null,
           allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
         });
       }
@@ -95,9 +97,11 @@ export async function POST(req: NextRequest) {
       const userKeys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
 
       for (const key of userKeys) {
+        const isFree = true;
         await updateKeyLimits(key.omnirouteKeyId, {
-          maxRequestsPerDay: freePlan?.requestsPerDay || 100,
+          maxRequestsPerDay: null,
           maxRequestsPerMinute: freePlan?.requestsPerMinute || 5,
+          maxRequestsPerMonth: freePlan?.requestsPerMonth || 50,
         });
       }
 

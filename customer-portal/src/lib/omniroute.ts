@@ -84,14 +84,15 @@ export async function deleteOmniRouteKey(keyId: string): Promise<boolean> {
 export async function updateKeyLimits(
   keyId: string,
   limits: {
-    maxRequestsPerDay?: number;
-    maxRequestsPerMinute?: number;
+    maxRequestsPerDay?: number | null;
+    maxRequestsPerMinute?: number | null;
+    maxRequestsPerMonth?: number | null;
     allowedModels?: string[];
     isActive?: boolean;
   }
 ): Promise<boolean> {
   const res = await omnirouteFetch(`/api/keys/${keyId}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(limits),
   });
   return res.ok;

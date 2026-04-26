@@ -84,7 +84,7 @@ export default function SignupPage() {
         </form>
 
         <p className="text-center text-xs text-[var(--color-text-muted)] mt-6">
-          Free tier includes 100 requests/day. No credit card required.
+          Free tier includes 50 requests/month total. No credit card required.
         </p>
       </div>
     </div>

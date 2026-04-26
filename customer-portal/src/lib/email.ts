@@ -95,7 +95,7 @@ export async function sendWelcomeEmail(to: string, name?: string): Promise<void>
         body: `
           <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#94a3b8;">
             Your <strong style="color:#e2e8f0;">${APP_NAME}</strong> account is active and ready. 
-            You're on the <strong style="color:#818cf8;">Free plan</strong> — 100 requests/day, 
+            You're on the <strong style="color:#818cf8;">Free plan</strong> — 50 requests/month total, 
             no credit card required.
           </p>
           <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#e2e8f0;">To get started:</p>

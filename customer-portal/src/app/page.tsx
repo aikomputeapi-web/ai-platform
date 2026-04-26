@@ -519,7 +519,7 @@ export default function Home() {
                 price: '$0',
                 desc: 'Perfect for prototyping',
                 features: [
-                  '100 requests/day',
+                  '50 requests/month total',
                   '5 req/min rate limit',
                   'Free-tier models only',
                   'Community support',

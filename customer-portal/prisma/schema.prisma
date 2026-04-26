@@ -35,6 +35,7 @@ model Plan {
   priceCents          Int     @default(0) @map("price_cents")
   requestsPerDay      Int     @default(100) @map("requests_per_day")
   requestsPerMinute   Int     @default(5) @map("requests_per_minute")
+  requestsPerMonth    Int     @default(0) @map("requests_per_month")
   allowedModels       String  @default("*") @map("allowed_models")
   stripePriceId       String? @map("stripe_price_id")
   featured            Boolean @default(false)

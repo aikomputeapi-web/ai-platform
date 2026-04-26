@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 interface UserData {
   id: string; email: string; name: string | null; emailVerified: boolean;
-  plan: { id: string; name: string; priceCents: number; requestsPerDay: number };
+  plan: { id: string; name: string; priceCents: number; requestsPerDay: number; requestsPerMonth: number };
   createdAt: string; apiKeys: any[]; payments: any[];
   usage: { totalTokens: number; totalRequests: number; totalCost: number; promptTokens: number; completionTokens: number; topModels: { model: string; requests: number }[] };
   totalPaidCents: number;
