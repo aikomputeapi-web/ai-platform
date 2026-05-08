@@ -1,6 +1,6 @@
-# AI Platform — Unified LLM Proxy
+# AI Platform — Unified AI Inference Platform
 
-> One dashboard. One domain. All providers in one place.
+> One platform. One portal. One control plane.
 
 ---
 
@@ -17,15 +17,15 @@ It asks for your domain, then does everything automatically.
 
 ## What You Get
 
-**One URL** (e.g. `aiapi.indevs.in`) that does two things:
+**One deployment** (e.g. `aiapi.indevs.in`) that serves three surfaces:
 
 | URL | What It Does |
 |-----|-------------|
 | `yourdomain.com` | **Customer Landing Page & Portal** — where your users sign up, log in, manage API keys, and handle billing. |
-| `admin.yourdomain.com` | **Your Admin Dashboard** — manage provider accounts, models, and routing. Protected by the admin password. |
+| `admin.yourdomain.com` | **Your Admin Dashboard** — manage user accounts, provider accounts, models, and routing. Protected by the admin password. |
 | `yourdomain.com/v1` | **API Endpoint** — your users connect their applications here using the API keys they generated in the Customer Portal. |
 
-**One dashboard** where you manage everything:
+**One control plane** where you manage everything:
 
 | Provider | Auth Method | How to Add |
 |----------|------------|------------|
@@ -51,7 +51,7 @@ It asks for your domain, then does everything automatically.
 | OpenRouter | API Key | Paste your API key |
 | Any OpenAI-compatible | API Key | Paste key + set base URL |
 
-**No switching between dashboards.** Everything is managed from the OmniRoute UI.
+**No switching between separate products.** The portal, admin UI, API gateway, and backend services are deployed together and managed as one platform.
 
 ---
 
@@ -69,11 +69,11 @@ Internet → Nginx (SSL + rate limiting)
                               └── CLIProxyAPI sidecar (:8317, internal only)
 
 Supporting:
-  PostgreSQL (:5432) — data persistence
-  Redis (:6379) — session cache + rate limits
+  PostgreSQL (:5432) — users, plans, billing, and portal data
+  Redis (:6379) — session cache, rate limits, account pool state
 ```
 
-Only **4 containers** total. CLIProxyAPI has no external ports — it's an invisible backend that OmniRoute manages internally.
+The unified stack runs as **4 containers** total. CLIProxyAPI has no public API port exposed; OmniRoute manages it internally, and the customer portal talks to the shared database plus the OmniRoute control plane.
 
 ---
 
@@ -111,6 +111,7 @@ ai-platform/
 ├── docker-compose.unified.yml   ← 4 services
 ├── .env                         ← Auto-generated secrets
 ├── nginx/nginx.conf             ← Nginx config
+├── customer-portal/             ← Customer-facing web app
 ├── OmniRoute/                   ← OmniRoute source
 └── backups/                     ← Auto-managed
 ```

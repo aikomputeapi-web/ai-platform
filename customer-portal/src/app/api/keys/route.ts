@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { createOmniRouteKey, deleteOmniRouteKey, updateKeyLimits } from '@/lib/omniroute';
 import prisma from '@/lib/db';
+import { recordAdminAction } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 // GET /api/keys — list user's API keys
@@ -49,10 +50,11 @@ export async function POST(req: NextRequest) {
 
     if (userWithPlan?.plan) {
       const isFree = userWithPlan.plan.id === 'free';
+      const plan = userWithPlan.plan as typeof userWithPlan.plan & { requestsPerMonth?: number };
       await updateKeyLimits(omniKey.id, {
         maxRequestsPerDay: isFree ? null : userWithPlan.plan.requestsPerDay,
         maxRequestsPerMinute: userWithPlan.plan.requestsPerMinute,
-        maxRequestsPerMonth: isFree ? userWithPlan.plan.requestsPerMonth : null,
+        maxRequestsPerMonth: isFree ? plan.requestsPerMonth || null : null,
         allowedModels: userWithPlan.plan.allowedModels === '*' 
           ? [] 
           : JSON.parse(userWithPlan.plan.allowedModels),
@@ -67,6 +69,14 @@ export async function POST(req: NextRequest) {
         name: name || 'Default Key',
         lastFour: omniKey.key.slice(-4),
       },
+    });
+
+    await recordAdminAction({
+      action: 'user.key_created',
+      actor: user.email,
+      targetUserId: user.id,
+      targetUserEmail: user.email,
+      metadata: { keyId: userKey.id, keyName: userKey.name },
     });
 
     return NextResponse.json({
@@ -102,6 +112,14 @@ export async function DELETE(req: NextRequest) {
 
     // Remove mapping
     await prisma.userApiKey.delete({ where: { id: keyId } });
+
+    await recordAdminAction({
+      action: 'user.key_revoked',
+      actor: user.email,
+      targetUserId: user.id,
+      targetUserEmail: user.email,
+      metadata: { keyId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

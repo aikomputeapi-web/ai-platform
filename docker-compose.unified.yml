@@ -222,9 +222,31 @@ services:
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      ADMIN_API_SECRET: ${ADMIN_API_SECRET:-admin}
       NODE_ENV: production
     ports:
       - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Scheduled Report Deliverer — polls the portal and sends due reports
+  # ─────────────────────────────────────────────────────────────────────────
+  report-deliverer:
+    build: ./customer-portal
+    container_name: report-deliverer
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      customer-portal:
+        condition: service_started
+    command: ["node", "scripts/deliver-scheduled-reports.mjs"]
+    environment:
+      PORTAL_INTERNAL_URL: http://customer-portal:3000
+      REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:-admin}
+      REPORT_DELIVERY_LIMIT: 20
+      REPORT_DELIVERY_INTERVAL_SECONDS: 300
+      NODE_ENV: production
     networks:
       - ai-network
 
@@ -248,4 +270,3 @@ networks:
   ai-network:
     name: ai-platform-network
     driver: bridge
-

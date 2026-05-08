@@ -33,7 +33,7 @@ export async function verifySessionToken(token: string): Promise<{ userId: strin
 
 export async function getCurrentUser() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('portal_session')?.value;
+  const token = cookieStore.get('portal_impersonation_session')?.value || cookieStore.get('portal_session')?.value;
   if (!token) return null;
 
   const session = await verifySessionToken(token);
@@ -44,7 +44,12 @@ export async function getCurrentUser() {
     include: { plan: true, apiKeys: true },
   });
 
-  return user;
+  const account = user as typeof user & { isLocked?: boolean };
+  if (!account || account.isLocked) {
+    return null;
+  }
+
+  return account;
 }
 
 export async function requireAuth() {

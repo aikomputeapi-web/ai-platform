@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { hashPassword, createSessionToken, generateVerifyToken } from '@/lib/auth';
 import { sendVerificationEmail, sendWelcomeEmail } from '@/lib/email';
+import { recordAdminAction } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
         requestsPerMonth: 50,
         allowedModels: '*',
         sortOrder: 0,
-      },
+      } as never,
     });
 
     const passwordHash = await hashPassword(password);
@@ -49,6 +50,13 @@ export async function POST(req: NextRequest) {
         verifyToken,
         planId: 'free',
       },
+    });
+
+    await recordAdminAction({
+      action: 'user.signed_up',
+      actor: user.email,
+      targetUserId: user.id,
+      targetUserEmail: user.email,
     });
 
     const hasEmailProvider = !!process.env.RESEND_API_KEY;

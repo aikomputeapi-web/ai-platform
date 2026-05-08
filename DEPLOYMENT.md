@@ -2,7 +2,11 @@
 
 ## Overview
 
-This guide walks you through deploying the account pooling features to production.
+This guide walks you through deploying the unified AI platform to production and enabling the OmniRoute pooling subsystem where needed.
+
+The customer portal now also includes a small scheduled-report deliverer worker in `docker-compose.unified.yml` so recurring admin reports can run automatically without manual clicks.
+
+For a staging-style browser preview, use `preview.ps1` with `docker-compose.preview.yml`. It runs the same unified stack on isolated ports and separate preview volumes so you can inspect the dashboard without touching the main runtime.
 
 **Time required:** 30-60 minutes
 
@@ -71,7 +75,9 @@ nano .env.pooling
 
 ## Step 3: Update Docker Compose
 
-Edit `docker-compose.unified.yml`:
+If you need to change the runtime configuration, edit `docker-compose.unified.yml` so the OmniRoute service receives the pooling env vars:
+
+The same compose file also runs the customer-portal report deliverer worker, which polls `/api/admin/scheduled-reports/deliver` on a timer using the shared admin secret.
 
 ```yaml
 services:
@@ -119,6 +125,44 @@ curl -X POST http://localhost:20128/v1/chat/completions \
 # Check Redis
 docker exec -it ai-redis redis-cli -a YOUR_PASSWORD keys "session:*"
 ```
+
+---
+
+## Preview Flow
+
+Use this when you want a browser-openable staging-like copy of the dashboard:
+
+```powershell
+# Start the isolated preview stack
+./preview.ps1 up
+
+# Open:
+#   Customer portal: http://localhost:3301/admin
+#   OmniRoute dashboard: http://localhost:22028
+
+# Tail logs
+./preview.ps1 logs
+
+# Stop the preview stack
+./preview.ps1 down
+```
+
+Preview ports:
+
+- Portal: `3301`
+- OmniRoute dashboard: `22028`
+- OmniRoute API: `22029`
+- PostgreSQL: `55432`
+- Redis: `56379`
+
+Preview volumes:
+
+- `ai-postgres-data-preview`
+- `ai-redis-data-preview`
+
+GitHub Actions also deploys the `staging` branch to the preview host over SSH using [`.github/workflows/deploy-staging.yml`](./.github/workflows/deploy-staging.yml), which now calls `deploy-preview.sh` instead of the production deploy script.
+
+To publish a preview build on the server, push your changes to `staging` and let the workflow pull the branch, build the isolated preview stack, and restart only the preview services.
 
 ---
 

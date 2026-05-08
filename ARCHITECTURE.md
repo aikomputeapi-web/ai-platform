@@ -1,4 +1,60 @@
-# Account Pooling Architecture
+# Unified Platform Architecture
+
+This document describes the deployed AI platform as a single system:
+
+- `customer-portal` for signup, billing, account management, and customer usage views
+- `OmniRoute` for the API gateway, admin dashboard, routing, and backend account management
+- `postgres` for persistent platform data
+- `redis` for session state, rate limits, and pooled-routing coordination
+- `cliproxyapi` as the internal OAuth sidecar managed by OmniRoute
+
+The account-pooling flow shown below is one subsystem inside the OmniRoute control plane, not a separate product.
+
+## Deployment Topology
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                               INTERNET / USERS                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                   NGINX                                     │
+│                         TLS termination + routing                          │
+└───────────────┬───────────────────────────────┬─────────────────────────────┘
+                │                               │
+                ▼                               ▼
+┌─────────────────────────────┐   ┌───────────────────────────────────────────┐
+│       customer-portal       │   │                 OmniRoute                 │
+│     signup / billing /      │   │ admin UI / API gateway / routing / pool   │
+│   account self-service UI   │   │ management / provider coordination       │
+└───────────────┬─────────────┘   └───────────────┬───────────────────────────┘
+                │                                 │
+                ▼                                 ▼
+        ┌───────────────┐                 ┌───────────────┐
+        │   postgres    │                 │     redis     │
+        │ users, plans, │                 │ sessions,     │
+        │ billing, keys │                 │ cooldowns,    │
+        └───────────────┘                 │ pool state    │
+                                          └───────────────┘
+                                                    │
+                                                    ▼
+                                          ┌─────────────────┐
+                                          │   cliproxyapi   │
+                                          │ internal OAuth   │
+                                          │ sidecar only     │
+                                          └─────────────────┘
+```
+
+## Platform Responsibilities
+
+- `customer-portal` owns the customer lifecycle: signup, login, billing, key creation, and self-service usage views.
+- `OmniRoute` owns the API surface and backend control plane: request routing, provider account management, dashboard operations, and pooled account handling.
+- `postgres` stores durable application state shared across the portal and admin flows.
+- `redis` stores ephemeral coordination data used by routing, rate limiting, cooldowns, and session persistence.
+- `cliproxyapi` is an internal service; it is not meant to be managed directly by end users.
+
+## Request Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
