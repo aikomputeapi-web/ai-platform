@@ -166,6 +166,64 @@ To publish a preview build on the server, push your changes to `staging` and let
 
 ---
 
+## Git / Repo Workflow
+
+This project is a single top-level repo, `ai-platform`, with `OmniRoute/` managed as a git submodule inside it.
+
+Current remotes:
+
+- `ai-platform` pushes to your GitHub repo: `aikomputeapi-web/ai-platform`
+- `OmniRoute` `origin` points to your fork: `https://github.com/aikomputeapi-web/OmniRoute.git`
+- `OmniRoute` `upstream` points to the creator repo: `https://github.com/diegosouzapw/OmniRoute.git`
+
+How to work on OmniRoute:
+
+```bash
+cd OmniRoute
+git checkout -b my-change
+# edit files
+git add .
+git commit -m "Describe the change"
+git push origin my-change
+```
+
+Then record the updated submodule pointer in `ai-platform`:
+
+```bash
+cd ..
+git add OmniRoute
+git commit -m "Bump OmniRoute submodule"
+git push origin staging
+```
+
+How to pull upstream OmniRoute updates when you want them:
+
+```bash
+cd OmniRoute
+git fetch upstream
+git checkout main
+git merge upstream/main
+git push origin main
+cd ..
+git add OmniRoute
+git commit -m "Update OmniRoute from upstream"
+git push origin staging
+```
+
+The `staging` branch in `ai-platform` is the branch we use for the preview deployment. It builds the isolated preview stack, while `main` remains the production line.
+
+The current OmniRoute fork commit recorded by `ai-platform` includes the vision-model catalog update:
+
+- `src/app/api/v1/models/catalog.ts` now marks vision-capable models with image input support in the public catalog
+- `src/lib/modelCapabilities.ts` now treats registry/spec metadata and known vision model IDs as vision-capable
+- `src/shared/constants/visionModels.ts` centralizes the vision-model ID list
+- `tests/unit/vision-models.test.ts` covers the vision-model behavior
+- `src/app/(dashboard)/dashboard/playground/page.tsx` now reflects the updated catalog behavior in the dashboard
+
+If you change OmniRoute locally, remember that the top-level repo only sees a new gitlink after you commit the submodule and then commit the updated pointer in `ai-platform`.
+
+---
+
 ## Step 5: Deploy to Production
 
 ### Rebuild and Restart

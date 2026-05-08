@@ -75,6 +75,12 @@ Supporting:
 
 The unified stack runs as **4 containers** total. CLIProxyAPI has no public API port exposed; OmniRoute manages it internally, and the customer portal talks to the shared database plus the OmniRoute control plane.
 
+## Git Layout
+
+`ai-platform` is the top-level repo. `OmniRoute/` is a git submodule inside it, currently pointed at your fork so you can keep your own changes while still syncing upstream updates from the original creator repo when needed.
+
+When you update OmniRoute, commit inside `OmniRoute/` first, then commit the updated submodule pointer in `ai-platform`.
+
 ---
 
 ## Free Domain Setup (StackRyze)
