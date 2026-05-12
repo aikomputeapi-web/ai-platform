@@ -1,6 +1,6 @@
 [submodule "OmniRoute"]
 	path = OmniRoute
-	url = https://github.com/diegosouzapw/OmniRoute.git
+	url = https://github.com/aikomputeapi-web/OmniRoute.git
 
 [submodule "augment2api"]
 	path = augment2api
