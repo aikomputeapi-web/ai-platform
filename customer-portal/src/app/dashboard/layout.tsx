@@ -16,6 +16,7 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [impersonating, setImpersonating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,10 +29,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
         setUser(data.user);
+        setImpersonating(!!data.impersonating);
         setLoading(false);
       })
       .catch(() => router.push('/login'));
   }, [router]);
+
+  async function exitImpersonation() {
+    await fetch('/api/admin/impersonation/clear', { method: 'POST' });
+    router.push('/admin');
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -101,6 +108,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main */}
       <main className="flex-1 overflow-auto">
+        {impersonating && (
+          <div className="border-b border-amber-500/20 bg-amber-500/10 px-6 py-3 text-sm text-amber-200 flex items-center justify-between gap-4">
+            <div>
+              <span className="font-semibold uppercase tracking-wider text-xs mr-2">Impersonation</span>
+              You are viewing this account as {user?.email}.
+            </div>
+            <button onClick={exitImpersonation} className="btn-secondary text-xs px-3 py-1.5">
+              Exit impersonation
+            </button>
+          </div>
+        )}
         <div className="max-w-6xl mx-auto p-8">
           {children}
         </div>

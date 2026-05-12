@@ -29,5 +29,5 @@ jobs:
             git submodule update --init --recursive
 
             echo "══ Deploying to Staging ══"
-            chmod +x deploy.sh manage.sh
-            ./deploy.sh
+            chmod +x deploy-preview.sh manage.sh
+            ./deploy-preview.sh

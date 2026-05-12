@@ -2,7 +2,11 @@
 
 ## Overview
 
-This guide walks you through deploying the account pooling features to production.
+This guide walks you through deploying the unified AI platform to production and enabling the OmniRoute pooling subsystem where needed.
+
+The customer portal now also includes a small scheduled-report deliverer worker in `docker-compose.unified.yml` so recurring admin reports can run automatically without manual clicks.
+
+For a staging-style browser preview, use `preview.ps1` with `docker-compose.preview.yml`. It runs the same unified stack on isolated ports and separate preview volumes so you can inspect the dashboard without touching the main runtime.
 
 **Time required:** 30-60 minutes
 
@@ -71,7 +75,9 @@ nano .env.pooling
 
 ## Step 3: Update Docker Compose
 
-Edit `docker-compose.unified.yml`:
+If you need to change the runtime configuration, edit `docker-compose.unified.yml` so the OmniRoute service receives the pooling env vars:
+
+The same compose file also runs the customer-portal report deliverer worker, which polls `/api/admin/scheduled-reports/deliver` on a timer using the shared admin secret.
 
 ```yaml
 services:
@@ -119,6 +125,102 @@ curl -X POST http://localhost:20128/v1/chat/completions \
 # Check Redis
 docker exec -it ai-redis redis-cli -a YOUR_PASSWORD keys "session:*"
 ```
+
+---
+
+## Preview Flow
+
+Use this when you want a browser-openable staging-like copy of the dashboard:
+
+```powershell
+# Start the isolated preview stack
+./preview.ps1 up
+
+# Open:
+#   Customer portal: http://localhost:3301/admin
+#   OmniRoute dashboard: http://localhost:22028
+
+# Tail logs
+./preview.ps1 logs
+
+# Stop the preview stack
+./preview.ps1 down
+```
+
+Preview ports:
+
+- Portal: `3301`
+- OmniRoute dashboard: `22028`
+- OmniRoute API: `22029`
+- PostgreSQL: `55432`
+- Redis: `56379`
+
+Preview volumes:
+
+- `ai-postgres-data-preview`
+- `ai-redis-data-preview`
+
+GitHub Actions also deploys the `staging` branch to the preview host over SSH using [`.github/workflows/deploy-staging.yml`](./.github/workflows/deploy-staging.yml), which now calls `deploy-preview.sh` instead of the production deploy script.
+
+To publish a preview build on the server, push your changes to `staging` and let the workflow pull the branch, build the isolated preview stack, and restart only the preview services.
+
+---
+
+## Git / Repo Workflow
+
+This project is a single top-level repo, `ai-platform`, with `OmniRoute/` managed as a git submodule inside it.
+
+Current remotes:
+
+- `ai-platform` pushes to your GitHub repo: `aikomputeapi-web/ai-platform`
+- `OmniRoute` `origin` points to your fork: `https://github.com/aikomputeapi-web/OmniRoute.git`
+- `OmniRoute` `upstream` points to the creator repo: `https://github.com/diegosouzapw/OmniRoute.git`
+
+How to work on OmniRoute:
+
+```bash
+cd OmniRoute
+git checkout -b my-change
+# edit files
+git add .
+git commit -m "Describe the change"
+git push origin my-change
+```
+
+Then record the updated submodule pointer in `ai-platform`:
+
+```bash
+cd ..
+git add OmniRoute
+git commit -m "Bump OmniRoute submodule"
+git push origin staging
+```
+
+How to pull upstream OmniRoute updates when you want them:
+
+```bash
+cd OmniRoute
+git fetch upstream
+git checkout main
+git merge upstream/main
+git push origin main
+cd ..
+git add OmniRoute
+git commit -m "Update OmniRoute from upstream"
+git push origin staging
+```
+
+The `staging` branch in `ai-platform` is the branch we use for the preview deployment. It builds the isolated preview stack, while `main` remains the production line.
+
+The current OmniRoute fork commit recorded by `ai-platform` includes the vision-model catalog update:
+
+- `src/app/api/v1/models/catalog.ts` now marks vision-capable models with image input support in the public catalog
+- `src/lib/modelCapabilities.ts` now treats registry/spec metadata and known vision model IDs as vision-capable
+- `src/shared/constants/visionModels.ts` centralizes the vision-model ID list
+- `tests/unit/vision-models.test.ts` covers the vision-model behavior
+- `src/app/(dashboard)/dashboard/playground/page.tsx` now reflects the updated catalog behavior in the dashboard
+
+If you change OmniRoute locally, remember that the top-level repo only sees a new gitlink after you commit the submodule and then commit the updated pointer in `ai-platform`.
 
 ---
 

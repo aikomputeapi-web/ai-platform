@@ -4,6 +4,16 @@ import { getUsageAnalytics } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
 
+interface ApiKeyUsage {
+  apiKeyId: string;
+  requests?: number;
+  totalTokens?: number;
+  totalCost?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  byModel?: { model: string; requests: number }[];
+}
+
 /**
  * Admin Analytics API
  * 
@@ -54,7 +64,7 @@ export async function GET(req: NextRequest) {
     const analytics = await getUsageAnalytics(range);
 
     // 4. Build a lookup: omnirouteKeyId -> usage stats
-    const usageByKeyId: Record<string, any> = {};
+    const usageByKeyId: Record<string, ApiKeyUsage> = {};
     if (analytics?.byApiKey) {
       for (const entry of analytics.byApiKey) {
         usageByKeyId[entry.apiKeyId] = entry;
@@ -63,16 +73,17 @@ export async function GET(req: NextRequest) {
 
     // 5. Enrich each user with their aggregated usage
     const enrichedUsers = users.map(user => {
+      const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
       const userKeyIds = user.apiKeys.map(k => k.omnirouteKeyId);
       const keyUsages = userKeyIds
         .map(id => usageByKeyId[id])
-        .filter(Boolean);
+        .filter((entry): entry is ApiKeyUsage => Boolean(entry));
 
-      const totalTokens = keyUsages.reduce((sum: number, k: any) => sum + (k.totalTokens || 0), 0);
-      const totalRequests = keyUsages.reduce((sum: number, k: any) => sum + (k.requests || 0), 0);
-      const totalCost = keyUsages.reduce((sum: number, k: any) => sum + (k.cost || 0), 0);
-      const promptTokens = keyUsages.reduce((sum: number, k: any) => sum + (k.promptTokens || 0), 0);
-      const completionTokens = keyUsages.reduce((sum: number, k: any) => sum + (k.completionTokens || 0), 0);
+      const totalTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalTokens || 0), 0);
+      const totalRequests = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.requests || 0), 0);
+      const totalCost = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalCost || 0), 0);
+      const promptTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.promptTokens || 0), 0);
+      const completionTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.completionTokens || 0), 0);
 
       // Per-model breakdown for this user
       const modelUsage: Record<string, number> = {};
@@ -97,6 +108,8 @@ export async function GET(req: NextRequest) {
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified,
+        isLocked: account.isLocked || false,
+        adminNote: account.adminNote || null,
         plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -145,7 +158,7 @@ export async function GET(req: NextRequest) {
         id: p.id,
         name: p.name,
         priceCents: p.priceCents,
-        userCount: (p as any)._count?.users || 0,
+        userCount: p._count.users,
       })),
     };
 
