@@ -14,6 +14,8 @@ model User {
   passwordHash    String    @map("password_hash")
   name            String?
   emailVerified   Boolean   @default(false) @map("email_verified")
+  isLocked        Boolean   @default(false) @map("is_locked")
+  adminNote       String?   @map("admin_note")
   verifyToken     String?   @map("verify_token")
   resetToken      String?   @map("reset_token")
   resetTokenExp   DateTime? @map("reset_token_exp")
@@ -24,6 +26,7 @@ model User {
 
   apiKeys   UserApiKey[]
   payments  Payment[]
+  auditLogs AuditLog[]
   plan      Plan         @relation(fields: [planId], references: [id])
 
   @@map("users")
@@ -72,4 +75,87 @@ model Payment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payments")
+}
+
+model BillingAdjustment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String
+  amountCents Int      @map("amount_cents")
+  reason      String
+  status      String   @default("applied")
+  actor       String   @default("admin")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@map("billing_adjustments")
+}
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  subject     String
+  description String
+  status      String   @default("open")
+  priority    String   @default("normal")
+  assignedTo  String?  @map("assigned_to")
+  internalNotes String? @map("internal_notes")
+  source      String   @default("manual")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, priority, createdAt])
+  @@index([userId, createdAt])
+  @@map("support_tickets")
+}
+
+model ScheduledReport {
+  id            String   @id @default(uuid())
+  name          String
+  reportType    String   @map("report_type")
+  recipientEmail String  @map("recipient_email")
+  cadence       String
+  enabled       Boolean  @default(true)
+  filters       Json?
+  notes         String?
+  lastRunAt     DateTime? @map("last_run_at")
+  nextRunAt     DateTime? @map("next_run_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled, nextRunAt])
+  @@index([reportType, enabled])
+  @@map("scheduled_reports")
+}
+
+model AdminSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("admin_settings")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  action        String
+  actor         String   @default("admin")
+  targetUserId  String?  @map("target_user_id")
+  targetUserEmail String? @map("target_user_email")
+  metadata      Json?
+  ipAddress     String?  @map("ip_address")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  targetUser User? @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("audit_logs")
 }

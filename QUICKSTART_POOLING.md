@@ -1,4 +1,4 @@
-# Quick Start: Account Pooling & Anti-Detection
+# Quick Start: OmniRoute Pooling Subsystem
 
 ## Installation
 
@@ -58,9 +58,9 @@ curl https://yourdomain.com/v1/chat/completions \
   }'
 ```
 
-**Without session header:** Each request may use a different backend account (conversation breaks).
+**Without session header:** Each request may use a different backend account and lose session continuity.
 
-**With session header:** All requests in the same session use the same backend account (conversation persists).
+**With session header:** All requests in the same session use the same backend account, so the conversation persists.
 
 ---
 

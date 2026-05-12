@@ -1,0 +1,124 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
+import prisma from '@/lib/db';
+import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
+import { getNextRunAt, sendScheduledReportEmail, type ScheduledReportRecord } from '@/lib/scheduled-reports';
+
+export const dynamic = 'force-dynamic';
+
+function verifyDeliveryAccess(req: NextRequest) {
+  if (verifyAdminAccess(req)) return true;
+
+  const cronSecret = process.env.CRON_SECRET || process.env.SCHEDULED_REPORTS_CRON_SECRET;
+  if (!cronSecret) return false;
+
+  const headerSecret = req.headers.get('x-cron-secret') || req.headers.get('x-scheduler-secret');
+  return headerSecret === cronSecret;
+}
+
+async function isDeliveryEnabled() {
+  const rows = await prisma.$queryRaw<Array<{ value: unknown }>>(Prisma.sql`
+    SELECT value
+    FROM admin_settings
+    WHERE key = 'scheduled_reports_delivery'
+    LIMIT 1
+  `);
+
+  const value = rows[0]?.value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return true;
+  }
+
+  return (value as Record<string, unknown>).enabled !== false;
+}
+
+export async function POST(req: NextRequest) {
+  if (!verifyDeliveryAccess(req)) {
+    return adminForbidden();
+  }
+
+  try {
+    const source = req.nextUrl.searchParams.get('source') || 'manual';
+    const deliveryEnabled = await isDeliveryEnabled();
+    if (!deliveryEnabled && source === 'worker') {
+      return NextResponse.json({ success: true, processed: 0, sent: 0, failed: 0, skipped: 0, paused: true });
+    }
+
+    const limitParam = req.nextUrl.searchParams.get('limit');
+    const limit = Math.min(Math.max(Number(limitParam || 20) || 20, 1), 100);
+
+    const dueReports = await prisma.$queryRaw<ScheduledReportRecord[]>(Prisma.sql`
+      SELECT
+        id,
+        name,
+        report_type AS "reportType",
+        recipient_email AS "recipientEmail",
+        cadence,
+        enabled,
+        filters,
+        notes,
+        last_run_at AS "lastRunAt",
+        next_run_at AS "nextRunAt"
+      FROM scheduled_reports
+      WHERE enabled = true
+        AND next_run_at IS NOT NULL
+        AND next_run_at <= NOW()
+      ORDER BY next_run_at ASC, created_at ASC
+      LIMIT ${limit}
+    `);
+
+    const results = {
+      processed: dueReports.length,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+    };
+
+    for (const report of dueReports) {
+      const delivered = await sendScheduledReportEmail(report);
+      if (!delivered) {
+        results.failed += 1;
+        await recordAdminAction({
+          action: 'report.delivery_failed',
+          req,
+          metadata: {
+            reportId: report.id,
+            reportType: report.reportType,
+            recipientEmail: report.recipientEmail,
+          },
+        });
+        continue;
+      }
+
+      results.sent += 1;
+
+      await prisma.$executeRaw(Prisma.sql`
+        UPDATE scheduled_reports
+        SET last_run_at = NOW(),
+            next_run_at = ${report.enabled ? getNextRunAt(report.cadence) : null},
+            updated_at = NOW()
+        WHERE id = ${report.id}
+      `);
+
+      await recordAdminAction({
+        action: 'report.sent',
+        req,
+        metadata: {
+          reportId: report.id,
+          reportType: report.reportType,
+          recipientEmail: report.recipientEmail,
+          cadence: report.cadence,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...results,
+      paused: !deliveryEnabled,
+    });
+  } catch (error) {
+    console.error('Scheduled report delivery error:', error);
+    return NextResponse.json({ error: 'Failed to deliver scheduled reports' }, { status: 500 });
+  }
+}

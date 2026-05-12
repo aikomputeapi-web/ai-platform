@@ -4,8 +4,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const adminNav = [
-  { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
-  { href: '/admin/forecast', label: 'Forecast Engine', icon: '🔮' },
+  { href: '/admin', label: 'Overview', icon: '🏠' },
+  { href: '/admin/users', label: 'Accounts', icon: '👥' },
+  { href: '/admin/billing', label: 'Billing', icon: '💳' },
+  { href: '/admin/usage', label: 'Usage', icon: '📈' },
+  { href: '/admin/reports', label: 'Reports', icon: '🗓️' },
+  { href: '/admin/plans', label: 'Plans', icon: '📦' },
+  { href: '/admin/models', label: 'Models', icon: '🧠' },
+  { href: '/admin/routing', label: 'Routing', icon: '🛣️' },
+  { href: '/admin/forecast', label: 'Forecast', icon: '🔮' },
+  { href: '/admin/operations', label: 'Operations', icon: '🛰️' },
+  { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/admin/support', label: 'Support', icon: '🧭' },
+  { href: '/admin/audit-log', label: 'Activity', icon: '📋' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

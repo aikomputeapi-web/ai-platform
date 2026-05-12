@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   let event;
   try {
     event = stripe().webhooks.constructEvent(body, sig, webhookSecret);
-  } catch (err) {
+  } catch {
     console.error('Webhook signature verification failed');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
         where: { stripePriceId: priceId },
       });
       if (!plan) break;
+      const billedPlan = plan as typeof plan & { requestsPerMonth?: number };
 
       // Update user plan
       await prisma.user.update({
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
         await updateKeyLimits(key.omnirouteKeyId, {
           maxRequestsPerDay: isFree ? null : plan.requestsPerDay,
           maxRequestsPerMinute: plan.requestsPerMinute,
-          maxRequestsPerMonth: isFree ? plan.requestsPerMonth : null,
+          maxRequestsPerMonth: isFree ? billedPlan.requestsPerMonth || null : null,
           allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
         });
       }
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
           status: 'completed',
         },
       });
+
+      await prisma.$executeRaw`
+        INSERT INTO billing_adjustments (id, user_id, type, amount_cents, reason, status, actor, created_at)
+        VALUES (${crypto.randomUUID()}, ${user.id}, 'charge', ${session.amount_total || 0}, ${`Stripe checkout session ${session.id}`}, 'applied', 'stripe', NOW())
+      `;
 
       console.log(`[Webhook] User ${user.email} upgraded to ${plan.name}`);
       break;
@@ -92,16 +98,21 @@ export async function POST(req: NextRequest) {
         data: { planId: 'free' },
       });
 
+      await prisma.$executeRaw`
+        INSERT INTO billing_adjustments (id, user_id, type, amount_cents, reason, status, actor, created_at)
+        VALUES (${crypto.randomUUID()}, ${user.id}, 'subscription_canceled', 0, ${`Stripe subscription ${sub.id} ended`}, 'applied', 'stripe', NOW())
+      `;
+
       // Reset API key limits to free tier
       const freePlan = await prisma.plan.findUnique({ where: { id: 'free' } });
+      const freeTier = freePlan as typeof freePlan & { requestsPerMonth?: number };
       const userKeys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
 
       for (const key of userKeys) {
-        const isFree = true;
         await updateKeyLimits(key.omnirouteKeyId, {
           maxRequestsPerDay: null,
           maxRequestsPerMinute: freePlan?.requestsPerMinute || 5,
-          maxRequestsPerMonth: freePlan?.requestsPerMonth || 50,
+          maxRequestsPerMonth: freeTier?.requestsPerMonth || 50,
         });
       }
 

@@ -9,6 +9,34 @@ const FROM_ADDRESS = process.env.EMAIL_FROM || 'noreply@yourdomain.com';
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'AI API Platform';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+type HtmlEmailOptions = {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+};
+
+export async function sendHtmlEmail({ to, subject, html, text }: HtmlEmailOptions): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[Email] RESEND_API_KEY not set. Preview subject: ${subject}`);
+    return true;
+  }
+
+  try {
+    await getResend().emails.send({
+      from: `${APP_NAME} <${FROM_ADDRESS}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+    return true;
+  } catch (err) {
+    console.error('[Email] sendHtmlEmail failed:', err);
+    return false;
+  }
+}
+
 export async function sendVerificationEmail(
   to: string,
   token: string
@@ -19,8 +47,7 @@ export async function sendVerificationEmail(
   }
 
   try {
-    await getResend().emails.send({
-      from: `${APP_NAME} <${FROM_ADDRESS}>`,
+    await sendHtmlEmail({
       to,
       subject: `Verify your email — ${APP_NAME}`,
       html: emailTemplate({
@@ -53,8 +80,7 @@ export async function sendPasswordResetEmail(
   }
 
   try {
-    await getResend().emails.send({
-      from: `${APP_NAME} <${FROM_ADDRESS}>`,
+    await sendHtmlEmail({
       to,
       subject: `Reset your password — ${APP_NAME}`,
       html: emailTemplate({
@@ -85,8 +111,7 @@ export async function sendWelcomeEmail(to: string, name?: string): Promise<void>
   if (!process.env.RESEND_API_KEY) return;
 
   try {
-    await getResend().emails.send({
-      from: `${APP_NAME} <${FROM_ADDRESS}>`,
+    await sendHtmlEmail({
       to,
       subject: `Welcome to ${APP_NAME} — Here's how to get started`,
       html: emailTemplate({
