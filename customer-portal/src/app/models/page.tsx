@@ -15,7 +15,7 @@ import { SpeedChart, PriceChart, IntelligenceVsPriceChart, LeaderboardBar } from
 export const revalidate = 3600;
 
 export const metadata = {
-  title: 'AI Models — AI API Platform',
+  title: 'AI Models — aikompute',
   description: `Access ${MODELS.OPENAI_FLAGSHIP}, ${MODELS.ANTHROPIC_OPUS}, ${MODELS.GOOGLE_PRO}, ${MODELS.DEEPSEEK_V3}, and dozens more frontier AI models through a single unified API — significantly cheaper than going to each lab directly.`,
 };
 

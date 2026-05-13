@@ -5,8 +5,8 @@ function getResend(): Resend {
   if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY || 'placeholder');
   return _resend;
 }
-const FROM_ADDRESS = process.env.EMAIL_FROM || 'noreply@yourdomain.com';
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'AI API Platform';
+const FROM_ADDRESS = process.env.EMAIL_FROM || 'noreply@aikompute.com';
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'aikompute';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 type HtmlEmailOptions = {

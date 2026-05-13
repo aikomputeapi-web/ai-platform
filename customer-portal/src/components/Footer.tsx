@@ -27,7 +27,7 @@ export default function Footer() {
               </svg>
             </div>
             <span className="font-bold text-[var(--color-text-primary)] group-hover:text-white transition-colors">
-              AI API Platform
+              aikompute
             </span>
           </Link>
 
@@ -56,7 +56,7 @@ export default function Footer() {
 
         {/* Bottom row */}
         <div className="border-t border-[var(--color-border)] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--color-text-muted)]">
-          <p>© {new Date().getFullYear()} AI API Platform. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} aikompute. All rights reserved.</p>
           <p>
             Benchmark data from{' '}
             <a
