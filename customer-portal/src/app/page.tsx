@@ -160,7 +160,7 @@ function FailoverComparison() {
         <div className="relative">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center text-green-400 text-sm">✓</div>
-            <span className="text-sm font-bold text-green-400">With AI API Platform</span>
+            <span className="text-sm font-bold text-green-400">With aikompute</span>
           </div>
           <div className="font-mono text-xs space-y-1.5">
             <div className="text-[var(--color-text-muted)]">10:42:01 → POST /v1/chat/completions</div>

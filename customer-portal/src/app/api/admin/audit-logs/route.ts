@@ -30,7 +30,7 @@ interface AuditLogRow {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 

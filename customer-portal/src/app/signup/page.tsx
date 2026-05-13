@@ -28,7 +28,13 @@ export default function SignupPage() {
         setError(data.error || 'Signup failed');
         return;
       }
-      router.push('/dashboard');
+      
+      // Check if email verification is required
+      if (data.requiresVerification) {
+        router.push(`/verify-pending?email=${encodeURIComponent(email)}`);
+      } else {
+        router.push('/dashboard');
+      }
     } catch {
       setError('Network error. Please try again.');
     } finally {

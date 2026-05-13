@@ -123,8 +123,6 @@ export default function AdminBillingPage() {
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<Range>('30d');
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(null);
@@ -133,15 +131,12 @@ export default function AdminBillingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: Range = range) => {
+  const fetchData = useCallback(async (selectedRange: Range = range) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/billing?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/billing?range=${selectedRange}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load billing');
-        setAuthed(false);
+        setError('Failed to load billing');
         return;
       }
       setData(await res.json());
@@ -154,13 +149,11 @@ export default function AdminBillingPage() {
   }, [range]);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchData(secret, range);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, range, secret, fetchData]);
+    const timer = window.setTimeout(() => {
+      void fetchData(range);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [range, fetchData]);
 
   const filteredInvoices = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -217,7 +210,6 @@ export default function AdminBillingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify({
           action,
@@ -231,33 +223,12 @@ export default function AdminBillingPage() {
         return;
       }
       setAdjustmentReason('');
-      void fetchData(secret, range);
+      void fetchData(range);
     } catch {
       setError('Network error');
     } finally {
       setActionLoading(null);
     }
-  }
-
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form onSubmit={(e) => { e.preventDefault(); setAuthed(true); }} className="glass-card p-8 w-full max-w-md animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #6366f1)' }}>
-              <CreditCard size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Billing & Invoices</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Billing Center</button>
-        </form>
-      </div>
-    );
   }
 
   if (loading || !data) {
@@ -301,7 +272,7 @@ export default function AdminBillingPage() {
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData(secret, range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData(range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

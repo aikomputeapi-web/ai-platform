@@ -48,44 +48,22 @@ export default function ForecastPage() {
   const [data, setData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
 
-  const fetchData = useCallback(async (s: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/forecast', { headers: { Authorization: `Bearer ${s}` } });
-      if (!res.ok) { setError(res.status === 403 ? 'Invalid admin secret' : 'Failed'); setAuthed(false); return; }
+      const res = await fetch('/api/admin/forecast');
+      if (!res.ok) { setError('Failed'); return; }
       setData(await res.json());
       setError('');
     } catch { setError('Network error'); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (authed) fetchData(secret); }, [authed, fetchData, secret]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleLogin = (e: React.FormEvent) => { e.preventDefault(); setAuthed(true); };
   const fmt = (n: number) => n.toLocaleString();
   const fmtTokens = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : `${n}`;
-
-  // Auth gate (same style as analytics)
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center">
-        <form onSubmit={handleLogin} className="glass-card p-8 w-full max-w-md animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
-              <span style={{ fontSize: '1.25rem' }}>🔮</span>
-            </div>
-            <div><h1 className="text-xl font-bold">Forecast Engine</h1><p className="text-xs text-[var(--color-text-muted)]">Enter admin secret to access projections</p></div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={e => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Access Forecasts</button>
-        </form>
-      </div>
-    );
-  }
 
   if (loading || !data) {
     return (

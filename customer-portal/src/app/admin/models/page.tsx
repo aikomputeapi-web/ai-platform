@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, RefreshCw, Layers3, BarChart3, Sparkles } from 'lucide-react';
 import { MODELS, MODEL_CATALOGUE } from '@/lib/models';
 
@@ -112,22 +112,17 @@ export default function ModelsAdminPage() {
   const [models, setModels] = useState<ModelEntry[]>(initialModels);
   const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('30d');
   const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
+  const fetchData = useCallback(async (selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load model economics');
-        setAuthed(false);
+        setError('Failed to load model economics');
         return;
       }
       setData(await res.json());
@@ -185,41 +180,17 @@ export default function ModelsAdminPage() {
   const concentration = modelIntelligence.slice(0, 3).reduce((sum, entry) => sum + entry.share, 0);
   const activeCatalog = MODEL_CATALOGUE.length;
 
-  if (!authed) {
+  useEffect(() => {
+    void fetchData(range);
+  }, [range, fetchData]);
+
+  if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-            void fetchData(secret, range);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' }}>
-              <Layers3 size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Model Intelligence</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && (
-            <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-              {error}
-            </div>
-          )}
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="Admin secret"
-            className="input-field mb-4"
-            autoFocus
-          />
-          <button type="submit" className="btn-primary w-full">Open Model Intelligence</button>
-        </form>
+      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[var(--color-text-muted)]">Loading model intelligence…</p>
+        </div>
       </div>
     );
   }
@@ -263,7 +234,7 @@ export default function ModelsAdminPage() {
                   key={option}
                   onClick={() => {
                     setRange(option);
-                    void fetchData(secret, option);
+                    void fetchData(option);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
                   style={range === option ? { background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' } : { background: 'var(--color-bg-card)' }}
@@ -271,7 +242,7 @@ export default function ModelsAdminPage() {
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData(secret)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

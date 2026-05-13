@@ -46,7 +46,7 @@ async function writeConfig(nextConfig: { enabled: boolean; pausedAt: string | nu
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 

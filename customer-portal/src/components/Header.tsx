@@ -36,7 +36,7 @@ export default function Header({ activeTab }: HeaderProps) {
               <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <span className="font-bold text-lg tracking-tight text-white">AI API Platform</span>
+          <span className="font-bold text-lg tracking-tight text-white">aikompute</span>
         </Link>
 
         {/* Nav */}

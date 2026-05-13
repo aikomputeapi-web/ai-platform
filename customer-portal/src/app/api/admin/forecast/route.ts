@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { verifyAdminAccess } from '@/lib/admin';
 import { getUsageAnalytics } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
-
-function verifyAdminAccess(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return false;
-  return authHeader.replace('Bearer ', '') === adminSecret;
-}
 
 /**
  * Forecast API — returns historical daily data plus projected values.
@@ -17,7 +11,7 @@ function verifyAdminAccess(req: NextRequest): boolean {
  * predict next 30/60/90 days of requests, tokens, cost, and user growth.
  */
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

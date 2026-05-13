@@ -13,7 +13,7 @@ export default function Docs() {
                 <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <span className="font-bold text-lg tracking-tight">AI API Platform</span>
+            <span className="font-bold text-lg tracking-tight">aikompute</span>
           </Link>
           <nav className="flex items-center gap-6">
             <Link href="/features" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Features</Link>
@@ -45,7 +45,7 @@ export default function Docs() {
         <div className="flex-1 max-w-3xl animate-fade-in">
           <h1 className="text-4xl font-bold tracking-tight mb-4">API Documentation</h1>
           <p className="text-xl text-[var(--color-text-secondary)] mb-12">
-            Learn how to integrate the AI API Platform into your application. Our API is highly compatible with the OpenAI SDK format.
+            Learn how to integrate aikompute into your application. Our API is highly compatible with the OpenAI SDK format.
           </p>
 
           <section id="getting-started" className="mb-16">
@@ -173,7 +173,7 @@ export default function Docs() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-12 text-center text-[var(--color-text-muted)]">
-        <p className="text-sm">© {new Date().getFullYear()} AI API Platform. All rights reserved.</p>
+        <p className="text-sm">© {new Date().getFullYear()} aikompute. All rights reserved.</p>
       </footer>
     </div>
   );

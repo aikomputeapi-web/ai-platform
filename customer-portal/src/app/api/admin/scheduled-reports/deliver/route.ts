@@ -6,8 +6,8 @@ import { getNextRunAt, sendScheduledReportEmail, type ScheduledReportRecord } fr
 
 export const dynamic = 'force-dynamic';
 
-function verifyDeliveryAccess(req: NextRequest) {
-  if (verifyAdminAccess(req)) return true;
+async function verifyDeliveryAccess(req: NextRequest) {
+  if (await verifyAdminAccess(req)) return true;
 
   const cronSecret = process.env.CRON_SECRET || process.env.SCHEDULED_REPORTS_CRON_SECRET;
   if (!cronSecret) return false;
@@ -33,7 +33,7 @@ async function isDeliveryEnabled() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifyDeliveryAccess(req)) {
+  if (!(await verifyDeliveryAccess(req))) {
     return adminForbidden();
   }
 

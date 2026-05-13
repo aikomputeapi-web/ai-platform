@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI API Platform — Developer Portal",
+  title: "aikompute — Developer Portal",
   description: "Access powerful AI models through a single API. Sign up, get your API key, and start building.",
 };
 

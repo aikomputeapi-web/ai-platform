@@ -55,7 +55,7 @@ async function writeSetting(key: string, value: Prisma.InputJsonValue) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 

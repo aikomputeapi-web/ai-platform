@@ -14,7 +14,6 @@ import {
   PencilLine,
   RefreshCw,
   Search,
-  ShieldAlert,
   Send,
   Trash2,
   Unlock,
@@ -184,8 +183,6 @@ export default function AdminAccountsDashboard() {
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<Range>('30d');
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState<Scope>('all');
@@ -227,15 +224,12 @@ export default function AdminAccountsDashboard() {
     }
   }, [savedViews]);
 
-  const fetchOverview = useCallback(async (adminSecret: string, selectedRange: Range = range) => {
+  const fetchOverview = useCallback(async (selectedRange: Range = range) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load dashboard');
-        setAuthed(false);
+        setError('Failed to load dashboard');
         return;
       }
       setData(await res.json());
@@ -247,15 +241,13 @@ export default function AdminAccountsDashboard() {
     }
   }, [range]);
 
-  const fetchUserDetail = useCallback(async (userId: string, adminSecret: string, selectedRange: Range = range) => {
+  const fetchUserDetail = useCallback(async (userId: string, selectedRange: Range = range) => {
     setDetailLoading(true);
     setDetailError('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/users/${userId}?range=${selectedRange}`);
       if (!res.ok) {
-        setDetailError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load user');
+        setDetailError('Failed to load user');
         return;
       }
       const json = await res.json() as { user: UserDetail };
@@ -270,22 +262,14 @@ export default function AdminAccountsDashboard() {
   }, [range]);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchOverview(secret, range);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, range, secret, fetchOverview]);
+    void fetchOverview(range);
+  }, [fetchOverview, range]);
 
   useEffect(() => {
-    if (authed && selectedUserId) {
-      const timer = window.setTimeout(() => {
-        void fetchUserDetail(selectedUserId, secret, range);
-      }, 0);
-      return () => window.clearTimeout(timer);
+    if (selectedUserId) {
+      void fetchUserDetail(selectedUserId, range);
     }
-  }, [authed, selectedUserId, secret, range, fetchUserDetail]);
+  }, [selectedUserId, range, fetchUserDetail]);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -342,7 +326,6 @@ export default function AdminAccountsDashboard() {
         method: action === 'delete' ? 'DELETE' : 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: action === 'delete' ? undefined : JSON.stringify({ action, ...payload }),
       });
@@ -352,8 +335,8 @@ export default function AdminAccountsDashboard() {
         return null;
       }
       const json = await res.json().catch(() => null);
-      await fetchOverview(secret, range);
-      await fetchUserDetail(userId, secret, range);
+      await fetchOverview(range);
+      await fetchUserDetail(userId, range);
       return json;
     } catch {
       setDetailError('Network error');
@@ -513,7 +496,6 @@ export default function AdminAccountsDashboard() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify({ rows }),
       });
@@ -523,42 +505,26 @@ export default function AdminAccountsDashboard() {
       }
       const json = await res.json() as { created?: number; updated?: number };
       setImportStatus(`Imported ${json.created || 0} created, ${json.updated || 0} updated.`);
-      await fetchOverview(secret, range);
+      await fetchOverview(range);
     } catch {
       setImportStatus('Import failed.');
     }
   }
 
-  if (!authed) {
+  if (error && !data && !loading) {
     return (
       <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #10b981)' }}>
-              <ShieldAlert size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Accounts Control Center</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
+        <div className="glass-card p-8 w-full max-w-lg text-center animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-[rgba(239,68,68,0.12)] text-[#f87171] mx-auto mb-4 flex items-center justify-center">
+            <X size={20} />
           </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="Admin secret"
-            className="input-field mb-4"
-            autoFocus
-          />
-          <button type="submit" className="btn-primary w-full">Open Accounts</button>
-        </form>
+          <h2 className="text-xl font-semibold mb-2">Accounts failed to load</h2>
+          <p className="text-sm text-[var(--color-text-muted)] mb-5">{error}</p>
+          <button type="button" onClick={() => void fetchOverview(range)} className="btn-primary inline-flex items-center gap-2">
+            <RefreshCw size={14} />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -606,7 +572,7 @@ export default function AdminAccountsDashboard() {
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchOverview(secret, range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchOverview(range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

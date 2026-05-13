@@ -43,7 +43,7 @@ interface ReportEmailContent {
   footer: string;
 }
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'AI API Platform';
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'aikompute';
 
 const DATE_RANGE_VALUES = new Set(['7d', '30d', '90d']);
 

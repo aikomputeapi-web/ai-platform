@@ -24,10 +24,12 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  apiKeys   UserApiKey[]
-  payments  Payment[]
-  auditLogs AuditLog[]
-  plan      Plan         @relation(fields: [planId], references: [id])
+  apiKeys            UserApiKey[]
+  payments           Payment[]
+  auditLogs          AuditLog[]         @relation("AuditLogTargetUser")
+  billingAdjustments BillingAdjustment[]
+  supportTickets     SupportTicket[]
+  plan               Plan               @relation(fields: [planId], references: [id])
 
   @@map("users")
 }
@@ -152,7 +154,7 @@ model AuditLog {
   ipAddress     String?  @map("ip_address")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  targetUser User? @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("AuditLogTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([action, createdAt])

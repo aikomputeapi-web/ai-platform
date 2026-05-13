@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy — AI API Platform',
-  description: 'Privacy policy describing how AI API Platform collects, uses, and protects your data.',
+  title: 'Privacy Policy — aikompute',
+  description: 'Privacy policy describing how aikompute collects, uses, and protects your data.',
 };
 
 export default function PrivacyPage() {
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
-            <span className="font-bold text-sm">AI API Platform</span>
+            <span className="font-bold text-sm">aikompute</span>
           </Link>
           <Link href="/login" className="text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors">Sign In</Link>
         </div>

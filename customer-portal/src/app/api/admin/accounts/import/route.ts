@@ -16,7 +16,7 @@ interface AccountImportRow {
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 

@@ -47,8 +47,6 @@ export default function AdminReportsPage() {
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [reportType, setReportType] = useState('billing');
@@ -59,21 +57,15 @@ export default function AdminReportsPage() {
   const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig | null>(null);
   const [now] = useState(() => Date.now());
 
-  const fetchData = useCallback(async (adminSecret: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [reportsRes, configRes] = await Promise.all([
-        fetch('/api/admin/scheduled-reports', {
-          headers: { Authorization: `Bearer ${adminSecret}` },
-        }),
-        fetch('/api/admin/scheduled-reports/config', {
-          headers: { Authorization: `Bearer ${adminSecret}` },
-        }),
+        fetch('/api/admin/scheduled-reports'),
+        fetch('/api/admin/scheduled-reports/config'),
       ]);
       if (!reportsRes.ok || !configRes.ok) {
-        const status = reportsRes.ok ? configRes.status : reportsRes.status;
-        setError(status === 403 ? 'Invalid admin secret' : 'Failed to load scheduled reports');
-        setAuthed(false);
+        setError('Failed to load scheduled reports');
         return;
       }
       setData(await reportsRes.json());
@@ -88,13 +80,11 @@ export default function AdminReportsPage() {
   }, []);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchData(secret);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, secret, fetchData]);
+    const timer = window.setTimeout(() => {
+      void fetchData();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchData]);
 
   const reports = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -149,7 +139,6 @@ export default function AdminReportsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify({
           name: name.trim(),
@@ -168,7 +157,7 @@ export default function AdminReportsPage() {
       setRecipientEmail('');
       setCadence('daily');
       setNotes('');
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
@@ -183,7 +172,6 @@ export default function AdminReportsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify(payload),
       });
@@ -191,7 +179,7 @@ export default function AdminReportsPage() {
         setError('Failed to update report');
         return;
       }
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
@@ -204,13 +192,12 @@ export default function AdminReportsPage() {
     try {
       const res = await fetch(`/api/admin/scheduled-reports/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${secret}` },
       });
       if (!res.ok) {
         setError('Failed to delete report');
         return;
       }
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
@@ -223,7 +210,6 @@ export default function AdminReportsPage() {
     try {
       const res = await fetch('/api/admin/scheduled-reports/deliver?limit=20', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${secret}` },
       });
       if (!res.ok) {
         setError('Failed to deliver due reports');
@@ -231,7 +217,7 @@ export default function AdminReportsPage() {
       }
       const payload = await res.json();
       setError('');
-      await fetchData(secret);
+      await fetchData();
       if (payload?.processed) {
         window.alert(`Processed ${payload.processed} due report(s): ${payload.sent} sent, ${payload.failed} failed.`);
       }
@@ -250,7 +236,6 @@ export default function AdminReportsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify({ enabled: nextEnabled, actor: 'admin' }),
       });
@@ -261,33 +246,12 @@ export default function AdminReportsPage() {
       const payload = await res.json();
       setDeliveryConfig(payload.config || null);
       setError('');
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
       setActionLoading(null);
     }
-  }
-
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form onSubmit={(e) => { e.preventDefault(); setAuthed(true); }} className="glass-card p-8 w-full max-w-md animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #10b981)' }}>
-              <CalendarClock size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Scheduled Reports</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Reports</button>
-        </form>
-      </div>
-    );
   }
 
   if (loading || !data) {
@@ -340,7 +304,7 @@ export default function AdminReportsPage() {
                 <span className={`h-2.5 w-2.5 rounded-full ${automationEnabled ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                 {automationEnabled ? 'Pause Delivery' : 'Resume Delivery'}
               </button>
-              <button onClick={() => void fetchData(secret)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

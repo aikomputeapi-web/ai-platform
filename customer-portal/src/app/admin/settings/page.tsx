@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, ShieldAlert, Settings2, Sparkles } from 'lucide-react';
 
 type SettingsData = {
@@ -22,20 +22,17 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
 
-  const fetchData = useCallback(async (adminSecret: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [settingsRes, reportRes] = await Promise.all([
-        fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${adminSecret}` } }),
-        fetch('/api/admin/scheduled-reports/config', { headers: { Authorization: `Bearer ${adminSecret}` } }),
+        fetch('/api/admin/settings'),
+        fetch('/api/admin/scheduled-reports/config'),
       ]);
 
       if (!settingsRes.ok || !reportRes.ok) {
         setError('Failed to load settings');
-        setAuthed(false);
         return;
       }
 
@@ -60,7 +57,6 @@ export default function AdminSettingsPage() {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${secret}`,
             },
             body: JSON.stringify({
               maintenance: next.maintenance,
@@ -78,7 +74,6 @@ export default function AdminSettingsPage() {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${secret}`,
             },
             body: JSON.stringify({
               enabled: next.reportDeliveryEnabled,
@@ -94,7 +89,7 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
@@ -102,33 +97,9 @@ export default function AdminSettingsPage() {
     }
   }
 
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-            void fetchData(secret);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-              <Settings2 size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Settings</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Settings</button>
-        </form>
-      </div>
-    );
-  }
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   if (loading || !settings || !reportConfig) {
     return (
