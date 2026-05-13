@@ -89,8 +89,6 @@ export default function AdminSupportPage() {
   const [auditData, setAuditData] = useState<AuditLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<Range>('30d');
   const [search, setSearch] = useState('');
   const [ticketStatus, setTicketStatus] = useState<TicketStatus>('all');
@@ -104,20 +102,15 @@ export default function AdminSupportPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: Range = range) => {
+  const fetchData = useCallback(async (selectedRange: Range = range) => {
     setLoading(true);
     try {
       const [ticketsRes, auditRes] = await Promise.all([
-        fetch(`/api/admin/support-tickets?search=${encodeURIComponent(search)}&status=${ticketStatus}&priority=${ticketPriority}`, {
-          headers: { Authorization: `Bearer ${adminSecret}` },
-        }),
-        fetch(`/api/admin/audit-logs?range=${selectedRange}&search=${encodeURIComponent(search)}`, {
-          headers: { Authorization: `Bearer ${adminSecret}` },
-        }),
+        fetch(`/api/admin/support-tickets?search=${encodeURIComponent(search)}&status=${ticketStatus}&priority=${ticketPriority}`),
+        fetch(`/api/admin/audit-logs?range=${selectedRange}&search=${encodeURIComponent(search)}`),
       ]);
       if (!ticketsRes.ok || !auditRes.ok) {
-        setError(ticketsRes.status === 403 || auditRes.status === 403 ? 'Invalid admin secret' : 'Failed to load support data');
-        setAuthed(false);
+        setError('Failed to load support data');
         return;
       }
       setTicketsData(await ticketsRes.json());
@@ -131,13 +124,11 @@ export default function AdminSupportPage() {
   }, [range, search, ticketPriority, ticketStatus]);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchData(secret, range);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, range, secret, fetchData]);
+    const timer = window.setTimeout(() => {
+      void fetchData(range);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [range, fetchData]);
 
   const supportLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -184,7 +175,6 @@ export default function AdminSupportPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify({
           userEmail: ticketUserEmail.trim() || undefined,
@@ -203,7 +193,7 @@ export default function AdminSupportPage() {
       setTicketInternalNotes('');
       setTicketUserEmail('');
       setTicketPriorityDraft('normal');
-      await fetchData(secret, range);
+      await fetchData(range);
     } catch {
       setError('Network error');
     } finally {
@@ -218,7 +208,6 @@ export default function AdminSupportPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${secret}`,
         },
         body: JSON.stringify(payload),
       });
@@ -226,39 +215,12 @@ export default function AdminSupportPage() {
         setError('Failed to update ticket');
         return;
       }
-      await fetchData(secret, range);
+      await fetchData(range);
     } catch {
       setError('Network error');
     } finally {
       setActionLoading(null);
     }
-  }
-
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #10b981)' }}>
-              <ShieldAlert size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Support Center</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Support Center</button>
-        </form>
-      </div>
-    );
   }
 
   if (loading || !ticketsData || !auditData) {
@@ -300,7 +262,7 @@ export default function AdminSupportPage() {
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData(secret, range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData(range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

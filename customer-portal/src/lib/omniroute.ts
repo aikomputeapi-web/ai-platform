@@ -38,7 +38,7 @@ async function getAdminToken(): Promise<string> {
   return _adminToken;
 }
 
-async function omnirouteFetch(path: string, options: RequestInit = {}) {
+export async function omnirouteFetch(path: string, options: RequestInit = {}) {
   const token = await getAdminToken();
   const res = await fetch(`${OMNIROUTE_URL}${path}`, {
     ...options,

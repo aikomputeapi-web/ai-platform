@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, RefreshCw, ShieldCheck, Radar } from 'lucide-react';
+import { Activity, RefreshCw, ShieldCheck, Radar, X } from 'lucide-react';
 
 type ProviderBreaker = {
   state?: string;
@@ -80,19 +80,14 @@ export default function AdminOperationsPage() {
   const [data, setData] = useState<OperationsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchData = useCallback(async (adminSecret: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/operations', {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch('/api/admin/operations');
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load operations');
-        setAuthed(false);
+        setError('Failed to load operations');
         return;
       }
       setData(await res.json());
@@ -105,13 +100,11 @@ export default function AdminOperationsPage() {
   }, []);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchData(secret);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, secret, fetchData]);
+    const timer = window.setTimeout(() => {
+      void fetchData();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchData]);
 
   const breakerEntries = useMemo(() => Object.entries(data?.health.providerHealth || {}), [data]);
   const unhealthyBreakers = useMemo(() => breakerEntries.filter(([, breaker]) => breaker.state !== 'CLOSED'), [breakerEntries]);
@@ -125,13 +118,12 @@ export default function AdminOperationsPage() {
     try {
       const res = await fetch('/api/admin/operations', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${secret}` },
       });
       if (!res.ok) {
         setError('Failed to reset circuit breakers');
         return;
       }
-      await fetchData(secret);
+      await fetchData();
     } catch {
       setError('Network error');
     } finally {
@@ -139,23 +131,20 @@ export default function AdminOperationsPage() {
     }
   }
 
-  if (!authed) {
+  if (error && !data && !loading) {
     return (
       <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form onSubmit={(e) => { e.preventDefault(); setAuthed(true); }} className="glass-card p-8 w-full max-w-md animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #14b8a6, #6366f1)' }}>
-              <Radar size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Operations Center</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
+        <div className="glass-card p-8 w-full max-w-lg text-center animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-[rgba(239,68,68,0.12)] text-[#f87171] mx-auto mb-4 flex items-center justify-center">
+            <X size={20} />
           </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Operations</button>
-        </form>
+          <h2 className="text-xl font-semibold mb-2">Operations failed to load</h2>
+          <p className="text-sm text-[var(--color-text-muted)] mb-5">{error}</p>
+          <button type="button" onClick={() => void fetchData()} className="btn-primary inline-flex items-center gap-2">
+            <RefreshCw size={14} />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -196,7 +185,7 @@ export default function AdminOperationsPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={() => void fetchData(secret)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

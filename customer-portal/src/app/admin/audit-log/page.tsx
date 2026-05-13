@@ -156,15 +156,13 @@ export default function AdminAuditLogPage() {
   const [data, setData] = useState<AuditLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<Range>('30d');
   const [search, setSearch] = useState('');
   const [action, setAction] = useState<AuditActionFilter>('all');
   const [now] = useState(() => Date.now());
   const [focusedLog, setFocusedLog] = useState<AuditLogItem | null>(null);
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: Range = range, selectedAction: AuditActionFilter = action, selectedSearch = search) => {
+  const fetchData = useCallback(async (selectedRange: Range = range, selectedAction: AuditActionFilter = action, selectedSearch = search) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -173,12 +171,9 @@ export default function AdminAuditLogPage() {
       if (selectedAction !== 'all') params.set('action', selectedAction);
       if (selectedSearch.trim()) params.set('search', selectedSearch.trim());
 
-      const res = await fetch(`/api/admin/audit-logs?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load activity log');
-        setAuthed(false);
+        setError('Failed to load activity log');
         return;
       }
       setData(await res.json());
@@ -191,45 +186,16 @@ export default function AdminAuditLogPage() {
   }, [action, range, search]);
 
   useEffect(() => {
-    if (authed) {
-      const timer = window.setTimeout(() => {
-        void fetchData(secret, range, action, search);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [authed, range, action, search, secret, fetchData]);
+    const timer = window.setTimeout(() => {
+      void fetchData(range, action, search);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [range, action, search, fetchData]);
 
   const filteredCount = useMemo(() => data?.logs.length || 0, [data]);
   const lockEvents = useMemo(() => data?.logs.filter((log) => log.action === 'user.locked').length || 0, [data]);
   const unlockEvents = useMemo(() => data?.logs.filter((log) => log.action === 'user.unlocked').length || 0, [data]);
   const planEvents = useMemo(() => data?.logs.filter((log) => log.action === 'user.plan_changed').length || 0, [data]);
-
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #6366f1)' }}>
-              <ShieldCheck size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Activity Log</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Activity Log</button>
-        </form>
-      </div>
-    );
-  }
 
   if (loading || !data) {
     return (
@@ -271,7 +237,7 @@ export default function AdminAuditLogPage() {
                 </button>
               ))}
               <Link href="/admin/users" className="btn-secondary text-xs py-1.5 px-3">Accounts</Link>
-              <button onClick={() => void fetchData(secret, range, action, search)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData(range, action, search)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>
@@ -324,7 +290,7 @@ export default function AdminAuditLogPage() {
                   <option key={option} value={option}>{option === 'all' ? 'All Actions' : option}</option>
                 ))}
               </select>
-              <button onClick={() => void fetchData(secret, range, action, search)} className="btn-secondary text-xs py-2 px-4">Apply</button>
+              <button onClick={() => void fetchData(range, action, search)} className="btn-secondary text-xs py-2 px-4">Apply</button>
             </div>
           </div>
 

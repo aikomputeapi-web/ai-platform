@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, RefreshCw, Gauge, Users } from 'lucide-react';
 
 type TrendPoint = {
@@ -109,19 +109,14 @@ export default function UsageAdminPage() {
   const [data, setData] = useState<UsageAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('30d');
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
+  const fetchData = useCallback(async (selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load usage');
-        setAuthed(false);
+        setError('Failed to load usage');
         return;
       }
       setData(await res.json());
@@ -151,40 +146,9 @@ export default function UsageAdminPage() {
   const totalRequests = data?.summary.totalRequests || 0;
   const topFiveShare = topUsers.slice(0, 5).reduce((sum, user) => sum + (totalRequests > 0 ? user.usage.totalRequests / totalRequests : 0), 0);
 
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAuthed(true);
-            void fetchData(secret, range);
-          }}
-          className="glass-card p-8 w-full max-w-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #6366f1)' }}>
-              <Gauge size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Usage Control Center</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="Admin secret"
-            className="input-field mb-4"
-            autoFocus
-          />
-          <button type="submit" className="btn-primary w-full">Open Usage</button>
-        </form>
-      </div>
-    );
-  }
+  useEffect(() => {
+    void fetchData(range);
+  }, [range, fetchData]);
 
   if (loading || !data) {
     return (
@@ -222,7 +186,7 @@ export default function UsageAdminPage() {
                   key={option}
                   onClick={() => {
                     setRange(option);
-                    void fetchData(secret, option);
+                    void fetchData(option);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
                   style={range === option ? { background: 'linear-gradient(135deg, #10b981, #6366f1)' } : { background: 'var(--color-bg-card)' }}
@@ -230,7 +194,7 @@ export default function UsageAdminPage() {
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData(secret)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
                 <RefreshCw size={14} />
                 Refresh
               </button>

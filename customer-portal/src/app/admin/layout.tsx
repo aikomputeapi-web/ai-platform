@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const adminNav = [
   { href: '/admin', label: 'Overview', icon: '🏠' },
@@ -21,6 +22,24 @@ const adminNav = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  // Don't show nav on login page
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/admin/auth/logout', { method: 'POST' });
+      router.push('/admin/login');
+      router.refresh();
+    } catch {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
@@ -43,6 +62,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           ))}
           <div className="flex-1" />
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-xs text-[var(--color-text-muted)] hover:text-white transition-colors px-3 py-1 rounded hover:bg-[var(--color-bg-card)]"
+          >
+            {loggingOut ? 'Logging out...' : '🚪 Logout'}
+          </button>
           <Link href="/" className="text-xs text-[var(--color-text-muted)] hover:text-white transition-colors">← Back to Portal</Link>
         </div>
       </div>

@@ -124,7 +124,7 @@ async function buildUserDetail(userId: string, range: string) {
 }
 
 export async function GET(req: NextRequest, { params }: Params) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
@@ -145,7 +145,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
@@ -343,7 +343,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminForbidden, verifyAdminAccess } from '@/lib/admin';
+import { omnirouteFetch } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
 
-const OMNIROUTE_URL = process.env.OMNIROUTE_INTERNAL_URL || 'http://omniroute:20128';
-
 async function fetchJson(path: string) {
-  const res = await fetch(`${OMNIROUTE_URL}${path}`, { cache: 'no-store' });
+  const res = await omnirouteFetch(path, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`Failed to fetch ${path}: ${res.status}`);
   }
@@ -14,16 +13,30 @@ async function fetchJson(path: string) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
   try {
-    const [health, providerMetrics] = await Promise.all([
+    const [healthResult, providerMetricsResult, degradationResult] = await Promise.allSettled([
       fetchJson('/api/monitoring/health'),
       fetchJson('/api/provider-metrics'),
+      fetchJson('/api/health/degradation?summary=true'),
     ]);
-    const degradation = await fetchJson('/api/health/degradation?summary=true');
+
+    const health = healthResult.status === 'fulfilled' ? healthResult.value : null;
+    const providerMetrics = providerMetricsResult.status === 'fulfilled' ? providerMetricsResult.value : { metrics: {} };
+    const degradation = degradationResult.status === 'fulfilled' ? degradationResult.value : { features: [], summary: null };
+
+    if (healthResult.status === 'rejected') {
+      console.error('Admin operations health fetch error:', healthResult.reason);
+    }
+    if (providerMetricsResult.status === 'rejected') {
+      console.warn('Admin operations provider metrics fetch failed:', providerMetricsResult.reason);
+    }
+    if (degradationResult.status === 'rejected') {
+      console.warn('Admin operations degradation fetch failed:', degradationResult.reason);
+    }
 
     return NextResponse.json({
       health,
@@ -37,12 +50,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return adminForbidden();
   }
 
   try {
-    const res = await fetch(`${OMNIROUTE_URL}/api/monitoring/health`, {
+    const res = await omnirouteFetch('/api/monitoring/health', {
       method: 'DELETE',
       cache: 'no-store',
     });

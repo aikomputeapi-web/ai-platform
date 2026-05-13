@@ -8,10 +8,21 @@ export function getAdminSecret(): string {
   return ADMIN_SECRET;
 }
 
-export function verifyAdminAccess(req: NextRequest): boolean {
+export async function verifyAdminAccess(req: NextRequest): Promise<boolean> {
+  // Check for session cookie (new session-based auth)
+  const sessionToken = req.cookies.get('admin_session')?.value;
+  if (sessionToken) {
+    const { verifyAdminSession } = await import('./admin-session');
+    return await verifyAdminSession(sessionToken);
+  }
+  
+  // Fallback to old Bearer token auth for backwards compatibility
   const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return false;
-  return authHeader.slice(7) === ADMIN_SECRET;
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7) === ADMIN_SECRET;
+  }
+  
+  return false;
 }
 
 export function adminForbidden() {

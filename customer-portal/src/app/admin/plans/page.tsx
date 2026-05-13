@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface UserData {
   plan: {
@@ -52,19 +52,14 @@ export default function AdminPlansPage() {
   const [data, setData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [secret, setSecret] = useState('');
-  const [authed, setAuthed] = useState(false);
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('30d');
 
-  const fetchData = useCallback(async (adminSecret: string, selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
+  const fetchData = useCallback(async (selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`, {
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      const res = await fetch(`/api/admin/analytics?range=${selectedRange}`);
       if (!res.ok) {
-        setError(res.status === 403 ? 'Invalid admin secret' : 'Failed to load plans');
-        setAuthed(false);
+        setError('Failed to load plans');
         return;
       }
       setData(await res.json());
@@ -91,26 +86,9 @@ export default function AdminPlansPage() {
     }));
   }, [data]);
 
-  if (!authed) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <form onSubmit={(e) => { e.preventDefault(); setAuthed(true); void fetchData(secret, range); }} className="glass-card p-8 w-full max-w-md animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f59e0b, #8b5cf6)' }}>
-              <span style={{ fontSize: '1.25rem' }}>📦</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Plan Management</h1>
-              <p className="text-xs text-[var(--color-text-muted)]">Enter your admin secret to continue</p>
-            </div>
-          </div>
-          {error && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-          <input type="password" value={secret} onChange={e => setSecret(e.target.value)} placeholder="Admin secret" className="input-field mb-4" autoFocus />
-          <button type="submit" className="btn-primary w-full">Open Plan Manager</button>
-        </form>
-      </div>
-    );
-  }
+  useEffect(() => {
+    void fetchData(range);
+  }, [range, fetchData]);
 
   if (loading || !data) {
     return (
@@ -150,7 +128,7 @@ export default function AdminPlansPage() {
                   key={r}
                   onClick={() => {
                     setRange(r);
-                    if (authed) void fetchData(secret, r);
+                    void fetchData(r);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
                   style={range === r ? { background: 'linear-gradient(135deg, #f59e0b, #8b5cf6)' } : { background: 'var(--color-bg-card)' }}

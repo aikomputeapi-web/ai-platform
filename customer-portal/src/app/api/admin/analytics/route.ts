@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { verifyAdminAccess } from '@/lib/admin';
 import { getUsageAnalytics } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
@@ -20,20 +21,11 @@ interface ApiKeyUsage {
  * Returns a comprehensive view of all registered users, their API keys,
  * payment history, and usage statistics pulled from OmniRoute.
  * 
- * Protected by a simple admin secret passed as a Bearer token.
- * In production, replace this with proper role-based auth.
+ * Protected by shared admin session authentication.
  */
 
-function verifyAdminAccess(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return false;
-  const token = authHeader.replace('Bearer ', '');
-  return token === adminSecret;
-}
-
 export async function GET(req: NextRequest) {
-  if (!verifyAdminAccess(req)) {
+  if (!(await verifyAdminAccess(req))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
