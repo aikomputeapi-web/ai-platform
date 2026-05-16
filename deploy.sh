@@ -59,13 +59,12 @@ fi
 # If only non-Docker files changed, a full rebuild is wasteful
 CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "unknown")
 
-NEEDS_OMNIROUTE_BUILD=false
+# OmniRoute is a git submodule, and its updates can be missed by a single-commit
+# diff after the deploy script itself changes. Rebuild it on every deploy so the
+# container always picks up the latest submodule commit.
+NEEDS_OMNIROUTE_BUILD=true
 NEEDS_PORTAL_BUILD=false
 NEEDS_FULL_RESTART=false
-
-if echo "${CHANGED_FILES}" | grep -Eq "^OmniRoute(/|$)"; then
-    NEEDS_OMNIROUTE_BUILD=true
-fi
 
 if echo "${CHANGED_FILES}" | grep -q "^customer-portal/"; then
     NEEDS_PORTAL_BUILD=true
