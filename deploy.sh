@@ -63,7 +63,7 @@ NEEDS_OMNIROUTE_BUILD=false
 NEEDS_PORTAL_BUILD=false
 NEEDS_FULL_RESTART=false
 
-if echo "${CHANGED_FILES}" | grep -q "^OmniRoute/"; then
+if echo "${CHANGED_FILES}" | grep -Eq "^OmniRoute(/|$)"; then
     NEEDS_OMNIROUTE_BUILD=true
 fi
 
