@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deliver:reports": "node scripts/deliver-scheduled-reports.mjs"
+    "deliver:reports": "node scripts/deliver-scheduled-reports.mjs",
+    "db:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
