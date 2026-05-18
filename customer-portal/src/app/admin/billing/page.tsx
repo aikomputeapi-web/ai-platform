@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CreditCard, Download, RefreshCw, Search, TrendingUp, X } from 'lucide-react';
 
-type Range = '7d' | '30d' | '90d';
+type Range = '7d' | '30d' | '90d' | 'all';
 
 interface PlanRow {
   id: string;
