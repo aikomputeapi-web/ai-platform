@@ -48,7 +48,7 @@ interface AuditLogData {
   logs: AuditLogItem[];
 }
 
-const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d'];
+const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d', 'all'];
 const ACTION_OPTIONS: AuditActionFilter[] = [
   'all',
   'user.signed_up',
@@ -156,7 +156,7 @@ export default function AdminAuditLogPage() {
   const [data, setData] = useState<AuditLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<Range>('30d');
+  const [range, setRange] = useState<Range>('all');
   const [search, setSearch] = useState('');
   const [action, setAction] = useState<AuditActionFilter>('all');
   const [now] = useState(() => Date.now());

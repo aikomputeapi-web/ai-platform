@@ -105,13 +105,13 @@ interface AdminData {
   range: string;
 }
 
-const RANGE_OPTIONS = ['7d', '30d', '90d'] as const;
+const RANGE_OPTIONS = ['7d', '30d', '90d', 'all'] as const;
 
 export default function AdminOverviewPage() {
   const [data, setData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('30d');
+  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('all');
   const [now] = useState(() => Date.now());
 
   const fetchData = useCallback(async (selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {

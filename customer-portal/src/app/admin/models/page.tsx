@@ -26,7 +26,7 @@ const initialModels: ModelEntry[] = Object.entries(MODELS)
   .filter(([key]) => !key.endsWith('_ID'))
   .map(([key, value]) => ({ key, label: key.replace(/_/g, ' '), value: value as string }));
 
-const RANGE_OPTIONS = ['7d', '30d', '90d'] as const;
+const RANGE_OPTIONS = ['7d', '30d', '90d', 'all'] as const;
 
 const PROVIDERS = [
   'OPENAI',
@@ -114,7 +114,7 @@ export default function ModelsAdminPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('30d');
+  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>('all');
   const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
 
   const fetchData = useCallback(async (selectedRange: (typeof RANGE_OPTIONS)[number] = range) => {

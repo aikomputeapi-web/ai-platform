@@ -50,7 +50,7 @@ interface AuditLogData {
   logs: AuditLogItem[];
 }
 
-const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d'];
+const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d', 'all'];
 const SUPPORT_ACTIONS = new Set([
   'support.impersonate',
   'support.verification_resent',
@@ -89,7 +89,7 @@ export default function AdminSupportPage() {
   const [auditData, setAuditData] = useState<AuditLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<Range>('30d');
+  const [range, setRange] = useState<Range>('all');
   const [search, setSearch] = useState('');
   const [ticketStatus, setTicketStatus] = useState<TicketStatus>('all');
   const [ticketPriority, setTicketPriority] = useState<TicketPriority>('all');

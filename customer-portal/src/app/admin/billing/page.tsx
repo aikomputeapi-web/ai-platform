@@ -95,7 +95,7 @@ interface BillingData {
   adjustments: BillingAdjustmentRow[];
 }
 
-const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d'];
+const RANGE_OPTIONS: Range[] = ['7d', '30d', '90d', 'all'];
 
 function fmt(cents: number) {
   return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -123,7 +123,7 @@ export default function AdminBillingPage() {
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<Range>('30d');
+  const [range, setRange] = useState<Range>('all');
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState('25');
