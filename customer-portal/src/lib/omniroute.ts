@@ -101,7 +101,7 @@ export async function updateKeyLimits(
 // ─── Usage Analytics ─────────────────────────────────────────────────────────
 
 export async function getUsageAnalytics(range = '30d'): Promise<any> {
-  const res = await omnirouteFetch(`/api/analytics?range=${range}`);
+  const res = await omnirouteFetch(`/api/usage/analytics?range=${range}`);
   if (!res.ok) return null;
   return res.json();
 }
