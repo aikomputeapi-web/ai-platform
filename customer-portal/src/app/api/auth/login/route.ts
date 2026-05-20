@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Account locked. Contact support.' }, { status: 403 });
     }
 
+    // OAuth users don't have passwords - they should use OAuth sign-in
+    if (!user.passwordHash) {
+      return NextResponse.json({ error: 'Please sign in with your OAuth provider (Google, GitHub, or Apple)' }, { status: 401 });
+    }
+
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });

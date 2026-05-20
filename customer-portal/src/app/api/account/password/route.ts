@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    // OAuth users don't have passwords
+    if (!dbUser.passwordHash) {
+      return NextResponse.json({ error: 'Cannot change password for OAuth accounts' }, { status: 400 });
+    }
+
     const valid = await verifyPassword(currentPassword, dbUser.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
 
