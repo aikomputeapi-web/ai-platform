@@ -65,6 +65,16 @@ interface Summary {
   totalRequests: number;
   totalTokens: number;
   totalCost: number;
+  platformTotalRequests?: number;
+  platformTotalTokens?: number;
+  platformTotalCost?: number;
+  matchedRequests?: number;
+  matchedTokens?: number;
+  matchedCost?: number;
+  unmatchedRequests?: number;
+  unmatchedTokens?: number;
+  unmatchedCost?: number;
+  coveragePct?: number;
   planBreakdown: { id: string; name: string; priceCents: number; userCount: number }[];
 }
 
@@ -126,6 +136,9 @@ interface UserDetail {
     promptTokens: number;
     completionTokens: number;
     topModels: { model: string; requests: number }[];
+    matchedRequests?: number;
+    unmatchedRequests?: number;
+    coveragePct?: number;
   };
   totalPaidCents: number;
   recentAudit: AuditLogItem[];
@@ -261,14 +274,28 @@ export default function AdminAccountsDashboard() {
     }
   }, [range]);
 
-  useEffect(() => {
+  const loadOverview = useCallback(() => {
     void fetchOverview(range);
   }, [fetchOverview, range]);
 
+  const loadSelectedUser = useCallback(() => {
+    if (!selectedUserId) return;
+    void fetchUserDetail(selectedUserId, range);
+  }, [fetchUserDetail, range, selectedUserId]);
+
   useEffect(() => {
-    if (selectedUserId) {
+    const timer = window.setTimeout(() => {
+      void fetchOverview(range);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchOverview, range]);
+
+  useEffect(() => {
+    if (!selectedUserId) return;
+    const timer = window.setTimeout(() => {
       void fetchUserDetail(selectedUserId, range);
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [selectedUserId, range, fetchUserDetail]);
 
   const filteredUsers = useMemo(() => {
@@ -587,8 +614,24 @@ export default function AdminAccountsDashboard() {
           {[
             { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#6366f1' },
             { label: 'Revenue', value: fmtUSD(summary.totalRevenueCents), sub: `${fmt(totalPayingAccounts)} paying`, color: '#10b981' },
-            { label: 'Requests', value: fmtTokens(summary.totalRequests), sub: `range ${data.range.toUpperCase()}`, color: '#8b5cf6' },
-            { label: 'Tokens', value: fmtTokens(summary.totalTokens), sub: `$${summary.totalCost.toFixed(2)} est. cost`, color: '#ef4444' },
+            {
+              label: 'Requests',
+              value: fmtTokens(summary.totalRequests),
+              sub:
+                typeof summary.matchedRequests === 'number'
+                  ? `${fmt(summary.matchedRequests)} matched · ${fmt(summary.unmatchedRequests || 0)} unmatched`
+                  : `range ${data.range.toUpperCase()}`,
+              color: '#8b5cf6',
+            },
+            {
+              label: 'Tokens',
+              value: fmtTokens(summary.totalTokens),
+              sub:
+                typeof summary.matchedTokens === 'number'
+                  ? `${fmtTokens(summary.matchedTokens)} matched · ${fmtTokens(summary.unmatchedTokens || 0)} unmatched`
+                  : `$${summary.totalCost.toFixed(2)} est. cost`,
+              color: '#ef4444',
+            },
             { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#f59e0b' },
             { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#f97316' },
             { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#22c55e' },
@@ -604,6 +647,18 @@ export default function AdminAccountsDashboard() {
             </div>
           ))}
         </div>
+
+        {typeof summary.unmatchedRequests === 'number' && summary.unmatchedRequests > 0 && (
+          <div className="mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <span className="font-semibold">Analytics gap detected.</span>{' '}
+              {fmt(summary.unmatchedRequests)} requests and {fmtTokens(summary.unmatchedTokens || 0)} tokens are not yet tied to portal accounts.
+            </div>
+            <div className="text-xs uppercase tracking-wider text-amber-200/80">
+              Coverage {typeof summary.coveragePct === 'number' ? `${summary.coveragePct}%` : 'n/a'}
+            </div>
+          </div>
+        )}
 
         <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8">
           <div className="glass-card overflow-hidden">
@@ -933,20 +988,39 @@ export default function AdminAccountsDashboard() {
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests</div>
                       <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalRequests)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">
+                        {typeof openUser.usage.coveragePct === 'number'
+                          ? `${openUser.usage.coveragePct}% coverage`
+                          : 'Per-account usage'}
+                      </div>
                     </div>
                     <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Tokens</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalTokens)}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Matched</div>
+                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.matchedRequests || openUser.usage.totalRequests)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Attributed to this account</div>
                     </div>
                     <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">API Cost</div>
-                      <div className="stat-value text-2xl">{openUser.usage.totalCost.toFixed(4)}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Unmatched</div>
+                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.unmatchedRequests || 0)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Analytics without attribution</div>
                     </div>
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Paid</div>
                       <div className="stat-value text-2xl">{openUser.totalPaidCents > 0 ? fmtUSD(openUser.totalPaidCents) : '—'}</div>
                     </div>
                   </div>
+
+                  {typeof openUser.usage.unmatchedRequests === 'number' && openUser.usage.unmatchedRequests > 0 && (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <span className="font-semibold">Account analytics incomplete.</span>{' '}
+                        {fmtTokens(openUser.usage.unmatchedRequests)} requests are still outside this account's attribution set.
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-amber-200/80">
+                        Coverage {typeof openUser.usage.coveragePct === 'number' ? `${openUser.usage.coveragePct}%` : 'n/a'}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-6">
                     <div className="space-y-6">

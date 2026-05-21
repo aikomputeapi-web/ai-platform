@@ -76,46 +76,48 @@ export const authOptions: NextAuthOptions = {
     error: '/login',
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // For OAuth providers, ensure user is created/updated
-      if (account?.provider !== 'credentials') {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+    async signIn({ user, account }) {
+      // Check if account is locked
+      if (user.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email },
         });
+        
+        if (dbUser?.isLocked) {
+          return false; // Prevent sign in for locked accounts
+        }
 
-        if (existingUser) {
-          // Update email verification for OAuth users
-          if (!existingUser.emailVerified) {
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { emailVerified: true },
-            });
-          }
-        } else {
-          // New OAuth user - create with verified email (no password for OAuth)
-          await prisma.user.create({
-            data: {
-              id: user.id,
-              email: user.email!,
-              name: user.name || profile?.name || null,
-              emailVerified: true,
-              planId: 'free',
-            },
+        // For OAuth users, ensure email is verified
+        if (account?.provider !== 'credentials' && dbUser && !dbUser.emailVerified) {
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { emailVerified: true },
           });
         }
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
+      // Initial sign in
       if (user) {
         token.userId = user.id;
+        token.email = user.email;
       }
+      
+      // Refresh user data on update
+      if (trigger === 'update' && token.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email as string },
+        });
+        if (dbUser) {
+          token.userId = dbUser.id;
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        (session.user as any).id = token.userId as string;
-        
+      if (token?.userId && session.user) {
         // Fetch full user data
         const user = await prisma.user.findUnique({
           where: { id: token.userId as string },
@@ -123,7 +125,10 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (user && !user.isLocked) {
+          session.user.id = user.id;
           (session.user as any).userId = user.id;
+          (session.user as any).email = user.email;
+          (session.user as any).name = user.name;
           (session.user as any).planId = user.planId;
           (session.user as any).plan = user.plan;
         }
@@ -138,5 +143,16 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // Enable debug for troubleshooting
+  logger: {
+    error(code, metadata) {
+      console.error('[NextAuth Error]', code, metadata);
+    },
+    warn(code) {
+      console.warn('[NextAuth Warn]', code);
+    },
+    debug(code, metadata) {
+      console.log('[NextAuth Debug]', code, metadata);
+    },
+  },
 };

@@ -529,7 +529,7 @@ export default function Home() {
               },
               {
                 name: 'Max 5x',
-                price: '$25',
+                price: '$20',
                 desc: 'Mid-volume plan with higher throughput',
                 features: [
                   '4,000-6,000 requests/month',
@@ -542,7 +542,7 @@ export default function Home() {
               },
               {
                 name: 'Max 20x',
-                price: '$50',
+                price: '$40',
                 desc: 'Highest-volume tier for heavy usage',
                 features: [
                   '8,000-12,000 requests/month',

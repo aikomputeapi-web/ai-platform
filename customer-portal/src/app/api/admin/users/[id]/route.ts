@@ -21,8 +21,56 @@ interface AuditLogRow {
   createdAt: Date;
 }
 
+interface ApiKeyUsage {
+  apiKeyId: string;
+  apiKey?: string;
+  apiKeyName?: string;
+  historicalApiKeyNames?: string[];
+  requests?: number;
+  totalTokens?: number;
+  totalCost?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  byModel?: { model: string; requests: number }[];
+}
+
 function formatRange(range: string | null) {
   return range || '30d';
+}
+
+function normalizeUsageLookupKey(value: string | null | undefined) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function indexApiKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  entry: ApiKeyUsage
+) {
+  if (entry.apiKeyId) {
+    usageByKeyId[entry.apiKeyId] = entry;
+  }
+
+  const apiKeyNames = [entry.apiKeyName, entry.apiKey, ...(entry.historicalApiKeyNames || [])];
+  for (const name of apiKeyNames) {
+    const normalized = normalizeUsageLookupKey(name);
+    if (normalized && !usageByName.has(normalized)) {
+      usageByName.set(normalized, entry);
+    }
+  }
+}
+
+function resolvePortalKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  apiKeyId: string,
+  portalKeyName: string
+) {
+  const byId = usageByKeyId[apiKeyId];
+  if (byId) return byId;
+
+  const byName = usageByName.get(normalizeUsageLookupKey(portalKeyName));
+  return byName || null;
 }
 
 async function buildUserDetail(userId: string, range: string) {
@@ -45,9 +93,10 @@ async function buildUserDetail(userId: string, range: string) {
   const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
 
   const analytics = await getUsageAnalytics(range);
-  const usageByKeyId: Record<string, { requests?: number; totalTokens?: number; totalCost?: number; promptTokens?: number; completionTokens?: number; byModel?: { model: string; requests: number }[] }> = {};
+  const usageByKeyId: Record<string, ApiKeyUsage> = {};
+  const usageByName = new Map<string, ApiKeyUsage>();
   for (const entry of analytics?.byApiKey || []) {
-    usageByKeyId[entry.apiKeyId] = entry;
+    indexApiKeyUsage(usageByKeyId, usageByName, entry);
   }
 
   const apiKeys = user.apiKeys.map((key) => ({
@@ -56,10 +105,14 @@ async function buildUserDetail(userId: string, range: string) {
     lastFour: key.lastFour,
     isActive: key.isActive,
     createdAt: key.createdAt,
-    usage: usageByKeyId[key.omnirouteKeyId] || null,
+    usage:
+      resolvePortalKeyUsage(usageByKeyId, usageByName, key.omnirouteKeyId, `${user.email} - ${key.name}`) ||
+      null,
   }));
 
-  const keyUsages = Object.values(usageByKeyId);
+  const keyUsages = apiKeys
+    .map((key) => key.usage)
+    .filter((entry): entry is ApiKeyUsage => Boolean(entry));
   const topModelsMap: Record<string, number> = {};
   for (const keyUsage of keyUsages) {
     for (const model of keyUsage.byModel || []) {
@@ -112,6 +165,18 @@ async function buildUserDetail(userId: string, range: string) {
       totalCost: keyUsages.reduce((sum, entry) => sum + (entry.totalCost || 0), 0),
       promptTokens: keyUsages.reduce((sum, entry) => sum + (entry.promptTokens || 0), 0),
       completionTokens: keyUsages.reduce((sum, entry) => sum + (entry.completionTokens || 0), 0),
+      matchedRequests: keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0),
+      unmatchedRequests: Math.max(0, Number(analytics?.summary?.totalRequests || 0) - keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0)),
+      coveragePct:
+        Number(analytics?.summary?.totalRequests || 0) > 0
+          ? Number(
+              (
+                (keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0) /
+                  Number(analytics?.summary?.totalRequests || 1)) *
+                100
+              ).toFixed(2)
+            )
+          : 0,
       topModels: Object.entries(topModelsMap)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)

@@ -32,6 +32,13 @@ interface Summary {
   totalRequests: number;
   totalTokens: number;
   totalCost: number;
+  matchedRequests?: number;
+  matchedTokens?: number;
+  matchedCost?: number;
+  unmatchedRequests?: number;
+  unmatchedTokens?: number;
+  unmatchedCost?: number;
+  coveragePct?: number;
   planBreakdown: { id: string; name: string; priceCents: number; userCount: number }[];
 }
 
@@ -171,6 +178,7 @@ export default function AdminOverviewPage() {
   const trendCost = recentTrend.map((day) => ({ label: day.date, value: day.cost }));
   const peakTrendDay = recentTrend.reduce<TrendPoint | null>((best, day) => (!best || day.requests > best.requests ? day : best), null);
   const totalModelRequests = topModels.reduce((sum, model) => sum + (model.requests || 0), 0);
+  const coveragePct = typeof s.coveragePct === 'number' ? s.coveragePct : (s.totalRequests > 0 ? 0 : 100);
   const modelEconomics = topModels.map((model) => {
     const share = s.totalRequests > 0 ? model.requests / s.totalRequests : 0;
     return {
@@ -187,7 +195,7 @@ export default function AdminOverviewPage() {
     { label: 'Requests', value: fmtTokens(s.totalRequests), sub: `range: ${data.range.toUpperCase()}`, color: '#8b5cf6' },
     { label: 'Tokens', value: fmtTokens(s.totalTokens), sub: `$${s.totalCost.toFixed(2)} estimated cost`, color: '#ef4444' },
     { label: 'API Keys', value: fmt(s.totalApiKeys), sub: `${fmt(s.activeApiKeys)} active`, color: '#f59e0b' },
-    { label: 'Flags', value: fmt(unverifiedUsers + keylessUsers), sub: `${unverifiedUsers} unverified / ${keylessUsers} keyless`, color: '#f97316' },
+    { label: 'Coverage', value: `${coveragePct}%`, sub: `${fmt(s.matchedRequests || 0)} matched · ${fmt(s.unmatchedRequests || 0)} unmatched`, color: '#22c55e' },
   ];
 
   return (
@@ -238,7 +246,7 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           {cards.map((card, i) => (
             <div key={card.label} className="stat-card" style={{ animationDelay: `${i * 0.04}s` }}>
               <div className="flex items-center justify-between mb-2">
@@ -250,6 +258,18 @@ export default function AdminOverviewPage() {
             </div>
           ))}
         </div>
+
+        {typeof s.unmatchedRequests === 'number' && s.unmatchedRequests > 0 && (
+          <div className="mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <span className="font-semibold">Analytics gap detected.</span>{' '}
+              {fmt(s.unmatchedRequests)} requests and {fmtTokens(s.unmatchedTokens || 0)} tokens are not yet tied to portal accounts.
+            </div>
+            <div className="text-xs uppercase tracking-wider text-amber-200/80">
+              Coverage {coveragePct}%
+            </div>
+          </div>
+        )}
 
         <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6 mb-8">
           <div className="glass-card p-6">

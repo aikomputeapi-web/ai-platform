@@ -27,7 +27,7 @@ const plans = [
   {
     id: 'max-5x',
     name: 'Max 5x',
-    price: '$25',
+    price: '$20',
     period: '/month',
     requests: '4,000-6,000/month',
     rpm: '150 rpm',
@@ -37,7 +37,7 @@ const plans = [
   {
     id: 'max-20x',
     name: 'Max 20x',
-    price: '$50',
+    price: '$40',
     period: '/month',
     requests: '8,000-12,000/month',
     rpm: '300 rpm',
