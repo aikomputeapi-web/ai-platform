@@ -193,8 +193,7 @@ export default function AdminOperationsPage() {
                 <ShieldCheck size={14} />
                 Reset Breakers
               </button>
-              <Link href="/admin/audit-log" className="btn-secondary text-xs py-1.5 px-3">Activity</Link>
-              <Link href="/admin/users" className="btn-secondary text-xs py-1.5 px-3">Accounts</Link>
+
             </div>
           </div>
         </div>
@@ -202,8 +201,8 @@ export default function AdminOperationsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'System', value: statusHealthy ? 'Healthy' : 'Degraded', sub: health.status || 'unknown', color: statusHealthy ? '#10b981' : '#f59e0b' },
-            { label: 'Providers', value: String(providerSummary.configuredCount ?? breakerEntries.length), sub: `${providerSummary.activeCount ?? 0} active`, color: '#6366f1' },
-            { label: 'Sessions', value: String(sessions.activeCount ?? 0), sub: `${sessions.stickyBoundCount ?? 0} sticky-bound`, color: '#8b5cf6' },
+            { label: 'Providers', value: String(providerSummary.configuredCount ?? breakerEntries.length), sub: `${providerSummary.activeCount ?? 0} active`, color: '#ffffff' },
+            { label: 'Sessions', value: String(sessions.activeCount ?? 0), sub: `${sessions.stickyBoundCount ?? 0} sticky-bound`, color: '#a1a1aa' },
             { label: 'Alerts', value: String((quota.alerting || 0) + unhealthyBreakers.length + degradedFeatures.length), sub: `${quota.exhausted || 0} exhausted quota`, color: '#ef4444' },
           ].map((card) => (
             <div key={card.label} className="stat-card">

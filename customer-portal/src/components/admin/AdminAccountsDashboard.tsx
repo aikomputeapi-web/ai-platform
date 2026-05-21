@@ -274,14 +274,7 @@ export default function AdminAccountsDashboard() {
     }
   }, [range]);
 
-  const loadOverview = useCallback(() => {
-    void fetchOverview(range);
-  }, [fetchOverview, range]);
 
-  const loadSelectedUser = useCallback(() => {
-    if (!selectedUserId) return;
-    void fetchUserDetail(selectedUserId, range);
-  }, [fetchUserDetail, range, selectedUserId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -593,8 +586,11 @@ export default function AdminAccountsDashboard() {
                 <button
                   key={option}
                   onClick={() => setRange(option)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === option ? { background: 'linear-gradient(135deg, #6366f1, #10b981)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === option
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {option.toUpperCase()}
                 </button>
@@ -612,7 +608,7 @@ export default function AdminAccountsDashboard() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
           {[
-            { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#6366f1' },
+            { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#ffffff' },
             { label: 'Revenue', value: fmtUSD(summary.totalRevenueCents), sub: `${fmt(totalPayingAccounts)} paying`, color: '#10b981' },
             {
               label: 'Requests',
@@ -621,7 +617,7 @@ export default function AdminAccountsDashboard() {
                 typeof summary.matchedRequests === 'number'
                   ? `${fmt(summary.matchedRequests)} matched · ${fmt(summary.unmatchedRequests || 0)} unmatched`
                   : `range ${data.range.toUpperCase()}`,
-              color: '#8b5cf6',
+              color: '#a1a1aa',
             },
             {
               label: 'Tokens',
@@ -630,12 +626,12 @@ export default function AdminAccountsDashboard() {
                 typeof summary.matchedTokens === 'number'
                   ? `${fmtTokens(summary.matchedTokens)} matched · ${fmtTokens(summary.unmatchedTokens || 0)} unmatched`
                   : `$${summary.totalCost.toFixed(2)} est. cost`,
-              color: '#ef4444',
+              color: '#71717a',
             },
-            { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#f59e0b' },
-            { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#f97316' },
-            { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#22c55e' },
-            { label: 'Flags', value: fmt(totalLockedUsers + noteCount), sub: 'focus list signals', color: '#ec4899' },
+            { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#52525b' },
+            { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#ef4444' },
+            { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#d4d4d8' },
+            { label: 'Flags', value: fmt(totalLockedUsers + noteCount), sub: 'focus list signals', color: '#f59e0b' },
           ].map((card, index) => (
             <div key={card.label} className="stat-card" style={{ animationDelay: `${index * 0.04}s` }}>
               <div className="flex items-center justify-between mb-2">
@@ -697,8 +693,11 @@ export default function AdminAccountsDashboard() {
                     key={item}
                     type="button"
                     onClick={() => setScope(item)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${scope === item ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                    style={scope === item ? { background: 'linear-gradient(135deg, #6366f1, #10b981)' } : { background: 'var(--color-bg-card)' }}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                      scope === item
+                        ? 'bg-white text-black border-white'
+                        : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                    }`}
                   >
                     {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
                   </button>
@@ -822,7 +821,7 @@ export default function AdminAccountsDashboard() {
                               onChange={(e) => toggleSelection(user.id, e.target.checked)}
                               className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
                             />
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #10b981)' }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--color-bg-card-hover)] border border-[var(--color-border)] text-white">
                               {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                             </div>
                             <div className="min-w-0">
@@ -875,7 +874,7 @@ export default function AdminAccountsDashboard() {
                 {attentionUsers.length > 0 ? attentionUsers.map((user) => (
                   <button
                     key={user.id}
-                    className="w-full p-3 rounded-xl text-left border border-transparent hover:border-[rgba(99,102,241,0.2)] transition-colors"
+                    className="w-full p-3 rounded-xl text-left border border-transparent hover:border-[var(--color-border-focus)] transition-colors"
                     style={{ background: 'var(--color-bg-primary)' }}
                     onClick={() => {
                       setSelectedUser(null);
@@ -932,8 +931,8 @@ export default function AdminAccountsDashboard() {
                         <span className="font-medium">{plan.name}</span>
                         <span className="text-[var(--color-text-muted)]">{fmt(plan.userCount)} users</span>
                       </div>
-                      <div className="h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${Math.max(share, 4)}%`, background: 'linear-gradient(90deg, #6366f1, #10b981)' }} />
+                      <div className="h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(share, 4)}%` }} />
                       </div>
                     </div>
                   );
@@ -947,7 +946,7 @@ export default function AdminAccountsDashboard() {
       {selectedUserId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
           <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-[var(--color-bg-primary)] border-l border-[var(--color-border)] shadow-2xl overflow-y-auto">
-            <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(14px)' }}>
+            <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(14px)' }}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
@@ -1014,7 +1013,7 @@ export default function AdminAccountsDashboard() {
                     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <span className="font-semibold">Account analytics incomplete.</span>{' '}
-                        {fmtTokens(openUser.usage.unmatchedRequests)} requests are still outside this account's attribution set.
+                        {fmtTokens(openUser.usage.unmatchedRequests)} requests are still outside this account&apos;s attribution set.
                       </div>
                       <div className="text-xs uppercase tracking-wider text-amber-200/80">
                         Coverage {typeof openUser.usage.coveragePct === 'number' ? `${openUser.usage.coveragePct}%` : 'n/a'}

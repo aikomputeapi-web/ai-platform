@@ -98,10 +98,9 @@ function MiniBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-2 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
       <div
-        className="h-full rounded-full"
+        className="h-full rounded-full bg-[var(--color-success)]"
         style={{
           width: `${pct}%`,
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
         }}
       />
     </div>
@@ -195,30 +194,19 @@ export default function ModelsAdminPage() {
     );
   }
 
-  if (loading || !data) {
-    return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading model intelligence…</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(14,165,233,0.18)] relative overflow-hidden">
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'radial-gradient(circle at top right, rgba(14,165,233,0.18), transparent 35%)',
+              background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 35%)',
             }}
           />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[rgb(125,211,252)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(14,165,233,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Model Registry
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -228,7 +216,7 @@ export default function ModelsAdminPage() {
                 This page combines the editable model registry with a live usage-led economics view so the owner can see which models are carrying the load, how concentrated the mix is, and where spend is flowing.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {RANGE_OPTIONS.map((option) => (
                 <button
                   key={option}
@@ -236,21 +224,30 @@ export default function ModelsAdminPage() {
                     setRange(option);
                     void fetchData(option);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === option ? { background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === option
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button
+                onClick={() => void fetchData()}
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
+              >
                 <RefreshCw size={14} />
                 Refresh
               </button>
-              <button onClick={handleSave} className={`btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-2 ${saved ? 'bg-emerald-500' : ''}`}>
+              <button
+                onClick={handleSave}
+                className={`px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2 ${
+                  saved ? 'bg-emerald-500 text-white border-emerald-500' : ''
+                }`}
+              >
                 {saved ? '✓ Saved' : 'Save Registry'}
               </button>
-              <Link href="/admin" className="btn-secondary text-xs py-1.5 px-3">Overview</Link>
-              <Link href="/admin/operations" className="btn-secondary text-xs py-1.5 px-3">Operations</Link>
             </div>
           </div>
         </div>
@@ -263,10 +260,10 @@ export default function ModelsAdminPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Requests', value: formatCompact(totalRequests), sub: `${data.range.toUpperCase()} usage window`, color: '#0ea5e9' },
-            { label: 'Estimated Spend', value: formatMoney(totalCost), sub: 'request-share allocation', color: '#6366f1' },
-            { label: 'Catalog Entries', value: formatNumber(activeCatalog), sub: 'public and internal model cards', color: '#10b981' },
-            { label: 'Top 3 Share', value: `${Math.round(concentration * 100)}%`, sub: 'mix concentration', color: '#f59e0b' },
+            { label: 'Requests', value: formatCompact(totalRequests), sub: `${data.range.toUpperCase()} usage window`, color: '#ffffff' },
+            { label: 'Estimated Spend', value: formatMoney(totalCost), sub: 'request-share allocation', color: '#a1a1aa' },
+            { label: 'Catalog Entries', value: formatNumber(activeCatalog), sub: 'public and internal model cards', color: '#71717a' },
+            { label: 'Top 3 Share', value: `${Math.round(concentration * 100)}%`, sub: 'mix concentration', color: '#d4d4d8' },
           ].map((card) => (
             <div key={card.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -466,19 +463,6 @@ export default function ModelsAdminPage() {
               </div>
             </div>
 
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold">Quick Links</h2>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/admin" className="btn-secondary text-center py-2">Overview</Link>
-                <Link href="/admin/users" className="btn-secondary text-center py-2">Accounts</Link>
-                <Link href="/admin/billing" className="btn-secondary text-center py-2">Billing</Link>
-                <Link href="/admin/operations" className="btn-secondary text-center py-2">Operations</Link>
-                <Link href="/admin/reports" className="btn-secondary text-center py-2">Reports</Link>
-                <Link href="/admin/audit-log" className="btn-secondary text-center py-2">Activity</Link>
-              </div>
-            </div>
           </div>
         </div>
 

@@ -108,11 +108,11 @@ export default function AdminPlansPage() {
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1400px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(245,158,11,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(245,158,11,0.18), transparent 35%)' }} />
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 35%)' }} />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(245,158,11,0.12)] text-[rgb(251,191,36)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(245,158,11,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Pricing & Plan Control
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -130,14 +130,15 @@ export default function AdminPlansPage() {
                     setRange(r);
                     void fetchData(r);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === r ? { background: 'linear-gradient(135deg, #f59e0b, #8b5cf6)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === r
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {r.toUpperCase()}
                 </button>
               ))}
-              <Link href="/admin/users" className="btn-secondary text-xs py-1.5 px-3">Accounts</Link>
-              <Link href="/dashboard/billing" className="btn-secondary text-xs py-1.5 px-3">Portal Billing</Link>
             </div>
           </div>
         </div>
@@ -146,7 +147,7 @@ export default function AdminPlansPage() {
           {[
             { label: 'Plans', value: fmt(activePlans), sub: 'active tiers', color: '#f59e0b' },
             { label: 'Paid Accounts', value: fmt(payingAccounts), sub: 'customer subscriptions', color: '#10b981' },
-            { label: 'Revenue', value: fmtUSD(s.totalRevenueCents), sub: 'all plans', color: '#8b5cf6' },
+            { label: 'Revenue', value: fmtUSD(s.totalRevenueCents), sub: 'all plans', color: '#10b981' },
             { label: 'Requests', value: fmtTokens(s.totalRequests), sub: `range ${data.range.toUpperCase()}`, color: '#ef4444' },
           ].map((card, i) => (
             <div key={card.label} className="stat-card" style={{ animationDelay: `${i * 0.04}s` }}>
@@ -166,7 +167,7 @@ export default function AdminPlansPage() {
             const meta = plan.meta;
             return (
               <div key={plan.id} className="glass-card p-6 relative overflow-hidden" style={{ animationDelay: `${i * 0.05}s` }}>
-                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: i % 2 === 0 ? 'linear-gradient(135deg, rgba(245,158,11,0.10), transparent)' : 'linear-gradient(135deg, rgba(99,102,241,0.10), transparent)' }} />
+                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.02), transparent)' }} />
                 <div className="relative">
                   <div className="flex items-start justify-between gap-4 mb-5">
                     <div>
@@ -203,7 +204,7 @@ export default function AdminPlansPage() {
                       <span className="font-mono">{share}%</span>
                     </div>
                     <div className="h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.max(share, 4)}%`, background: 'linear-gradient(90deg, #f59e0b, #8b5cf6)' }} />
+                      <div className="h-full rounded-full bg-[var(--color-success)]" style={{ width: `${Math.max(share, 4)}%` }} />
                     </div>
                   </div>
 

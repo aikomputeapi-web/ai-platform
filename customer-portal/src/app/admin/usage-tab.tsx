@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw, Gauge, Users } from 'lucide-react';
+import { ArrowRight, RefreshCw, Users } from 'lucide-react';
 
 type TrendPoint = {
   date: string;
@@ -147,7 +147,10 @@ export default function UsageAdminPage() {
   const topFiveShare = topUsers.slice(0, 5).reduce((sum, user) => sum + (totalRequests > 0 ? user.usage.totalRequests / totalRequests : 0), 0);
 
   useEffect(() => {
-    void fetchData(range);
+    const timer = window.setTimeout(() => {
+      void fetchData(range);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [range, fetchData]);
 
   if (loading || !data) {
@@ -166,11 +169,11 @@ export default function UsageAdminPage() {
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(16,185,129,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(16,185,129,0.16), transparent 35%)' }} />
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 45%)' }} />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(16,185,129,0.12)] text-[rgb(110,231,183)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(16,185,129,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Platform Usage
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -180,7 +183,7 @@ export default function UsageAdminPage() {
                 This page is the owner-facing usage surface for customer demand, model mix, plan distribution, and concentration risk.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {RANGE_OPTIONS.map((option) => (
                 <button
                   key={option}
@@ -188,19 +191,22 @@ export default function UsageAdminPage() {
                     setRange(option);
                     void fetchData(option);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === option ? { background: 'linear-gradient(135deg, #10b981, #6366f1)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === option
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {option.toUpperCase()}
                 </button>
               ))}
-              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button
+                onClick={() => void fetchData()}
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
+              >
                 <RefreshCw size={14} />
                 Refresh
               </button>
-              <Link href="/admin" className="btn-secondary text-xs py-1.5 px-3">Overview</Link>
-              <Link href="/admin/models" className="btn-secondary text-xs py-1.5 px-3">Models</Link>
-              <Link href="/admin/operations" className="btn-secondary text-xs py-1.5 px-3">Operations</Link>
             </div>
           </div>
         </div>
@@ -213,10 +219,10 @@ export default function UsageAdminPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Requests', value: formatCompact(summary.totalRequests), sub: `${data.range.toUpperCase()} window`, color: '#10b981' },
-            { label: 'Tokens', value: formatCompact(summary.totalTokens), sub: 'prompt + completion', color: '#6366f1' },
-            { label: 'Estimated Cost', value: formatMoney(summary.totalCost), sub: 'provider spend signal', color: '#f59e0b' },
-            { label: 'Top 5 Share', value: `${Math.round(topFiveShare * 100)}%`, sub: 'request concentration', color: '#ef4444' },
+            { label: 'Requests', value: formatCompact(summary.totalRequests), sub: `${data.range.toUpperCase()} window`, color: '#ffffff' },
+            { label: 'Tokens', value: formatCompact(summary.totalTokens), sub: 'prompt + completion', color: '#a1a1aa' },
+            { label: 'Estimated Cost', value: formatMoney(summary.totalCost), sub: 'provider spend signal', color: '#71717a' },
+            { label: 'Top 5 Share', value: `${Math.round(topFiveShare * 100)}%`, sub: 'request concentration', color: '#d4d4d8' },
           ].map((card) => (
             <div key={card.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -240,7 +246,7 @@ export default function UsageAdminPage() {
             </div>
             {recentTrend.length > 0 ? (
               <>
-                <TrendSparkline points={trendRequests} color="#10b981" height={150} />
+                <TrendSparkline points={trendRequests} color="#ffffff" height={150} />
                 <div className="grid sm:grid-cols-3 gap-3 mt-5">
                   <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
                     <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">14-day requests</div>
@@ -302,7 +308,7 @@ export default function UsageAdminPage() {
                 <h2 className="text-lg font-semibold">Top Accounts</h2>
                 <p className="text-sm text-[var(--color-text-muted)]">Highest usage customers in the selected range.</p>
               </div>
-              <Link href="/admin/users" className="text-sm text-[var(--color-accent)] hover:underline inline-flex items-center gap-1">
+              <Link href="/admin/customers" className="text-sm text-[var(--color-accent)] hover:underline inline-flex items-center gap-1">
                 Full account table <ArrowRight size={14} />
               </Link>
             </div>
@@ -363,24 +369,12 @@ export default function UsageAdminPage() {
                         className="h-full rounded-full"
                         style={{
                           width: `${Math.max(4, (model.requests / Math.max(topModels[0]?.requests || 1, 1)) * 100)}%`,
-                          background: 'linear-gradient(135deg, #10b981, #6366f1)',
+                          background: '#ffffff',
                         }}
                       />
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="glass-card p-6">
-              <h2 className="text-base font-semibold mb-4">Owner Shortcuts</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/admin" className="btn-secondary text-center py-2">Overview</Link>
-                <Link href="/admin/models" className="btn-secondary text-center py-2">Models</Link>
-                <Link href="/admin/billing" className="btn-secondary text-center py-2">Billing</Link>
-                <Link href="/admin/operations" className="btn-secondary text-center py-2">Operations</Link>
-                <Link href="/admin/reports" className="btn-secondary text-center py-2">Reports</Link>
-                <Link href="/admin/audit-log" className="btn-secondary text-center py-2">Activity</Link>
               </div>
             </div>
           </div>
@@ -395,7 +389,7 @@ export default function UsageAdminPage() {
             <span className="badge-accent">LIVE ANALYTICS</span>
           </div>
           {recentTrend.length > 0 ? (
-            <TrendSparkline points={trendTokens} color="#6366f1" height={150} />
+            <TrendSparkline points={trendTokens} color="#a1a1aa" height={150} />
           ) : (
             <p className="text-sm text-[var(--color-text-muted)]">No token trend data is available yet.</p>
           )}

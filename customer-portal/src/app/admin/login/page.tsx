@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 function AdminLoginForm() {
   const [password, setPassword] = useState('');
@@ -79,8 +80,7 @@ function AdminLoginForm() {
         <form onSubmit={handleSubmit} className="glass-card p-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-6">
             <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center" 
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" 
             >
               <span style={{ fontSize: '1.5rem' }}>🛡️</span>
             </div>
@@ -148,12 +148,12 @@ function AdminLoginForm() {
         </form>
 
         <div className="mt-6 text-center">
-          <a 
+          <Link 
             href="/" 
             className="text-sm text-[var(--color-text-muted)] hover:text-white transition-colors"
           >
             ← Back to Portal
-          </a>
+          </Link>
         </div>
       </div>
     </div>

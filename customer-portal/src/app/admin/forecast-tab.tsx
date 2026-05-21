@@ -86,25 +86,30 @@ export default function ForecastPage() {
   );
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-8" style={{ color: 'var(--color-text-primary)' }}>
+    <div className="max-w-[1480px] mx-auto px-6 py-8" style={{ color: 'var(--color-text-primary)' }}>
       {/* Header */}
-      <div className="mb-8 animate-fade-in">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          🔮 Forecast Engine
-          <span className="badge-accent text-[10px]">LINEAR REGRESSION + EXP SMOOTHING</span>
-        </h1>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1">
-          Predicted usage for the next 30 days based on your last 30-90 days of historical data
-        </p>
+      <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 45%)' }} />
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
+            Forecast Engine
+          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
+            Predicted usage for the next 30 days.
+          </h1>
+          <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
+            Based on your last 30-90 days of historical data using a combination of linear regression and exponential smoothing.
+          </p>
+        </div>
       </div>
 
       {/* Projection vs Actual Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Requests', last: fmt(p.last30Days.requests), next: fmt(p.next30Days.requests), growth: gr.requests, color: '#6366f1' },
-          { label: 'Tokens', last: fmtTokens(p.last30Days.tokens), next: fmtTokens(p.next30Days.tokens), growth: gr.tokens, color: '#8b5cf6' },
-          { label: 'API Cost', last: `$${p.last30Days.cost.toFixed(2)}`, next: `$${p.next30Days.cost.toFixed(2)}`, growth: gr.cost, color: '#ef4444' },
-          { label: 'New Users', last: fmt(p.last30Days.newUsers), next: fmt(p.next30Days.newUsers), growth: gr.users, color: '#10b981' },
+          { label: 'Requests', last: fmt(p.last30Days.requests), next: fmt(p.next30Days.requests), growth: gr.requests, color: '#ffffff' },
+          { label: 'Tokens', last: fmtTokens(p.last30Days.tokens), next: fmtTokens(p.next30Days.tokens), growth: gr.tokens, color: '#a1a1aa' },
+          { label: 'API Cost', last: `$${p.last30Days.cost.toFixed(2)}`, next: `$${p.next30Days.cost.toFixed(2)}`, growth: gr.cost, color: '#71717a' },
+          { label: 'New Users', last: fmt(p.last30Days.newUsers), next: fmt(p.next30Days.newUsers), growth: gr.users, color: '#d4d4d8' },
         ].map((card, i) => (
           <div key={i} className="stat-card" style={{ animationDelay: `${i * 0.06}s` }}>
             <div className="flex items-center justify-between mb-3">
@@ -134,7 +139,7 @@ export default function ForecastPage() {
             <div className="stat-value text-2xl mb-1">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests))))}</div>
             <div className="text-xs text-[var(--color-text-muted)]">requests/day (peak forecast day)</div>
             <div className="mt-3 text-xs text-[var(--color-text-secondary)]">
-              Recommended rate limit headroom: <span className="font-mono text-[var(--color-accent)]">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests)) * 1.5))}</span> req/day
+              Recommended headroom: <span className="font-mono text-white">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests)) * 1.5))}</span> req/day
             </div>
           </div>
           <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
@@ -142,7 +147,7 @@ export default function ForecastPage() {
             <div className="stat-value text-2xl mb-1">{fmtTokens(p.next30Days.tokens)}</div>
             <div className="text-xs text-[var(--color-text-muted)]">tokens projected consumption</div>
             <div className="mt-3 text-xs text-[var(--color-text-secondary)]">
-              Estimated provider cost: <span className="font-mono" style={{ color: '#ef4444' }}>${p.next30Days.cost.toFixed(2)}</span>
+              Estimated provider cost: <span className="font-mono text-white">${p.next30Days.cost.toFixed(2)}</span>
             </div>
           </div>
           <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
@@ -159,10 +164,10 @@ export default function ForecastPage() {
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         {[
-          { title: '📡 Requests Trend & Forecast', key: 'requests' as keyof DayData, color: '#6366f1' },
-          { title: '🔢 Token Usage Trend & Forecast', key: 'tokens' as keyof DayData, color: '#8b5cf6' },
-          { title: '💸 Cost Trend & Forecast', key: 'cost' as keyof DayData, color: '#ef4444' },
-          { title: '👥 Total Users Trend & Forecast', key: 'totalUsers' as keyof DayData, color: '#10b981' },
+          { title: '📡 Requests Trend & Forecast', key: 'requests' as keyof DayData, color: '#ffffff' },
+          { title: '🔢 Token Usage Trend & Forecast', key: 'tokens' as keyof DayData, color: '#a1a1aa' },
+          { title: '💸 Cost Trend & Forecast', key: 'cost' as keyof DayData, color: '#71717a' },
+          { title: '👥 Total Users Trend & Forecast', key: 'totalUsers' as keyof DayData, color: '#d4d4d8' },
         ].map((chart, i) => (
           <div key={i} className="glass-card p-6 animate-fade-in" style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
             <h3 className="text-sm font-semibold mb-4">{chart.title}</h3>
@@ -198,8 +203,8 @@ export default function ForecastPage() {
                   <td className="px-6 py-3 font-mono text-[var(--color-text-muted)]">{d.date}</td>
                   <td className="px-4 py-3 text-right font-mono">{fmt(Math.round(d.requests))}</td>
                   <td className="px-4 py-3 text-right font-mono">{fmtTokens(Math.round(d.tokens))}</td>
-                  <td className="px-4 py-3 text-right font-mono" style={{ color: '#ef4444' }}>${d.cost.toFixed(4)}</td>
-                  <td className="px-4 py-3 text-right font-mono" style={{ color: '#10b981' }}>+{d.newUsers}</td>
+                  <td className="px-4 py-3 text-right font-mono text-[var(--color-text-secondary)]">${d.cost.toFixed(4)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-[var(--color-success)]">+{d.newUsers}</td>
                   <td className="px-4 py-3 text-right font-mono">{fmt(d.totalUsers || 0)}</td>
                 </tr>
               ))}

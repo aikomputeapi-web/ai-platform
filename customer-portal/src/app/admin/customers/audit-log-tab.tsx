@@ -211,11 +211,11 @@ export default function AdminAuditLogPage() {
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(16,185,129,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(16,185,129,0.18), transparent 35%)' }} />
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 35%)' }} />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(16,185,129,0.12)] text-[rgb(74,222,128)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(16,185,129,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Audit Trail
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -225,19 +225,24 @@ export default function AdminAuditLogPage() {
                 This page is backed by the `audit_logs` table so the owner can review locking, plan changes, key revocations, notes, and deletions from a single source of truth.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {RANGE_OPTIONS.map((option) => (
                 <button
                   key={option}
                   onClick={() => setRange(option)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === option ? { background: 'linear-gradient(135deg, #10b981, #6366f1)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === option
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {option.toUpperCase()}
                 </button>
               ))}
-              <Link href="/admin/users" className="btn-secondary text-xs py-1.5 px-3">Accounts</Link>
-              <button onClick={() => void fetchData(range, action, search)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+              <button
+                onClick={() => void fetchData(range, action, search)}
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
+              >
                 <RefreshCw size={14} />
                 Refresh
               </button>
@@ -247,10 +252,10 @@ export default function AdminAuditLogPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Events', value: filteredCount.toLocaleString(), sub: `range ${data.range.toUpperCase()}`, color: '#10b981' },
-            { label: 'Locks', value: lockEvents.toLocaleString(), sub: 'account holds', color: '#f97316' },
-            { label: 'Unlocks', value: unlockEvents.toLocaleString(), sub: 'reopened access', color: '#6366f1' },
-            { label: 'Plan Changes', value: planEvents.toLocaleString(), sub: 'subscription updates', color: '#8b5cf6' },
+            { label: 'Events', value: filteredCount.toLocaleString(), sub: `range ${data.range.toUpperCase()}`, color: '#ffffff' },
+            { label: 'Locks', value: lockEvents.toLocaleString(), sub: 'account holds', color: '#a1a1aa' },
+            { label: 'Unlocks', value: unlockEvents.toLocaleString(), sub: 'reopened access', color: '#71717a' },
+            { label: 'Plan Changes', value: planEvents.toLocaleString(), sub: 'subscription updates', color: '#d4d4d8' },
           ].map((card, index) => (
             <div key={card.label} className="stat-card" style={{ animationDelay: `${index * 0.04}s` }}>
               <div className="flex items-center justify-between mb-2">
@@ -344,7 +349,7 @@ export default function AdminAuditLogPage() {
             <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(14px)' }}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-white">
                     Entry Detail
                   </div>
                   <h3 className="text-2xl font-bold">{focusedLog.action}</h3>

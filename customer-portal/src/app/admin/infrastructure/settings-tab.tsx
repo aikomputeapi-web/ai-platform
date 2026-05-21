@@ -98,7 +98,10 @@ export default function AdminSettingsPage() {
   }
 
   useEffect(() => {
-    void fetchData();
+    const timer = window.setTimeout(() => {
+      void fetchData();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchData]);
 
   if (loading || !settings || !reportConfig) {
@@ -134,11 +137,7 @@ export default function AdminSettingsPage() {
                 This is the universal control surface for operational toggles, support contact details, announcement banners, and scheduled report delivery.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/admin" className="btn-secondary text-xs py-1.5 px-3">Overview</Link>
-              <Link href="/admin/operations" className="btn-secondary text-xs py-1.5 px-3">Operations</Link>
-              <Link href="/admin/reports" className="btn-secondary text-xs py-1.5 px-3">Reports</Link>
-            </div>
+
           </div>
         </div>
 
@@ -148,7 +147,7 @@ export default function AdminSettingsPage() {
           {[
             { label: 'Maintenance', value: maintenance.enabled ? 'On' : 'Off', sub: maintenance.message || 'No message set', color: maintenance.enabled ? '#f59e0b' : '#10b981' },
             { label: 'Support Email', value: support.email, sub: 'customer contact channel', color: '#0ea5e9' },
-            { label: 'Announcements', value: announcement.enabled ? 'Active' : 'Hidden', sub: announcement.message || 'No announcement set', color: announcement.enabled ? '#6366f1' : '#6b7280' },
+            { label: 'Announcements', value: announcement.enabled ? 'Active' : 'Hidden', sub: announcement.message || 'No announcement set', color: announcement.enabled ? '#ffffff' : '#6b7280' },
             { label: 'Report Delivery', value: reportDelivery.enabled ? 'Enabled' : 'Paused', sub: reportDelivery.pausedBy ? `paused by ${reportDelivery.pausedBy}` : 'auto delivery status', color: reportDelivery.enabled ? '#10b981' : '#ef4444' },
           ].map((card) => (
             <div key={card.label} className="stat-card">

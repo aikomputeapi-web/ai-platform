@@ -131,11 +131,11 @@ export default function AdminRoutingPage() {
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(20,184,166,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(20,184,166,0.18), transparent 35%)' }} />
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 35%)' }} />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(20,184,166,0.12)] text-[rgb(45,212,191)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(20,184,166,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Routing
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -145,13 +145,14 @@ export default function AdminRoutingPage() {
                 This page isolates the mechanics behind OmniRoute so you can debug breakers, lockouts, learned limits, and active sessions without the rest of the operations surface.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => void fetchData()}
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
+              >
                 <RefreshCw size={14} />
                 Refresh
               </button>
-              <Link href="/admin/operations" className="btn-secondary text-xs py-1.5 px-3">Operations</Link>
-              <Link href="/admin/models" className="btn-secondary text-xs py-1.5 px-3">Models</Link>
             </div>
           </div>
         </div>
@@ -164,10 +165,10 @@ export default function AdminRoutingPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'System', value: statusHealthy ? 'Healthy' : 'Degraded', sub: data.health.status || 'unknown', color: statusHealthy ? '#10b981' : '#f59e0b' },
-            { label: 'Providers', value: formatUptime(data.health.providerSummary?.configuredCount), sub: `${data.health.providerSummary?.activeCount ?? 0} active`, color: '#6366f1' },
-            { label: 'Inflight', value: String(data.health.inflightRequests ?? 0), sub: 'current requests', color: '#8b5cf6' },
-            { label: 'Alerts', value: String((quota.alerting || 0) + unhealthyBreakers.length), sub: `${quota.exhausted || 0} quota exhausted`, color: '#ef4444' },
+            { label: 'System', value: statusHealthy ? 'Healthy' : 'Degraded', sub: data.health.status || 'unknown', color: statusHealthy ? '#ffffff' : '#a1a1aa' },
+            { label: 'Providers', value: formatUptime(data.health.providerSummary?.configuredCount), sub: `${data.health.providerSummary?.activeCount ?? 0} active`, color: '#a1a1aa' },
+            { label: 'Inflight', value: String(data.health.inflightRequests ?? 0), sub: 'current requests', color: '#71717a' },
+            { label: 'Alerts', value: String((quota.alerting || 0) + unhealthyBreakers.length), sub: `${quota.exhausted || 0} quota exhausted`, color: '#d4d4d8' },
           ].map((card) => (
             <div key={card.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -438,21 +439,6 @@ export default function AdminRoutingPage() {
               </div>
             </div>
 
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Routing Links</h2>
-                  <p className="text-sm text-[var(--color-text-muted)]">Jump to related control-center views.</p>
-                </div>
-                <ArrowRight size={16} className="text-[var(--color-accent)]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/admin/operations" className="btn-secondary text-center py-2">Operations</Link>
-                <Link href="/admin/models" className="btn-secondary text-center py-2">Models</Link>
-                <Link href="/admin/usage" className="btn-secondary text-center py-2">Usage</Link>
-                <Link href="/admin/settings" className="btn-secondary text-center py-2">Settings</Link>
-              </div>
-            </div>
           </div>
         </div>
       </div>

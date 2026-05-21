@@ -268,11 +268,11 @@ export default function AdminReportsPage() {
   return (
     <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(99,102,241,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.22), transparent 38%)' }} />
+        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 38%)' }} />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(99,102,241,0.2)]">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
                 Reports
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
@@ -312,8 +312,7 @@ export default function AdminReportsPage() {
                 <Play size={14} />
                 Deliver Due
               </button>
-              <Link href="/admin/users" className="btn-secondary text-xs py-1.5 px-3">Accounts</Link>
-              <Link href="/admin/billing" className="btn-secondary text-xs py-1.5 px-3">Billing</Link>
+
             </div>
           </div>
         </div>
@@ -447,7 +446,7 @@ export default function AdminReportsPage() {
               label: 'Due Reports',
               value: deliveryStats.dueCount.toLocaleString(),
               sub: deliveryStats.nextDueAt ? `Next due ${new Date(deliveryStats.nextDueAt).toLocaleString()}` : 'Nothing due right now',
-              tone: '#6366f1',
+              tone: '#ffffff',
             },
             {
               label: 'Last Success',
