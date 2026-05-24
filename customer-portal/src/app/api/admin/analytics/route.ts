@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyAdminAccess } from '@/lib/admin';
 import { getUsageAnalytics } from '@/lib/omniroute';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,7 @@ interface ApiKeyUsage {
   historicalApiKeyNames?: string[];
   requests?: number;
   totalTokens?: number;
+  cost?: number;
   totalCost?: number;
   promptTokens?: number;
   completionTokens?: number;
@@ -118,7 +120,19 @@ export async function GET(req: NextRequest) {
 
       const totalTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalTokens || 0), 0);
       const totalRequests = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.requests || 0), 0);
-      const totalCost = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalCost || 0), 0);
+      
+      let userTotalCost = 0;
+      for (const k of keyUsages) {
+        let keyCost = k.cost || k.totalCost || 0;
+        if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+          const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+          keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+        }
+        k.totalCost = keyCost;
+        k.cost = keyCost;
+        userTotalCost += keyCost;
+      }
+
       const promptTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.promptTokens || 0), 0);
       const completionTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.completionTokens || 0), 0);
 
@@ -150,25 +164,37 @@ export async function GET(req: NextRequest) {
         plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        apiKeys: user.apiKeys.map(k => ({
-          id: k.id,
-          name: k.name,
-          lastFour: k.lastFour,
-          isActive: k.isActive,
-          createdAt: k.createdAt,
-          usage:
+        apiKeys: user.apiKeys.map(k => {
+          const usage =
             resolvePortalKeyUsage(
               usageByKeyId,
               usageByName,
               k.omnirouteKeyId,
               `${user.email} - ${k.name}`
-            ) || null,
-        })),
+            ) || null;
+          if (usage) {
+            let keyCost = usage.cost || usage.totalCost || 0;
+            if (keyCost === 0 && (usage.promptTokens || usage.completionTokens)) {
+              const topModel = usage.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+              keyCost = calculateOfficialCost(topModel, usage.promptTokens || 0, usage.completionTokens || 0);
+            }
+            usage.totalCost = keyCost;
+            usage.cost = keyCost;
+          }
+          return {
+            id: k.id,
+            name: k.name,
+            lastFour: k.lastFour,
+            isActive: k.isActive,
+            createdAt: k.createdAt,
+            usage,
+          };
+        }),
         payments: user.payments,
         usage: {
           totalTokens,
           totalRequests,
-          totalCost,
+          totalCost: userTotalCost,
           promptTokens,
           completionTokens,
           topModels,
@@ -183,7 +209,17 @@ export async function GET(req: NextRequest) {
     const matchedCost = enrichedUsers.reduce((sum, user) => sum + (user.usage.totalCost || 0), 0);
     const totalRequests = analytics?.summary?.totalRequests || 0;
     const totalTokens = analytics?.summary?.totalTokens || 0;
-    const totalCost = analytics?.summary?.totalCost || 0;
+    
+    // Recalculate platform-wide cost based on model breakdown for precision
+    let platformTotalCost = 0;
+    if (analytics?.byModel) {
+      for (const m of analytics.byModel) {
+        platformTotalCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+      }
+    } else {
+      platformTotalCost = analytics?.summary?.totalCost || 0;
+    }
+
     const platformSummary = {
       totalUsers: users.length,
       verifiedUsers: users.filter(u => u.emailVerified).length,
@@ -202,13 +238,13 @@ export async function GET(req: NextRequest) {
       ),
       totalRequests,
       totalTokens,
-      totalCost,
+      totalCost: platformTotalCost,
       matchedRequests,
       matchedTokens,
       matchedCost,
       unmatchedRequests: Math.max(0, totalRequests - matchedRequests),
       unmatchedTokens: Math.max(0, totalTokens - matchedTokens),
-      unmatchedCost: Math.max(0, totalCost - matchedCost),
+      unmatchedCost: Math.max(0, platformTotalCost - matchedCost),
       coveragePct: totalRequests > 0 ? Number(((matchedRequests / totalRequests) * 100).toFixed(2)) : 0,
       planBreakdown: plans.map(p => ({
         id: p.id,

@@ -118,9 +118,45 @@ fi
 if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
     info "Nginx config changed — reloading"
     DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
-    sudo cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
-    sudo sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" /etc/nginx/nginx.conf
-    sudo nginx -t 2>/dev/null && sudo systemctl reload nginx && log "Nginx reloaded" || warn "Nginx reload failed"
+
+    # Detect which SSL certificate directory to use
+    CERT_DOMAIN="${DOMAIN}"
+    if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
+        if [[ -d "/etc/letsencrypt/live/aikompute.indevs.in" ]]; then
+            CERT_DOMAIN="aikompute.indevs.in"
+        elif [[ -d "/etc/letsencrypt/live/aikompute.indevs.in-0001" ]]; then
+            CERT_DOMAIN="aikompute.indevs.in-0001"
+        else
+            FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" | head -n 1 || true)
+            if [[ -n "${FOUND_CERT}" ]]; then
+                CERT_DOMAIN=$(basename "${FOUND_CERT}")
+            fi
+        fi
+    fi
+    info "Using SSL certificate for domain: ${CERT_DOMAIN}"
+
+    # Prepare nginx config safely
+    TEMP_CONF="${SCRIPT_DIR}/nginx/nginx.conf.tmp"
+    cp "${SCRIPT_DIR}/nginx/nginx.conf" "${TEMP_CONF}"
+    sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${TEMP_CONF}"
+    sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
+
+    # Backup, copy, test, and reload
+    sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
+    sudo cp "${TEMP_CONF}" /etc/nginx/nginx.conf
+    rm -f "${TEMP_CONF}"
+
+    if sudo nginx -t; then
+        sudo systemctl reload nginx
+        log "Nginx reloaded successfully"
+        sudo rm -f /etc/nginx/nginx.conf.bak
+    else
+        warn "Nginx config test failed! Restoring backup config."
+        sudo cp /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf
+        sudo rm -f /etc/nginx/nginx.conf.bak
+        sudo systemctl reload nginx
+        error "Nginx deployment failed."
+    fi
 fi
 
 # ── Wait and verify ──

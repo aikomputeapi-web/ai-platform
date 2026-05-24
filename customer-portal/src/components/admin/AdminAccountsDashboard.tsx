@@ -656,92 +656,98 @@ export default function AdminAccountsDashboard() {
           </div>
         )}
 
-        <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8">
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Customer Accounts</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Search, sort, and open detailed actions for any account.</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
-                    type="text"
-                    className="input-field text-sm py-2 pl-9 w-full sm:w-80"
-                    placeholder="Search email, name, plan, or note..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+        <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8 w-full max-w-full">
+          <div className="glass-card overflow-hidden min-w-0 w-full">
+            <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Customer Accounts</h2>
+                  <p className="text-sm text-[var(--color-text-muted)]">Search, sort, and open detailed actions for any account.</p>
                 </div>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="input-field text-sm py-2 w-full sm:w-44"
-                  style={{ appearance: 'auto' }}
-                >
-                  <option value="recent">Newest First</option>
-                  <option value="requests">Most Requests</option>
-                  <option value="tokens">Most Tokens</option>
-                  <option value="paid">Highest Paid</option>
-                  <option value="status">Status Priority</option>
-                </select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setScope(item)}
-                    className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                      scope === item
-                        ? 'bg-white text-black border-white'
-                        : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                    }`}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input
+                      type="text"
+                      className="input-field text-sm py-2 pl-9 w-full sm:w-80"
+                      placeholder="Search email, name, plan, or note..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="input-field text-sm py-2 w-full sm:w-44"
+                    style={{ appearance: 'auto' }}
                   >
-                    {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
-                  </button>
-                ))}
-                <button type="button" onClick={saveCurrentView} className="btn-secondary text-xs py-1.5 px-3">Save view</button>
+                    <option value="recent">Newest First</option>
+                    <option value="requests">Most Requests</option>
+                    <option value="tokens">Most Tokens</option>
+                    <option value="paid">Highest Paid</option>
+                    <option value="status">Status Priority</option>
+                  </select>
+                </div>
               </div>
-                {savedViews.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mr-1">Saved</span>
-                    {savedViews.map((view) => (
+
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
                     <button
-                      key={view.name}
+                      key={item}
                       type="button"
-                      onClick={() => applySavedView(view)}
-                      className="px-3 py-1 rounded-full text-[11px] font-medium"
-                      style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}
+                      onClick={() => setScope(item)}
+                      className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                        scope === item
+                          ? 'bg-white text-black border-white'
+                          : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                      }`}
                     >
-                      {view.name}
+                      {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
                     </button>
                   ))}
+                  <button type="button" onClick={saveCurrentView} className="btn-secondary text-xs py-1.5 px-3">Save view</button>
                 </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={exportFilteredCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                  <Download size={14} />
-                  Export CSV
-                </button>
-                <button type="button" onClick={() => importInputRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                  <Download size={14} />
-                  Import CSV
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      void importCsvFile(file);
-                    }
-                    e.currentTarget.value = '';
-                  }}
-                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {savedViews.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mr-2">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mr-1">Saved</span>
+                      {savedViews.map((view) => (
+                        <button
+                          key={view.name}
+                          type="button"
+                          onClick={() => applySavedView(view)}
+                          className="px-3 py-1 rounded-full text-[11px] font-medium"
+                          style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}
+                        >
+                          {view.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" onClick={exportFilteredCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                    <Download size={14} />
+                    Export CSV
+                  </button>
+                  <button type="button" onClick={() => importInputRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                    <Download size={14} />
+                    Import CSV
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        void importCsvFile(file);
+                      }
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </div>
               </div>
             </div>
             {importStatus && (
@@ -775,11 +781,11 @@ export default function AdminAccountsDashboard() {
               </div>
             )}
 
-              <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <th className="px-4 py-3 font-semibold">
+                    <th className="px-3 py-3 font-semibold w-10">
                       <input
                         ref={bulkSelectRef}
                         type="checkbox"
@@ -788,15 +794,15 @@ export default function AdminAccountsDashboard() {
                         className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)]"
                       />
                     </th>
-                    <th className="px-6 py-3 font-semibold">User</th>
-                    <th className="px-4 py-3 font-semibold">Plan</th>
-                    <th className="px-4 py-3 font-semibold">Joined</th>
-                    <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                    <th className="px-4 py-3 font-semibold text-right">Keys</th>
-                    <th className="px-4 py-3 font-semibold text-right">Paid</th>
-                    <th className="px-4 py-3 font-semibold text-center">Status</th>
-                    <th className="px-4 py-3 font-semibold text-center">Notes</th>
-                    <th className="px-4 py-3 font-semibold"></th>
+                    <th className="px-3 py-3 font-semibold">User</th>
+                    <th className="px-3 py-3 font-semibold w-20">Plan</th>
+                    <th className="px-3 py-3 font-semibold w-20">Joined</th>
+                    <th className="px-3 py-3 font-semibold text-right w-20">Requests</th>
+                    <th className="px-3 py-3 font-semibold text-right w-14">Keys</th>
+                    <th className="px-3 py-3 font-semibold text-right w-20">Paid</th>
+                    <th className="px-3 py-3 font-semibold text-center w-20">Status</th>
+                    <th className="px-3 py-3 font-semibold text-center w-16">Notes</th>
+                    <th className="px-3 py-3 font-semibold w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -812,36 +818,37 @@ export default function AdminAccountsDashboard() {
                           setSelectedUserId(user.id);
                         }}
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(user.id)}
+                            onChange={(e) => toggleSelection(user.id, e.target.checked)}
+                            className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
                           <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(user.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => toggleSelection(user.id, e.target.checked)}
-                              className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
-                            />
                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--color-bg-card-hover)] border border-[var(--color-border)] text-white">
                               {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-medium truncate max-w-[220px]">{user.name || '—'}</div>
-                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[220px]">{user.email}</div>
+                              <div className="font-medium truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.name || '—'}</div>
+                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3">
                           <span className={`badge-${user.plan.id === 'free' ? 'warning' : user.plan.id === 'pro' ? 'accent' : 'success'}`}>{user.plan.name}</span>
                         </td>
-                        <td className="px-4 py-4 text-[var(--color-text-muted)]">
+                        <td className="px-3 py-3 text-[var(--color-text-muted)]">
                           {timeAgo(user.createdAt, now)}
                         </td>
-                        <td className="px-4 py-4 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
-                        <td className="px-4 py-4 text-right font-mono">{fmt(user.apiKeys.length)}</td>
-                        <td className="px-4 py-4 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
+                        <td className="px-3 py-3 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
+                        <td className="px-3 py-3 text-right font-mono">{fmt(user.apiKeys.length)}</td>
+                        <td className="px-3 py-3 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
                           {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-3 py-3 text-center">
                           {user.isLocked ? (
                             <span className="badge-danger">locked</span>
                           ) : user.emailVerified ? (
@@ -850,10 +857,10 @@ export default function AdminAccountsDashboard() {
                             <span className="badge-warning">pending</span>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-3 py-3 text-center">
                           {user.adminNote ? <span className="badge-accent">note</span> : <span className="text-[var(--color-text-muted)]">—</span>}
                         </td>
-                        <td className="px-4 py-4 text-right text-[var(--color-text-muted)]">
+                        <td className="px-3 py-3 text-right text-[var(--color-text-muted)]">
                           <ChevronRight size={15} className={`inline-block transition-transform ${isSelected ? 'rotate-90' : ''}`} />
                         </td>
                       </tr>
@@ -864,7 +871,7 @@ export default function AdminAccountsDashboard() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0 w-full">
             <div className="glass-card p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-base font-semibold">Attention Queue</h2>
@@ -986,40 +993,27 @@ export default function AdminAccountsDashboard() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalRequests)}</div>
+                      <div className="stat-value text-2xl">{fmt(openUser.usage.totalRequests)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total API requests</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Tokens</div>
+                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalTokens)}</div>
                       <div className="text-[11px] text-[var(--color-text-muted)] mt-1">
-                        {typeof openUser.usage.coveragePct === 'number'
-                          ? `${openUser.usage.coveragePct}% coverage`
-                          : 'Per-account usage'}
+                        {fmtTokens(openUser.usage.promptTokens)} prompt · {fmtTokens(openUser.usage.completionTokens)} completion
                       </div>
                     </div>
                     <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Matched</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.matchedRequests || openUser.usage.totalRequests)}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Attributed to this account</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Unmatched</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.unmatchedRequests || 0)}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Analytics without attribution</div>
+                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Estimated Spend</div>
+                      <div className="stat-value text-2xl">{fmtUSD(Math.round(openUser.usage.totalCost * 100))}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Based on model usage</div>
                     </div>
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Paid</div>
                       <div className="stat-value text-2xl">{openUser.totalPaidCents > 0 ? fmtUSD(openUser.totalPaidCents) : '—'}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total payments received</div>
                     </div>
                   </div>
-
-                  {typeof openUser.usage.unmatchedRequests === 'number' && openUser.usage.unmatchedRequests > 0 && (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <span className="font-semibold">Account analytics incomplete.</span>{' '}
-                        {fmtTokens(openUser.usage.unmatchedRequests)} requests are still outside this account&apos;s attribution set.
-                      </div>
-                      <div className="text-xs uppercase tracking-wider text-amber-200/80">
-                        Coverage {typeof openUser.usage.coveragePct === 'number' ? `${openUser.usage.coveragePct}%` : 'n/a'}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-6">
                     <div className="space-y-6">

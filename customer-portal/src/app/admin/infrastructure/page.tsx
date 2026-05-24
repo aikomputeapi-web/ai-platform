@@ -7,6 +7,7 @@ import AdminRoutingPage from './routing-tab';
 import ModelsAdminPage from './models-tab';
 import AdminReportsPage from './reports-tab';
 import AdminSettingsPage from './settings-tab';
+import CatalogAdminTab from './catalog-tab';
 
 function AdminInfrastructurePageContent() {
   const router = useRouter();
@@ -22,6 +23,7 @@ function AdminInfrastructurePageContent() {
   const tabs = [
     { id: 'operations', label: 'Operations' },
     { id: 'routing', label: 'Routing' },
+    { id: 'catalog', label: 'Customer Catalog' },
     { id: 'models', label: 'Model Registry' },
     { id: 'reports', label: 'Scheduled Reports' },
     { id: 'settings', label: 'Global Settings' }
@@ -54,6 +56,7 @@ function AdminInfrastructurePageContent() {
         <div className="animate-fade-in">
           {activeTab === 'operations' && <AdminOperationsPage />}
           {activeTab === 'routing' && <AdminRoutingPage />}
+          {activeTab === 'catalog' && <CatalogAdminTab />}
           {activeTab === 'models' && <ModelsAdminPage />}
           {activeTab === 'reports' && <AdminReportsPage />}
           {activeTab === 'settings' && <AdminSettingsPage />}

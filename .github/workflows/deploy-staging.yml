@@ -15,19 +15,21 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.STAGING_SERVER_HOST }}
-          username: ${{ secrets.STAGING_SERVER_USER }}
-          key: ${{ secrets.STAGING_SERVER_SSH_KEY }}
+          host: ${{ secrets.STAGING_SERVER_HOST || secrets.SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER || secrets.SERVER_USER }}
+          key: ${{ secrets.STAGING_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
           port: 22
           command_timeout: 12m
           script: |
-            cd ~/ai-platform
+            cd ~/ai-platform-staging
 
             echo "══ Pulling staging changes ══"
             git fetch origin staging
+            git checkout staging
             git reset --hard origin/staging
             git submodule update --init --recursive
 
             echo "══ Deploying to Staging ══"
-            chmod +x deploy-preview.sh manage.sh
-            ./deploy-preview.sh
+            chmod +x deploy-staging.sh manage-staging.sh
+            ./deploy-staging.sh
+

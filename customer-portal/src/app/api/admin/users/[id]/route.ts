@@ -5,6 +5,7 @@ import { deleteOmniRouteKey, getUsageAnalytics } from '@/lib/omniroute';
 import { createSessionToken, generateVerifyToken, hashPassword } from '@/lib/auth';
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,7 @@ interface ApiKeyUsage {
   historicalApiKeyNames?: string[];
   requests?: number;
   totalTokens?: number;
+  cost?: number;
   totalCost?: number;
   promptTokens?: number;
   completionTokens?: number;
@@ -92,23 +94,39 @@ async function buildUserDetail(userId: string, range: string) {
   }
   const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
 
-  const analytics = await getUsageAnalytics(range);
+  const keyIds = user.apiKeys.map((key) => key.omnirouteKeyId).filter(Boolean);
+  const analytics = keyIds.length > 0 ? await getUsageAnalytics(range, keyIds) : null;
+
   const usageByKeyId: Record<string, ApiKeyUsage> = {};
   const usageByName = new Map<string, ApiKeyUsage>();
   for (const entry of analytics?.byApiKey || []) {
     indexApiKeyUsage(usageByKeyId, usageByName, entry);
   }
 
-  const apiKeys = user.apiKeys.map((key) => ({
-    id: key.id,
-    name: key.name,
-    lastFour: key.lastFour,
-    isActive: key.isActive,
-    createdAt: key.createdAt,
-    usage:
+  const apiKeys = user.apiKeys.map((key) => {
+    const usage =
       resolvePortalKeyUsage(usageByKeyId, usageByName, key.omnirouteKeyId, `${user.email} - ${key.name}`) ||
-      null,
-  }));
+      null;
+
+    if (usage) {
+      let officialKeyCost = usage.cost || usage.totalCost || 0;
+      if (officialKeyCost === 0 && (usage.promptTokens || usage.completionTokens)) {
+        const topModel = usage.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+        officialKeyCost = calculateOfficialCost(topModel, usage.promptTokens || 0, usage.completionTokens || 0);
+      }
+      usage.totalCost = officialKeyCost;
+      usage.cost = officialKeyCost;
+    }
+
+    return {
+      id: key.id,
+      name: key.name,
+      lastFour: key.lastFour,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+      usage,
+    };
+  });
 
   const keyUsages = apiKeys
     .map((key) => key.usage)
@@ -118,6 +136,16 @@ async function buildUserDetail(userId: string, range: string) {
     for (const model of keyUsage.byModel || []) {
       topModelsMap[model.model] = (topModelsMap[model.model] || 0) + (model.requests || 0);
     }
+  }
+
+  // Calculate official total cost based on model breakdown for precision
+  let calculatedCost = 0;
+  if (analytics?.byModel) {
+    for (const m of analytics.byModel) {
+      calculatedCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+    }
+  } else {
+    calculatedCost = keyUsages.reduce((sum, entry) => sum + (entry.totalCost || 0), 0);
   }
 
   const totalPaidCents = user.payments
@@ -162,7 +190,7 @@ async function buildUserDetail(userId: string, range: string) {
     usage: {
       totalRequests: keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0),
       totalTokens: keyUsages.reduce((sum, entry) => sum + (entry.totalTokens || 0), 0),
-      totalCost: keyUsages.reduce((sum, entry) => sum + (entry.totalCost || 0), 0),
+      totalCost: calculatedCost,
       promptTokens: keyUsages.reduce((sum, entry) => sum + (entry.promptTokens || 0), 0),
       completionTokens: keyUsages.reduce((sum, entry) => sum + (entry.completionTokens || 0), 0),
       matchedRequests: keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0),

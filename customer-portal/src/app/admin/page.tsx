@@ -425,8 +425,8 @@ function AdminOverviewPageContent() {
                 </div>
               </div>
 
-              <div className="grid xl:grid-cols-[1.3fr_0.7fr] gap-6 mb-8">
-                <div className="glass-card overflow-hidden">
+              <div className="grid xl:grid-cols-[1.3fr_0.7fr] gap-6 mb-8 w-full max-w-full">
+                <div className="glass-card overflow-hidden min-w-0 w-full">
                   <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
                     <div>
                       <h2 className="text-lg font-semibold">Recent Accounts</h2>
@@ -438,39 +438,39 @@ function AdminOverviewPageContent() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                          <th className="px-6 py-3 font-semibold">User</th>
-                          <th className="px-4 py-3 font-semibold">Plan</th>
-                          <th className="px-4 py-3 font-semibold">Joined</th>
-                          <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                          <th className="px-4 py-3 font-semibold text-right">Keys</th>
-                          <th className="px-4 py-3 font-semibold text-right">Paid</th>
-                          <th className="px-4 py-3 font-semibold text-center">Status</th>
+                          <th className="px-3 py-3 font-semibold">User</th>
+                          <th className="px-3 py-3 font-semibold w-24">Plan</th>
+                          <th className="px-3 py-3 font-semibold w-24">Joined</th>
+                          <th className="px-3 py-3 font-semibold text-right w-24">Requests</th>
+                          <th className="px-3 py-3 font-semibold text-right w-16">Keys</th>
+                          <th className="px-3 py-3 font-semibold text-right w-24">Paid</th>
+                          <th className="px-3 py-3 font-semibold text-center w-24">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {recentUsers.map(user => (
                           <tr key={user.id} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--color-bg-card-hover)] border border-[var(--color-border)] text-white">
                                   {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="font-medium truncate max-w-[240px]">{user.name || '—'}</div>
-                                  <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[240px]">{user.email}</div>
+                                  <div className="font-medium truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.name || '—'}</div>
+                                  <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.email}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-3">
                               <span className={`badge-${user.plan.id === 'free' ? 'warning' : user.plan.id === 'pro' ? 'accent' : 'success'}`}>{user.plan.name}</span>
                             </td>
-                            <td className="px-4 py-4 text-[var(--color-text-muted)]">{timeAgo(user.createdAt)}</td>
-                            <td className="px-4 py-4 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
-                            <td className="px-4 py-4 text-right font-mono">{user.apiKeys.length}</td>
-                            <td className="px-4 py-4 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
+                            <td className="px-3 py-3 text-[var(--color-text-muted)]">{timeAgo(user.createdAt)}</td>
+                            <td className="px-3 py-3 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
+                            <td className="px-3 py-3 text-right font-mono">{user.apiKeys.length}</td>
+                            <td className="px-3 py-3 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
                               {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
                             </td>
-                            <td className="px-4 py-4 text-center">
+                            <td className="px-3 py-3 text-center">
                               {user.emailVerified ? <span className="badge-success">verified</span> : <span className="badge-warning">pending</span>}
                             </td>
                           </tr>
@@ -480,7 +480,7 @@ function AdminOverviewPageContent() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0 w-full">
                   <div className="glass-card p-6">
                     <h2 className="text-base font-semibold mb-4">Focus List</h2>
                     <div className="space-y-3">

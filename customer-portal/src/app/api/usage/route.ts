@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getUsageAnalytics } from '@/lib/omniroute';
 import prisma from '@/lib/db';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
@@ -50,10 +51,39 @@ export async function GET(req: NextRequest) {
     // Use the server-side filtered summary from OmniRoute directly,
     // but fall back to aggregating from byApiKey if the summary includes
     // data from keys not belonging to this user
+    let userTotalCost = 0;
+    if (analytics.byModel && analytics.byModel.length > 0) {
+      for (const m of analytics.byModel) {
+        userTotalCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+      }
+    } else {
+      for (const k of userApiKeyUsage) {
+        let keyCost = k.cost || k.totalCost || 0;
+        if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+          const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+          keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+        }
+        userTotalCost += keyCost;
+      }
+    }
+
+    const userApiKeyUsageWithOfficialCost = userApiKeyUsage.map((k: any) => {
+      let keyCost = k.cost || k.totalCost || 0;
+      if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+        const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+        keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+      }
+      return {
+        ...k,
+        totalCost: keyCost,
+        cost: keyCost,
+      };
+    });
+
     const summary = {
       totalTokens: analytics.summary?.totalTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.totalTokens || 0), 0),
       totalRequests: analytics.summary?.totalRequests || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.requests || 0), 0),
-      totalCost: analytics.summary?.totalCost || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.cost || 0), 0),
+      totalCost: userTotalCost,
       promptTokens: analytics.summary?.promptTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.promptTokens || 0), 0),
       completionTokens: analytics.summary?.completionTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.completionTokens || 0), 0),
     };
@@ -62,7 +92,7 @@ export async function GET(req: NextRequest) {
       summary,
       dailyTrend: analytics.dailyTrend || [],
       byModel: analytics.byModel || [],
-      byApiKey: userApiKeyUsage,
+      byApiKey: userApiKeyUsageWithOfficialCost,
       range,
     });
   } catch (error) {

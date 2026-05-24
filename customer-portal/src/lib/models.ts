@@ -180,3 +180,133 @@ export const MODEL_CATALOGUE = [
     blurb:     'Highest-ranked open-weights model on the Artificial Analysis leaderboard.',
   },
 ] as const;
+
+/**
+ * Calculate the estimated retail cost of model usage based on the original providers' posted API rates.
+ * All rates are per million tokens ($/1M).
+ */
+export function calculateOfficialCost(
+  model: string | null | undefined,
+  promptTokens: number,
+  completionTokens: number
+): number {
+  const name = model ? model.toLowerCase() : '';
+
+  // 1. Claude Sonnet family (Sonnet 3.5, Sonnet 4.5, Sonnet 4.6)
+  if (name.includes('sonnet')) {
+    // Sonnet rates: $3.00/1M input, $15.00/1M output
+    return (promptTokens * 3.0 + completionTokens * 15.0) / 1_000_000;
+  }
+
+  // 2. Claude Opus family (Opus 3, Opus 4.5, Opus 4.6, Opus 4.7)
+  if (name.includes('opus')) {
+    if (name.includes('opus-4') || name.includes('opus-4.6') || name.includes('opus-4.7')) {
+      // Claude 4 Opus rates: $5.00/1M input, $25.00/1M output
+      return (promptTokens * 5.0 + completionTokens * 25.0) / 1_000_000;
+    }
+    // Claude 3 Opus legacy rates: $15.00/1M input, $75.00/1M output
+    return (promptTokens * 15.0 + completionTokens * 75.0) / 1_000_000;
+  }
+
+  // 3. Claude Haiku family (Haiku 3, Haiku 3.5, Haiku 4.5)
+  if (name.includes('haiku')) {
+    // Haiku rates: $1.00/1M input, $5.00/1M output (Claude 4.5/3.5 Haiku standard)
+    return (promptTokens * 1.0 + completionTokens * 5.0) / 1_000_000;
+  }
+
+  // 4. GPT-4o mini
+  if (name.includes('gpt-4o-mini')) {
+    // GPT-4o mini rates: $0.15/1M input, $0.60/1M output
+    return (promptTokens * 0.15 + completionTokens * 0.60) / 1_000_000;
+  }
+
+  // 4b. GPT-5.4 mini
+  if (name.includes('gpt-5.4-mini')) {
+    // GPT-5.4 mini rates: $1.50/1M input, $6.00/1M output
+    return (promptTokens * 1.50 + completionTokens * 6.00) / 1_000_000;
+  }
+
+  // 4c. GPT-5 mini
+  if (name.includes('gpt-5-mini')) {
+    // GPT-5 mini rates: $0.75/1M input, $3.00/1M output
+    return (promptTokens * 0.75 + completionTokens * 3.00) / 1_000_000;
+  }
+
+  // 5. GPT-4o
+  if (name.includes('gpt-4o')) {
+    // GPT-4o rates: $2.50/1M input, $10.00/1M output
+    return (promptTokens * 2.50 + completionTokens * 10.00) / 1_000_000;
+  }
+
+  // 6. GPT-4 Turbo
+  if (name.includes('gpt-4-turbo') || name.includes('gpt-4d') || name.includes('gpt-4.1')) {
+    // GPT-4 Turbo rates: $10.00/1M input, $30.00/1M output
+    return (promptTokens * 10.00 + completionTokens * 30.00) / 1_000_000;
+  }
+
+  // 7. GPT-4 Base
+  if (name.includes('gpt-4')) {
+    // GPT-4 base rates: $30.00/1M input, $60.00/1M output
+    return (promptTokens * 30.00 + completionTokens * 60.00) / 1_000_000;
+  }
+
+  // 8. GPT-5 / GPT-5.5
+  if (name.includes('gpt-5.5') || name.includes('gpt-5')) {
+    // GPT-5 flagship rates: $5.00/1M input, $30.00/1M output
+    return (promptTokens * 5.00 + completionTokens * 30.00) / 1_000_000;
+  }
+
+  // 9. DeepSeek R1 / V3
+  if (name.includes('deepseek-r1') || name.includes('deepseek-v3')) {
+    // DeepSeek rates: $0.55/1M input, $2.19/1M output
+    return (promptTokens * 0.55 + completionTokens * 2.19) / 1_000_000;
+  }
+
+  // 10. Gemini 1.5/3 Pro
+  if (name.includes('pro')) {
+    // Gemini Pro rates: $1.25/1M input, $5.00/1M output
+    return (promptTokens * 1.25 + completionTokens * 5.00) / 1_000_000;
+  }
+
+  // 11. Gemini 1.5/3 Flash
+  if (name.includes('flash')) {
+    // Gemini Flash rates: $0.075/1M input, $0.30/1M output
+    return (promptTokens * 0.075 + completionTokens * 0.30) / 1_000_000;
+  }
+
+  // 12. GLM models
+  if (name.includes('glm-5') || name.includes('glm-4')) {
+    // GLM rates: $1.20/1M input, $5.00/1M output
+    return (promptTokens * 1.20 + completionTokens * 5.00) / 1_000_000;
+  }
+
+  // 13. Kimi models
+  if (name.includes('kimi')) {
+    // Kimi rates: $1.00/1M input, $1.00/1M output
+    return (promptTokens * 1.00 + completionTokens * 1.00) / 1_000_000;
+  }
+
+  // 14. Llama 4 / 3.1 70B
+  if (name.includes('llama-3.1-70b') || name.includes('llama3.1-70b') || name.includes('llama-4-scout')) {
+    return (promptTokens * 0.52 + completionTokens * 0.75) / 1_000_000;
+  }
+
+  // 15. Llama 4 / 3.1 405B
+  if (name.includes('llama-3.1-405b') || name.includes('llama3.1-405b') || name.includes('llama-4-maverick')) {
+    return (promptTokens * 2.66 + completionTokens * 2.66) / 1_000_000;
+  }
+
+  // 16. Mistral Large
+  if (name.includes('mistral-large')) {
+    return (promptTokens * 2.00 + completionTokens * 6.00) / 1_000_000;
+  }
+
+  // 17. Open source / local free/cheap models (gpt-oss-120b etc.)
+  if (name.includes('gpt-oss-120b')) {
+    return (promptTokens * 0.50 + completionTokens * 2.00) / 1_000_000;
+  }
+
+  // Fallback / default rate (if model is empty, unknown, or not matched above)
+  return (promptTokens * 0.50 + completionTokens * 1.50) / 1_000_000;
+}
+
