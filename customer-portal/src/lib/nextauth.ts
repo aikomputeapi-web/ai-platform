@@ -5,10 +5,30 @@ import GitHubProvider from 'next-auth/providers/github';
 import AppleProvider from 'next-auth/providers/apple';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import prisma from './db';
-import { verifyPassword } from './auth';
+import { verifyPassword } from './password';
+
+const baseAdapter = PrismaAdapter(prisma);
+const customAdapter = {
+  ...baseAdapter,
+  createUser: (data: any) => {
+    const { image, emailVerified, ...rest } = data;
+    return baseAdapter.createUser!({
+      ...rest,
+      emailVerified: true, // OAuth users are pre-verified
+    } as any);
+  },
+  updateUser: (data: any) => {
+    const { image, emailVerified, ...rest } = data;
+    const updateData: any = { ...rest };
+    if (emailVerified !== undefined) {
+      updateData.emailVerified = emailVerified !== null;
+    }
+    return baseAdapter.updateUser!(updateData);
+  },
+};
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: customAdapter as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',

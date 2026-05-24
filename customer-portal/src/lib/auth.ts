@@ -1,18 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import bcrypt from 'bcryptjs';
 import prisma from './db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from './nextauth';
+import { hashPassword, verifyPassword } from './password';
+
+export { hashPassword, verifyPassword };
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-secret-change-me');
 const TOKEN_EXPIRY = '30d';
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
 
 export async function createSessionToken(userId: string): Promise<string> {
   return new SignJWT({ userId })
@@ -32,15 +28,30 @@ export async function verifySessionToken(token: string): Promise<{ userId: strin
 }
 
 export async function getCurrentUser() {
+  // Try NextAuth session first (for OAuth users)
+  const session = await getServerSession(authOptions);
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { plan: true, apiKeys: true },
+    });
+
+    const account = user as typeof user & { isLocked?: boolean };
+    if (account && !account.isLocked) {
+      return account;
+    }
+  }
+
+  // Fallback to legacy session (for email/password users)
   const cookieStore = await cookies();
   const token = cookieStore.get('portal_impersonation_session')?.value || cookieStore.get('portal_session')?.value;
   if (!token) return null;
 
-  const session = await verifySessionToken(token);
-  if (!session) return null;
+  const sessionTokenObj = await verifySessionToken(token);
+  if (!sessionTokenObj) return null;
 
   const user = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: { id: sessionTokenObj.userId },
     include: { plan: true, apiKeys: true },
   });
 
