@@ -7,8 +7,8 @@ The staging environment runs the full AI Platform stack (OmniRoute, Customer Por
 | | Production | Staging |
 |---|---|---|
 | **Branch** | `main` | `staging` |
-| **Domain** | `aikompute.com` | `staging.aikompute.com` |
-| **Admin** | `admin.aikompute.com` | `admin.staging.aikompute.com` |
+| **Domain** | `aikompute.com` | `aikompute.indevs.in` |
+| **Admin** | `admin.aikompute.com` | `admin.aikompute.indevs.in` |
 | **Portal port** | 3000 | 3301 |
 | **Dashboard port** | 20128 | 22028 |
 | **API port** | 20129 | 22029 |
@@ -81,9 +81,9 @@ This triggers the **Deploy to Staging** GitHub Action, which automatically:
 
 ### 4. Verify on staging
 
-- **Portal**: https://staging.aikompute.com
-- **Admin Dashboard**: https://admin.staging.aikompute.com
-- **API**: `https://staging.aikompute.com/v1/chat/completions`
+- **Portal**: https://aikompute.indevs.in
+- **Admin Dashboard**: https://admin.aikompute.indevs.in
+- **API**: `https://aikompute.indevs.in/v1/chat/completions`
 
 ```bash
 # Quick health check
@@ -123,25 +123,11 @@ This triggers the **Deploy to Production** GitHub Action.
 
 ## DNS & SSL Setup
 
-### DNS Records
-
-Add these DNS records pointing to your server IP:
-
-```
-staging.aikompute.com        A    <server-ip>
-admin.staging.aikompute.com  A    <server-ip>
-```
+The staging environment is mapped to the domain `aikompute.indevs.in` and `admin.aikompute.indevs.in`.
 
 ### SSL Certificate
 
-**Option A: Wildcard cert** (if you have `*.aikompute.com`)
-- No extra setup needed — nginx already references the main domain's cert.
-
-**Option B: Separate cert for staging**
-```bash
-sudo certbot certonly --nginx -d staging.aikompute.com -d admin.staging.aikompute.com
-```
-Then update the `ssl_certificate` paths in `nginx/nginx.conf` for the staging server blocks.
+The server already has active, valid Let's Encrypt certificates configured for `aikompute.indevs.in` and `admin.aikompute.indevs.in`. The deployment script (`deploy-staging.sh`) automatically detects these certificates and configures Nginx accordingly.
 
 ---
 
