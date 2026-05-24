@@ -87,7 +87,7 @@ dc up -d --remove-orphans
 
 # ── Update Nginx Configuration ──
 info "Updating Nginx configuration..."
-PROD_ENV_FILE="${SCRIPT_DIR}/.env"
+PROD_ENV_FILE="/home/stevenleblanc62920/ai-platform/.env"
 if [[ -f "${PROD_ENV_FILE}" ]]; then
     PROD_DOMAIN=$(grep "^DOMAIN=" "${PROD_ENV_FILE}" | cut -d= -f2-)
 else
@@ -123,7 +123,7 @@ else
 fi
 
 sed -i "s/DOMAIN_PLACEHOLDER/${PROD_DOMAIN}/g" "${TEMP_CONF}"
-sed -i "s/STAGING_DOMAIN_PLACEHOLDER/${STAGING_DOMAIN}/g" "${TEMP_CONF}"
+sed -i "s/STG_HOST_PLACEHOLDER/${STAGING_DOMAIN}/g" "${TEMP_CONF}"
 sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
 
 # Backup, copy, test, and reload

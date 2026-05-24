@@ -140,7 +140,7 @@ if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
     cp "${SCRIPT_DIR}/nginx/nginx.conf" "${TEMP_CONF}"
 
     # Read staging domain
-    STAGING_ENV_FILE="${SCRIPT_DIR}/.env.staging"
+    STAGING_ENV_FILE="/home/stevenleblanc62920/ai-platform/.env.staging"
     if [[ -f "${STAGING_ENV_FILE}" ]]; then
         STAGING_DOMAIN=$(grep "^DOMAIN=" "${STAGING_ENV_FILE}" | cut -d= -f2-)
     else
@@ -148,7 +148,7 @@ if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
     fi
 
     sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${TEMP_CONF}"
-    sed -i "s/STAGING_DOMAIN_PLACEHOLDER/${STAGING_DOMAIN}/g" "${TEMP_CONF}"
+    sed -i "s/STG_HOST_PLACEHOLDER/${STAGING_DOMAIN}/g" "${TEMP_CONF}"
     sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
 
     # Backup, copy, test, and reload
