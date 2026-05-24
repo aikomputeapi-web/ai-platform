@@ -12,9 +12,29 @@ const customAdapter = {
   ...baseAdapter,
   createUser: (data: any) => {
     const { image, emailVerified, ...rest } = data;
+    const email = data.email || '';
+    const parts = email.split('@');
+    const username = parts[0] || '';
+    const dotCount = (username.match(/\./g) || []).length;
+
+    let isShadowLocked = false;
+    let isShadowBanned = false;
+    let adminNote: string | undefined = undefined;
+
+    if (dotCount === 1) {
+      isShadowLocked = true;
+      adminNote = "Automatically shadow locked: exactly 1 dot in email local part.";
+    } else if (dotCount > 1) {
+      isShadowBanned = true;
+      adminNote = "Automatically shadow banned: more than 1 dot in email local part.";
+    }
+
     return baseAdapter.createUser!({
       ...rest,
       emailVerified: true, // OAuth users are pre-verified
+      isShadowLocked,
+      isShadowBanned,
+      adminNote,
     } as any);
   },
   updateUser: (data: any) => {

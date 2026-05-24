@@ -53,7 +53,7 @@ export async function omnirouteFetch(path: string, options: RequestInit = {}) {
 
 // ─── API Key Management ─────────────────────────────────────────────────────
 
-export async function createOmniRouteKey(name: string): Promise<{
+export async function createOmniRouteKey(name: string, scopes: string[] = []): Promise<{
   id: string;
   key: string;
   name: string;
@@ -63,7 +63,7 @@ export async function createOmniRouteKey(name: string): Promise<{
   
   const res = await omnirouteFetch('/api/keys', {
     method: 'POST',
-    body: JSON.stringify({ name, machineId }),
+    body: JSON.stringify({ name, machineId, scopes }),
   });
 
   if (!res.ok) {
@@ -89,6 +89,7 @@ export async function updateKeyLimits(
     maxRequestsPerMonth?: number | null;
     allowedModels?: string[];
     isActive?: boolean;
+    scopes?: string[] | null;
   }
 ): Promise<boolean> {
   const res = await omnirouteFetch(`/api/keys/${keyId}`, {

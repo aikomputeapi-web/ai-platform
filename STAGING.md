@@ -2,19 +2,17 @@
 
 ## Overview
 
-The staging environment runs the full AI Platform stack (OmniRoute, Customer Portal, PostgreSQL, Redis, CLIProxyAPI) on the **same server** as production, but completely isolated: separate ports, volumes, network, containers, and secrets.
+The staging environment runs the full AI Platform stack (OmniRoute, Customer Portal, PostgreSQL, Redis, CLIProxyAPI) on a **dedicated staging server**, completely isolated from production.
 
-| | Production | Staging |
+| | Production Server | Staging Server |
 |---|---|---|
 | **Branch** | `main` | `staging` |
 | **Domain** | `aikompute.com` | `aikompute.indevs.in` |
 | **Admin** | `admin.aikompute.com` | `admin.aikompute.indevs.in` |
-| **Portal port** | 3000 | 3301 |
-| **Dashboard port** | 20128 | 22028 |
-| **API port** | 20129 | 22029 |
-| **Postgres port** | 5432 | 55432 |
-| **Redis port** | 6379 | 56379 |
-| **CLIProxyAPI UI** | 8085 | 8185 |
+| **Portal port (public)** | 443 ➔ container 3000 | 443 ➔ container 3301 |
+| **Dashboard port (public)** | 443 (admin subdomain) ➔ 20128 | 443 (admin subdomain) ➔ 22028 |
+| **Postgres port (internal)** | 5432 | 55432 |
+| **Redis port (internal)** | 6379 | 56379 |
 | **Docker project** | (default) | `aikompute-staging` |
 | **Network** | `ai-platform-network` | `ai-staging-network` |
 | **Volumes** | `ai-*-data` | `ai-*-data-staging` |
@@ -23,7 +21,18 @@ The staging environment runs the full AI Platform stack (OmniRoute, Customer Por
 
 ## Quick Start
 
-### Deploy staging manually
+### Setup a new staging server
+
+1. Provision an Ubuntu VM.
+2. Point DNS A records for `aikompute.indevs.in` and `admin.aikompute.indevs.in` to the new VM IP.
+3. Clone this repository onto the new server under `~/ai-platform-staging` and switch to the `staging` branch.
+4. Run the staging setup script:
+   ```bash
+   chmod +x setup-staging.sh deploy-staging.sh manage-staging.sh
+   sudo ./setup-staging.sh
+   ```
+
+### Deploy staging manually (subsequent updates)
 
 ```bash
 ./deploy-staging.sh
@@ -114,10 +123,11 @@ This triggers the **Deploy to Production** GitHub Action.
 | `.env.staging` | Staging secrets (NEVER commit) |
 | `OmniRoute/.env.staging` | OmniRoute staging env |
 | `docker-compose.staging.yml` | Staging overlay (ports, volumes, network) |
+| `setup-staging.sh` | One-command staging server installation & setup |
 | `deploy-staging.sh` | Build & deploy staging stack |
 | `manage-staging.sh` | Day-to-day staging management |
 | `.github/workflows/deploy-staging.yml` | CI/CD for staging branch |
-| `nginx/nginx.conf` | Includes staging server blocks |
+| `nginx/nginx.staging.conf` | Dedicated staging Nginx configuration |
 
 ---
 
@@ -127,7 +137,7 @@ The staging environment is mapped to the domain `aikompute.indevs.in` and `admin
 
 ### SSL Certificate
 
-The server already has active, valid Let's Encrypt certificates configured for `aikompute.indevs.in` and `admin.aikompute.indevs.in`. The deployment script (`deploy-staging.sh`) automatically detects these certificates and configures Nginx accordingly.
+The staging setup script (`setup-staging.sh`) automatically provisions and renews Let's Encrypt certificates specifically for your staging domain (`aikompute.indevs.in` and `admin.aikompute.indevs.in`). The deployment script (`deploy-staging.sh`) automatically configures the staging Nginx server block to use these certificates.
 
 ---
 
@@ -143,7 +153,7 @@ docker compose --env-file .env.staging \
 ```
 
 ### Port conflicts with production
-Staging uses completely different host ports. If you see bind errors, check that no other service is using ports 3301, 22028, 22029, 55432, 56379, or 8185.
+Since staging runs on its own dedicated server, there are no port conflicts with production.
 
 ### Staging touching production data
 This should never happen — staging has its own Docker network and volumes. Verify with:

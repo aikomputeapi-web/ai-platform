@@ -42,6 +42,22 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hashPassword(password);
     const verifyToken = generateVerifyToken();
 
+    const parts = email.split('@');
+    const username = parts[0] || '';
+    const dotCount = (username.match(/\./g) || []).length;
+
+    let isShadowLocked = false;
+    let isShadowBanned = false;
+    let adminNote = null;
+
+    if (dotCount === 1) {
+      isShadowLocked = true;
+      adminNote = "Automatically shadow locked: exactly 1 dot in email local part.";
+    } else if (dotCount > 1) {
+      isShadowBanned = true;
+      adminNote = "Automatically shadow banned: more than 1 dot in email local part.";
+    }
+
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -49,6 +65,9 @@ export async function POST(req: NextRequest) {
         name: name || null,
         verifyToken,
         planId: 'free',
+        isShadowLocked,
+        isShadowBanned,
+        adminNote,
       },
     });
 

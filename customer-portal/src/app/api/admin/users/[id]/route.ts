@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
-import { deleteOmniRouteKey, getUsageAnalytics } from '@/lib/omniroute';
+import { deleteOmniRouteKey, getUsageAnalytics, updateKeyLimits } from '@/lib/omniroute';
 import { createSessionToken, generateVerifyToken, hashPassword } from '@/lib/auth';
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
@@ -174,6 +174,8 @@ async function buildUserDetail(userId: string, range: string) {
     name: user.name,
     emailVerified: user.emailVerified,
     isLocked: account.isLocked || false,
+    isShadowLocked: (account as any).isShadowLocked || false,
+    isShadowBanned: (account as any).isShadowBanned || false,
     adminNote: account.adminNote || null,
     stripeCustomerId: user.stripeCustomerId,
     plan: user.plan,
@@ -286,9 +288,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       case 'unlock': {
         const updated = await prisma.user.update({
           where: { id },
-          data: { isLocked: false } as never,
+          data: {
+            isLocked: false,
+            isShadowLocked: false,
+            isShadowBanned: false,
+          } as never,
           include: { plan: true, apiKeys: true, payments: true },
         });
+
+        // Clear shadow scopes from all user's keys in OmniRoute
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes: [] });
+          } catch (err) {
+            console.error(`Failed to clear scopes for key ${key.id}:`, err);
+          }
+        }
+
         await recordAdminAction({
           action: 'user.unlocked',
           req,

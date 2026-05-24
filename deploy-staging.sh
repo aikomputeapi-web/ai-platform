@@ -87,20 +87,19 @@ dc up -d --remove-orphans
 
 # ── Update Nginx Configuration ──
 info "Updating Nginx configuration..."
-PROD_ENV_FILE="/home/stevenleblanc62920/ai-platform/.env"
-if [[ -f "${PROD_ENV_FILE}" ]]; then
-    PROD_DOMAIN=$(grep "^DOMAIN=" "${PROD_ENV_FILE}" | cut -d= -f2-)
+# Read staging domain
+STAGING_ENV_FILE="${SCRIPT_DIR}/.env.staging"
+if [[ -f "${STAGING_ENV_FILE}" ]]; then
+    STAGING_DOMAIN=$(grep "^DOMAIN=" "${STAGING_ENV_FILE}" | cut -d= -f2-)
 else
-    PROD_DOMAIN="aikompute.indevs.in"
+    STAGING_DOMAIN="aikompute.indevs.in"
 fi
 
 # Detect which SSL certificate directory to use
-CERT_DOMAIN="${PROD_DOMAIN}"
+CERT_DOMAIN="${STAGING_DOMAIN}"
 if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
-    if [[ -d "/etc/letsencrypt/live/aikompute.indevs.in" ]]; then
-        CERT_DOMAIN="aikompute.indevs.in"
-    elif [[ -d "/etc/letsencrypt/live/aikompute.indevs.in-0001" ]]; then
-        CERT_DOMAIN="aikompute.indevs.in-0001"
+    if [[ -d "/etc/letsencrypt/live/${STAGING_DOMAIN}-0001" ]]; then
+        CERT_DOMAIN="${STAGING_DOMAIN}-0001"
     else
         FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" | head -n 1 || true)
         if [[ -n "${FOUND_CERT}" ]]; then
@@ -112,17 +111,8 @@ info "Using SSL certificate for domain: ${CERT_DOMAIN}"
 
 # Prepare nginx config safely
 TEMP_CONF="${SCRIPT_DIR}/nginx/nginx.conf.tmp"
-cp "${SCRIPT_DIR}/nginx/nginx.conf" "${TEMP_CONF}"
+cp "${SCRIPT_DIR}/nginx/nginx.staging.conf" "${TEMP_CONF}"
 
-# Read staging domain
-STAGING_ENV_FILE="${SCRIPT_DIR}/.env.staging"
-if [[ -f "${STAGING_ENV_FILE}" ]]; then
-    STAGING_DOMAIN=$(grep "^DOMAIN=" "${STAGING_ENV_FILE}" | cut -d= -f2-)
-else
-    STAGING_DOMAIN="staging.${PROD_DOMAIN}"
-fi
-
-sed -i "s/DOMAIN_PLACEHOLDER/${PROD_DOMAIN}/g" "${TEMP_CONF}"
 sed -i "s/STG_HOST_PLACEHOLDER/${STAGING_DOMAIN}/g" "${TEMP_CONF}"
 sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
 
