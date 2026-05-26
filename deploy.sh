@@ -38,19 +38,31 @@ log "Environment OK"
 
 # ── Sync OmniRoute .env secrets ──
 if [[ -f "./OmniRoute/.env.example" ]] && [[ -f "./OmniRoute/.env" ]]; then
+    # Ensure OMNIROUTE_PUBLIC_URL is in .env
+    if ! grep -q "^OMNIROUTE_PUBLIC_URL=" "${ENV_FILE}"; then
+        DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
+        SSL_ENABLED=$(grep "^SSL_ENABLED=" "${ENV_FILE}" | cut -d= -f2- || echo "true")
+        SCHEME="https"
+        if [[ "${SSL_ENABLED}" == "false" ]]; then
+            SCHEME="http"
+        fi
+        echo "OMNIROUTE_PUBLIC_URL=${SCHEME}://admin.${DOMAIN}" >> "${ENV_FILE}"
+        log "Added OMNIROUTE_PUBLIC_URL to .env"
+    fi
+
     # Re-inject secrets from root .env into OmniRoute .env (preserves any manual edits to other fields)
     JWT=$(grep OMNIROUTE_JWT_SECRET "${ENV_FILE}" | cut -d= -f2-)
     API_KEY=$(grep OMNIROUTE_API_KEY_SECRET "${ENV_FILE}" | cut -d= -f2-)
     STORAGE_KEY=$(grep OMNIROUTE_STORAGE_ENCRYPTION_KEY "${ENV_FILE}" | cut -d= -f2-)
     ADMIN_PASS=$(grep OMNIROUTE_INITIAL_PASSWORD "${ENV_FILE}" | cut -d= -f2-)
-    PUBLIC=$(grep PUBLIC_URL "${ENV_FILE}" | cut -d= -f2-)
+    OMNI_PUBLIC=$(grep OMNIROUTE_PUBLIC_URL "${ENV_FILE}" | cut -d= -f2-)
 
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${JWT}|" ./OmniRoute/.env
     sed -i "s|^API_KEY_SECRET=.*|API_KEY_SECRET=${API_KEY}|" ./OmniRoute/.env
     sed -i "s|^STORAGE_ENCRYPTION_KEY=.*|STORAGE_ENCRYPTION_KEY=${STORAGE_KEY}|" ./OmniRoute/.env
     sed -i "s|^INITIAL_PASSWORD=.*|INITIAL_PASSWORD=${ADMIN_PASS}|" ./OmniRoute/.env
-    sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${PUBLIC}|" ./OmniRoute/.env
-    sed -i "s|^BASE_URL=.*|BASE_URL=${PUBLIC}|" ./OmniRoute/.env
+    sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env
+    sed -i "s|^BASE_URL=.*|BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env
 
     log "OmniRoute .env synced"
 fi

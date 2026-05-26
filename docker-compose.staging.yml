@@ -56,8 +56,9 @@ services:
       - staging_omniroute_data:/app/data
     environment:
       NODE_ENV: staging
-      NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
-      BASE_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
+      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
+      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
     networks: !override
       ai-staging-network: null
 

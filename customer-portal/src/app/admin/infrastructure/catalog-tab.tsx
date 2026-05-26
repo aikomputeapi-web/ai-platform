@@ -107,6 +107,7 @@ export default function CatalogAdminTab() {
   const [toggling, setToggling] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -131,6 +132,7 @@ export default function CatalogAdminTab() {
     setGenerating(true);
     setError('');
     setSuccessMessage('');
+    setWarnings([]);
     try {
       const res = await fetch('/api/admin/virtual-catalog', {
         method: 'POST',
@@ -142,7 +144,19 @@ export default function CatalogAdminTab() {
         setError(result.error?.message || 'Failed to generate catalog');
         return;
       }
-      setSuccessMessage(`Catalog generated: ${result.created} models created, ${result.deleted} old entries cleaned up.`);
+      // Surface warnings from the generator
+      if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+        setWarnings(result.warnings);
+      }
+      // Surface errors from individual combo creation failures
+      if (Array.isArray(result.errors) && result.errors.length > 0) {
+        setError(`${result.errors.length} error(s): ${result.errors.join('; ')}`);
+      }
+      if (result.created > 0) {
+        setSuccessMessage(`Catalog generated: ${result.created} models created, ${result.deleted} old entries cleaned up.`);
+      } else if (!result.warnings?.length && !result.errors?.length) {
+        setSuccessMessage('Catalog regenerated — no changes needed.');
+      }
       await fetchData();
     } catch {
       setError('Network error during generation');
@@ -294,6 +308,14 @@ export default function CatalogAdminTab() {
         {error && (
           <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
             {error}
+          </div>
+        )}
+        {warnings.length > 0 && (
+          <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-sm space-y-1">
+            <div className="font-semibold mb-1">⚠ Warning{warnings.length > 1 ? 's' : ''}</div>
+            {warnings.map((w, i) => (
+              <div key={i}>{w}</div>
+            ))}
           </div>
         )}
         {successMessage && (

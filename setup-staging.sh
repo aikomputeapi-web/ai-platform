@@ -148,6 +148,7 @@ cat > "${ENV_FILE}" << ENV
 
 DOMAIN=${DOMAIN}
 PUBLIC_URL=https://${DOMAIN}
+OMNIROUTE_PUBLIC_URL=https://admin.${DOMAIN}
 SSL_ENABLED=true
 
 # PostgreSQL (isolated staging database via separate Docker volume)
@@ -217,6 +218,7 @@ if [[ "${SKIP_SSL,,}" == "y" ]]; then
     # Update .env.staging for non-SSL
     sed -i 's/SSL_ENABLED=true/SSL_ENABLED=false/' "${ENV_FILE}"
     sed -i "s|PUBLIC_URL=https://${DOMAIN}|PUBLIC_URL=http://${DOMAIN}|" "${ENV_FILE}"
+    sed -i "s|OMNIROUTE_PUBLIC_URL=https://admin.${DOMAIN}|OMNIROUTE_PUBLIC_URL=http://admin.${DOMAIN}|" "${ENV_FILE}"
 else
     systemctl stop nginx 2>/dev/null || true
     certbot certonly --standalone --non-interactive --agree-tos \

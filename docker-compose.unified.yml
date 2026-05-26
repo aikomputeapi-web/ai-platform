@@ -116,6 +116,9 @@ services:
       API_PORT: 20129
       API_HOST: 0.0.0.0
 
+      # ── Redis ──
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+
       # ── Security ──
       JWT_SECRET: ${OMNIROUTE_JWT_SECRET:?OMNIROUTE_JWT_SECRET is required}
       API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET:?OMNIROUTE_API_KEY_SECRET is required}
@@ -123,8 +126,8 @@ services:
       STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:-}
 
       # ── Public URL (for OAuth callbacks) ──
-      NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
-      BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-http://localhost:20128}
+      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-http://localhost:20128}
 
       # ── Auth settings ──
       REQUIRE_API_KEY: "true"
