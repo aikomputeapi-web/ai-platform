@@ -28,6 +28,16 @@ gen_pass()   { openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 16; }
 
 [[ $EUID -ne 0 ]] && error "Run as root: sudo ./setup-staging.sh"
 
+# Prevent accidental execution on production server
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    PROD_DOMAIN=$(grep "^DOMAIN=" "${SCRIPT_DIR}/.env" | cut -d= -f2- || echo "")
+    if [[ "${PROD_DOMAIN}" == "aikompute.com" ]]; then
+        if [[ "$(basename "${SCRIPT_DIR}")" == "ai-platform" ]]; then
+            error "Accidental staging setup detected on production! Staging must run on its dedicated server."
+        fi
+    fi
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Step 1: Dependencies
 # ═══════════════════════════════════════════════════════════════════════════

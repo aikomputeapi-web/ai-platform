@@ -126,9 +126,9 @@ else
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" restart
 fi
 
-# ── Reload nginx if config changed ──
-if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
-    info "Nginx config changed — reloading"
+# ── Reload nginx if config changed or staging config is active ──
+if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf" ]] || grep -q "Staging Configuration" "/etc/nginx/nginx.conf"; then
+    info "Nginx config changed, missing, or staging config is active — reloading"
     DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
 
     # Detect which SSL certificate directory to use

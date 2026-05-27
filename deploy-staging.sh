@@ -42,6 +42,16 @@ echo -e "${CYAN}${BOLD}═══ AI Platform — Staging Deploy ═══${NC}"
 echo ""
 
 # ── Pre-flight checks ──
+# Prevent accidental deployment on production server
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    PROD_DOMAIN=$(grep "^DOMAIN=" "${SCRIPT_DIR}/.env" | cut -d= -f2- || echo "")
+    if [[ "${PROD_DOMAIN}" == "aikompute.com" ]]; then
+        if [[ "$(basename "${SCRIPT_DIR}")" == "ai-platform" ]]; then
+            error "Accidental staging deploy detected on production! Staging must run on its dedicated server."
+        fi
+    fi
+fi
+
 [[ -f "${ENV_FILE}" ]] || error ".env.staging not found. Create it first."
 [[ -f "${COMPOSE_FILE}" ]] || error "docker-compose.unified.yml not found."
 [[ -f "${STAGING_FILE}" ]] || error "docker-compose.staging.yml not found."
