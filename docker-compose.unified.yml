@@ -119,6 +119,9 @@ services:
       # ── Redis ──
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
 
+      # ── Customer Portal DB ──
+      PORTAL_DATABASE_URL: postgresql://${POSTGRES_USER:-aiplatform}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aiplatform}
+
       # ── Security ──
       JWT_SECRET: ${OMNIROUTE_JWT_SECRET:?OMNIROUTE_JWT_SECRET is required}
       API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET:?OMNIROUTE_API_KEY_SECRET is required}
