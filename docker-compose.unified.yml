@@ -41,6 +41,10 @@ x-omniroute-base: &omniroute-base
     INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:?OMNIROUTE_INITIAL_PASSWORD is required}
     STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:?OMNIROUTE_STORAGE_ENCRYPTION_KEY is required}
 
+    # ── Redis & Database Integration ──
+    REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+    PORTAL_DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+
     # ── Public URL (for OAuth callbacks) ──
     NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
     BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
@@ -105,6 +109,14 @@ x-portal-base: &portal-base
     EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
     ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
     NODE_ENV: production
+    NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
+    NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+    GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+    APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
   networks:
     ai-network:
       aliases:
@@ -254,6 +266,25 @@ services:
       retries: 3
     networks:
       - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Free Models Extractor — pulls free models catalog every 24h
+  # ─────────────────────────────────────────────────────────────────────────
+  free-models-extractor:
+    image: node:24-alpine
+    container_name: free-models-extractor
+    restart: unless-stopped
+    logging: *logging
+    volumes:
+      - ./scripts:/app/scripts
+      - omniroute_data:/app/data
+    working_dir: /app
+    environment:
+      OUTPUT_DIR: /app/data
+      INTERVAL_SECONDS: 86400
+    networks:
+      - ai-network
+    command: ["node", "scripts/extract-free-models.mjs"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Volumes

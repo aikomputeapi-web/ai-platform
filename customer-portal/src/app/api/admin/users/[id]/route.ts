@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
-import { deleteOmniRouteKey, getUsageAnalytics } from '@/lib/omniroute';
+import { deleteOmniRouteKey, getUsageAnalytics, updateKeyLimits } from '@/lib/omniroute';
 import { createSessionToken, generateVerifyToken, hashPassword } from '@/lib/auth';
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,57 @@ interface AuditLogRow {
   createdAt: Date;
 }
 
+interface ApiKeyUsage {
+  apiKeyId: string;
+  apiKey?: string;
+  apiKeyName?: string;
+  historicalApiKeyNames?: string[];
+  requests?: number;
+  totalTokens?: number;
+  cost?: number;
+  totalCost?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  byModel?: { model: string; requests: number }[];
+}
+
 function formatRange(range: string | null) {
   return range || '30d';
+}
+
+function normalizeUsageLookupKey(value: string | null | undefined) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function indexApiKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  entry: ApiKeyUsage
+) {
+  if (entry.apiKeyId) {
+    usageByKeyId[entry.apiKeyId] = entry;
+  }
+
+  const apiKeyNames = [entry.apiKeyName, entry.apiKey, ...(entry.historicalApiKeyNames || [])];
+  for (const name of apiKeyNames) {
+    const normalized = normalizeUsageLookupKey(name);
+    if (normalized && !usageByName.has(normalized)) {
+      usageByName.set(normalized, entry);
+    }
+  }
+}
+
+function resolvePortalKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  apiKeyId: string,
+  portalKeyName: string
+) {
+  const byId = usageByKeyId[apiKeyId];
+  if (byId) return byId;
+
+  const byName = usageByName.get(normalizeUsageLookupKey(portalKeyName));
+  return byName || null;
 }
 
 async function buildUserDetail(userId: string, range: string) {
@@ -44,27 +94,58 @@ async function buildUserDetail(userId: string, range: string) {
   }
   const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
 
-  const analytics = await getUsageAnalytics(range);
-  const usageByKeyId: Record<string, { requests?: number; totalTokens?: number; totalCost?: number; promptTokens?: number; completionTokens?: number; byModel?: { model: string; requests: number }[] }> = {};
+  const keyIds = user.apiKeys.map((key) => key.omnirouteKeyId).filter(Boolean);
+  const analytics = keyIds.length > 0 ? await getUsageAnalytics(range, keyIds) : null;
+
+  const usageByKeyId: Record<string, ApiKeyUsage> = {};
+  const usageByName = new Map<string, ApiKeyUsage>();
   for (const entry of analytics?.byApiKey || []) {
-    usageByKeyId[entry.apiKeyId] = entry;
+    indexApiKeyUsage(usageByKeyId, usageByName, entry);
   }
 
-  const apiKeys = user.apiKeys.map((key) => ({
-    id: key.id,
-    name: key.name,
-    lastFour: key.lastFour,
-    isActive: key.isActive,
-    createdAt: key.createdAt,
-    usage: usageByKeyId[key.omnirouteKeyId] || null,
-  }));
+  const apiKeys = user.apiKeys.map((key) => {
+    const usage =
+      resolvePortalKeyUsage(usageByKeyId, usageByName, key.omnirouteKeyId, `${user.email} - ${key.name}`) ||
+      null;
 
-  const keyUsages = Object.values(usageByKeyId);
+    if (usage) {
+      let officialKeyCost = usage.cost || usage.totalCost || 0;
+      if (officialKeyCost === 0 && (usage.promptTokens || usage.completionTokens)) {
+        const topModel = usage.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+        officialKeyCost = calculateOfficialCost(topModel, usage.promptTokens || 0, usage.completionTokens || 0);
+      }
+      usage.totalCost = officialKeyCost;
+      usage.cost = officialKeyCost;
+    }
+
+    return {
+      id: key.id,
+      name: key.name,
+      lastFour: key.lastFour,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+      usage,
+    };
+  });
+
+  const keyUsages = apiKeys
+    .map((key) => key.usage)
+    .filter((entry): entry is ApiKeyUsage => Boolean(entry));
   const topModelsMap: Record<string, number> = {};
   for (const keyUsage of keyUsages) {
     for (const model of keyUsage.byModel || []) {
       topModelsMap[model.model] = (topModelsMap[model.model] || 0) + (model.requests || 0);
     }
+  }
+
+  // Calculate official total cost based on model breakdown for precision
+  let calculatedCost = 0;
+  if (analytics?.byModel) {
+    for (const m of analytics.byModel) {
+      calculatedCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+    }
+  } else {
+    calculatedCost = keyUsages.reduce((sum, entry) => sum + (entry.totalCost || 0), 0);
   }
 
   const totalPaidCents = user.payments
@@ -93,6 +174,8 @@ async function buildUserDetail(userId: string, range: string) {
     name: user.name,
     emailVerified: user.emailVerified,
     isLocked: account.isLocked || false,
+    isShadowLocked: (account as any).isShadowLocked || false,
+    isShadowBanned: (account as any).isShadowBanned || false,
     adminNote: account.adminNote || null,
     stripeCustomerId: user.stripeCustomerId,
     plan: user.plan,
@@ -109,9 +192,21 @@ async function buildUserDetail(userId: string, range: string) {
     usage: {
       totalRequests: keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0),
       totalTokens: keyUsages.reduce((sum, entry) => sum + (entry.totalTokens || 0), 0),
-      totalCost: keyUsages.reduce((sum, entry) => sum + (entry.totalCost || 0), 0),
+      totalCost: calculatedCost,
       promptTokens: keyUsages.reduce((sum, entry) => sum + (entry.promptTokens || 0), 0),
       completionTokens: keyUsages.reduce((sum, entry) => sum + (entry.completionTokens || 0), 0),
+      matchedRequests: keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0),
+      unmatchedRequests: Math.max(0, Number(analytics?.summary?.totalRequests || 0) - keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0)),
+      coveragePct:
+        Number(analytics?.summary?.totalRequests || 0) > 0
+          ? Number(
+              (
+                (keyUsages.reduce((sum, entry) => sum + (entry.requests || 0), 0) /
+                  Number(analytics?.summary?.totalRequests || 1)) *
+                100
+              ).toFixed(2)
+            )
+          : 0,
       topModels: Object.entries(topModelsMap)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
@@ -193,11 +288,87 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       case 'unlock': {
         const updated = await prisma.user.update({
           where: { id },
-          data: { isLocked: false } as never,
+          data: {
+            isLocked: false,
+            isShadowLocked: false,
+            isShadowBanned: false,
+          } as never,
           include: { plan: true, apiKeys: true, payments: true },
         });
+
+        // Clear shadow scopes from all user's keys in OmniRoute
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes: [] });
+          } catch (err) {
+            console.error(`Failed to clear scopes for key ${key.id}:`, err);
+          }
+        }
+
         await recordAdminAction({
           action: 'user.unlocked',
+          req,
+          targetUserId: user.id,
+          targetUserEmail: user.email,
+        });
+        response = { user: updated };
+        break;
+      }
+      case 'shadowBan': {
+        const active = Boolean(body?.active);
+        const updated = await prisma.user.update({
+          where: { id },
+          data: {
+            isShadowBanned: active,
+          } as never,
+          include: { plan: true, apiKeys: true, payments: true },
+        });
+
+        const scopes: string[] = [];
+        if (updated.isShadowLocked) scopes.push('shadow_lock');
+        if (updated.isShadowBanned) scopes.push('shadow_ban');
+
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes });
+          } catch (err) {
+            console.error(`Failed to update scopes for key ${key.id}:`, err);
+          }
+        }
+
+        await recordAdminAction({
+          action: active ? 'user.shadow_banned' : 'user.shadow_unbanned',
+          req,
+          targetUserId: user.id,
+          targetUserEmail: user.email,
+        });
+        response = { user: updated };
+        break;
+      }
+      case 'shadowLock': {
+        const active = Boolean(body?.active);
+        const updated = await prisma.user.update({
+          where: { id },
+          data: {
+            isShadowLocked: active,
+          } as never,
+          include: { plan: true, apiKeys: true, payments: true },
+        });
+
+        const scopes: string[] = [];
+        if (updated.isShadowLocked) scopes.push('shadow_lock');
+        if (updated.isShadowBanned) scopes.push('shadow_ban');
+
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes });
+          } catch (err) {
+            console.error(`Failed to update scopes for key ${key.id}:`, err);
+          }
+        }
+
+        await recordAdminAction({
+          action: active ? 'user.shadow_locked' : 'user.shadow_unlocked',
           req,
           targetUserId: user.id,
           targetUserEmail: user.email,

@@ -146,6 +146,7 @@ cat > "${ENV_FILE}" << ENV
 
 DOMAIN=${DOMAIN}
 PUBLIC_URL=https://${DOMAIN}
+OMNIROUTE_PUBLIC_URL=https://admin.${DOMAIN}
 SSL_ENABLED=true
 
 # PostgreSQL
@@ -205,6 +206,7 @@ if [[ "${SKIP_SSL,,}" == "y" ]]; then
     # Update .env for non-SSL
     sed -i 's/SSL_ENABLED=true/SSL_ENABLED=false/' "${ENV_FILE}"
     sed -i "s|PUBLIC_URL=https://${DOMAIN}|PUBLIC_URL=http://${DOMAIN}|" "${ENV_FILE}"
+    sed -i "s|OMNIROUTE_PUBLIC_URL=https://admin.${DOMAIN}|OMNIROUTE_PUBLIC_URL=http://admin.${DOMAIN}|" "${ENV_FILE}"
 else
     systemctl stop nginx 2>/dev/null || true
     certbot certonly --standalone --non-interactive --agree-tos \
@@ -258,9 +260,9 @@ if [[ -f "./OmniRoute/.env.example" ]]; then
     sed -i "s|^STORAGE_ENCRYPTION_KEY=.*|STORAGE_ENCRYPTION_KEY=$(grep OMNIROUTE_STORAGE_ENCRYPTION_KEY ${ENV_FILE} | cut -d= -f2-)|" ./OmniRoute/.env
 
     # Set public URL for OAuth callbacks
-    PUBLIC=$(grep PUBLIC_URL ${ENV_FILE} | cut -d= -f2-)
-    sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${PUBLIC}|" ./OmniRoute/.env
-    sed -i "s|^BASE_URL=.*|BASE_URL=${PUBLIC}|" ./OmniRoute/.env
+    OMNI_PUBLIC=$(grep OMNIROUTE_PUBLIC_URL ${ENV_FILE} | cut -d= -f2-)
+    sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env
+    sed -i "s|^BASE_URL=.*|BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env
 
     # Enable all anti-detection
     sed -i 's|^# CLI_COMPAT_ALL=.*|CLI_COMPAT_ALL=1|' ./OmniRoute/.env

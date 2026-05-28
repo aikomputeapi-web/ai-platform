@@ -7,9 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deliver:reports": "node scripts/deliver-scheduled-reports.mjs"
+    "deliver:reports": "node scripts/deliver-scheduled-reports.mjs",
+    "db:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.2",
     "@prisma/client": "5.22.0",
     "@stripe/stripe-js": "^9.2.0",
     "@types/bcryptjs": "^2.4.6",
@@ -17,6 +22,7 @@
     "jose": "^6.2.2",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",
+    "next-auth": "^4.24.14",
     "prisma": "5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

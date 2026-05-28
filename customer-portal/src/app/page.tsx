@@ -508,47 +508,50 @@ export default function Home() {
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Get the same usage and models as Anthropic's subscriptions, at 75% off</h2>
           <p className="text-[var(--color-text-secondary)] text-lg mb-16 max-w-2xl mx-auto">
-            Start free. Upgrade for higher limits and dedicated throughput.
+            Same usage limits, same model access, and a lower price than Anthropic's subscription tiers, with OpenAI models included, for free.
           </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
             {[
               {
-                name: 'Free',
-                price: '$0',
-                desc: 'Perfect for prototyping',
+                name: 'Pro',
+                price: '$5',
+                desc: 'Entry tier for everyday usage',
                 features: [
-                  '50 requests/month total',
-                  '5 req/min rate limit',
-                  'Free-tier models only',
-                  'Community support',
+                  '2,000-3,000 requests/month',
+                  '50-100 requests per 5-hour window',
+                  `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
+                  'Priority routing',
                 ],
                 featured: false,
+                href: '/signup?plan=pro',
               },
               {
-                name: 'Basic',
-                price: '$19',
-                desc: 'For indie hackers',
+                name: 'Max 5x',
+                price: '$20',
+                desc: 'Mid-volume plan with higher throughput',
                 features: [
-                  '1,000 requests/day',
-                  '20 req/min rate limit',
-                  `All models incl. ${MODELS.OPENAI_FLAGSHIP}`,
-                  'Email support',
+                  '4,000-6,000 requests/month',
+                  '100-200 requests per 5-hour window',
+                  `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
+                  'Higher priority routing',
                 ],
                 featured: true,
+                href: '/signup?plan=max-5x',
               },
               {
-                name: 'Pro',
-                price: '$49',
-                desc: 'For scaling startups',
+                name: 'Max 20x',
+                price: '$40',
+                desc: 'Highest-volume tier for heavy usage',
                 features: [
-                  '10,000 requests/day',
-                  '60 req/min rate limit',
-                  'Priority routing',
-                  'Dedicated support',
+                  '8,000-12,000 requests/month',
+                  '200-400 requests per 5-hour window',
+                  `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
+                  'Highest priority routing',
                 ],
                 featured: false,
+                href: '/signup?plan=max-20x',
               },
             ].map((plan, i) => (
               <div
@@ -577,7 +580,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <Link
-                  href="/signup"
+                  href={plan.href}
                   className={plan.featured ? 'btn-primary w-full' : 'btn-secondary w-full'}
                 >
                   Get Started

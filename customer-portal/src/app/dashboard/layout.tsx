@@ -17,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [impersonating, setImpersonating] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,6 +35,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       })
       .catch(() => router.push('/login'));
   }, [router]);
+
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   async function exitImpersonation() {
     await fetch('/api/admin/impersonation/clear', { method: 'POST' });
@@ -55,10 +61,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[var(--color-border)] flex flex-col" style={{ background: 'var(--color-bg-secondary)' }}>
+      <aside
+        className={`
+          fixed lg:static inset-y-0 left-0 z-50
+          w-64 border-r border-[var(--color-border)] flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+        style={{ background: 'var(--color-bg-secondary)' }}
+      >
         {/* Logo */}
-        <div className="p-5 border-b border-[var(--color-border)]">
+        <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -70,10 +92,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="text-xs text-[var(--color-text-muted)]">Developer Portal</div>
             </div>
           </div>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 text-[var(--color-text-muted)] hover:text-white"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map(item => (
             <Link
               key={item.href}
@@ -89,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* User */}
         <div className="p-4 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="min-w-0 flex-1">
@@ -108,18 +140,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main */}
       <main className="flex-1 overflow-auto">
+        {/* Mobile Header */}
+        <div className="lg:hidden sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 text-[var(--color-text-primary)] hover:bg-white/5 rounded-lg transition-colors"
+            aria-label="Open menu"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <span className="font-bold text-sm">AI API</span>
+          </div>
+          <div className="w-10" /> {/* Spacer for centering */}
+        </div>
+
         {impersonating && (
-          <div className="border-b border-amber-500/20 bg-amber-500/10 px-6 py-3 text-sm text-amber-200 flex items-center justify-between gap-4">
+          <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 sm:px-6 py-3 text-sm text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <span className="font-semibold uppercase tracking-wider text-xs mr-2">Impersonation</span>
               You are viewing this account as {user?.email}.
             </div>
-            <button onClick={exitImpersonation} className="btn-secondary text-xs px-3 py-1.5">
+            <button onClick={exitImpersonation} className="btn-secondary text-xs px-3 py-1.5 whitespace-nowrap">
               Exit impersonation
             </button>
           </div>
         )}
-        <div className="max-w-6xl mx-auto p-8">
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>

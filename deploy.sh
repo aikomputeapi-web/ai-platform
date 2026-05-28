@@ -59,18 +59,30 @@ sync_env_var() {
 
 # ── Sync OmniRoute .env secrets ──
 if [[ -f "./OmniRoute/.env.example" ]] && [[ -f "./OmniRoute/.env" ]]; then
+    # Ensure OMNIROUTE_PUBLIC_URL is in .env
+    if ! grep -q "^OMNIROUTE_PUBLIC_URL=" "${ENV_FILE}"; then
+        DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
+        SSL_ENABLED=$(grep "^SSL_ENABLED=" "${ENV_FILE}" | cut -d= -f2- || echo "true")
+        SCHEME="https"
+        if [[ "${SSL_ENABLED}" == "false" ]]; then
+            SCHEME="http"
+        fi
+        echo "OMNIROUTE_PUBLIC_URL=${SCHEME}://admin.${DOMAIN}" >> "${ENV_FILE}"
+        log "Added OMNIROUTE_PUBLIC_URL to .env"
+    fi
+
     JWT=$(grep "^OMNIROUTE_JWT_SECRET=" "${ENV_FILE}" | cut -d= -f2-)
     API_KEY=$(grep "^OMNIROUTE_API_KEY_SECRET=" "${ENV_FILE}" | cut -d= -f2-)
     STORAGE_KEY=$(grep "^OMNIROUTE_STORAGE_ENCRYPTION_KEY=" "${ENV_FILE}" | cut -d= -f2-)
     ADMIN_PASS=$(grep "^OMNIROUTE_INITIAL_PASSWORD=" "${ENV_FILE}" | cut -d= -f2-)
-    PUBLIC=$(grep "^PUBLIC_URL=" "${ENV_FILE}" | cut -d= -f2-)
+    OMNI_PUBLIC=$(grep "^OMNIROUTE_PUBLIC_URL=" "${ENV_FILE}" | cut -d= -f2-)
 
     sync_env_var "JWT_SECRET" "${JWT}" "./OmniRoute/.env"
     sync_env_var "API_KEY_SECRET" "${API_KEY}" "./OmniRoute/.env"
     sync_env_var "STORAGE_ENCRYPTION_KEY" "${STORAGE_KEY}" "./OmniRoute/.env"
     sync_env_var "INITIAL_PASSWORD" "${ADMIN_PASS}" "./OmniRoute/.env"
-    sync_env_var "NEXT_PUBLIC_BASE_URL" "${PUBLIC}" "./OmniRoute/.env"
-    sync_env_var "BASE_URL" "${PUBLIC}" "./OmniRoute/.env"
+    sync_env_var "NEXT_PUBLIC_BASE_URL" "${OMNI_PUBLIC}" "./OmniRoute/.env"
+    sync_env_var "BASE_URL" "${OMNI_PUBLIC}" "./OmniRoute/.env"
 
     log "OmniRoute .env synced"
 fi
@@ -88,13 +100,12 @@ else
     CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "unknown")
 fi
 
-NEEDS_OMNIROUTE_BUILD=false
+# OmniRoute is a git submodule, and its updates can be missed by a single-commit
+# diff after the deploy script itself changes. Rebuild it on every deploy so the
+# container always picks up the latest submodule commit.
+NEEDS_OMNIROUTE_BUILD=true
 NEEDS_PORTAL_BUILD=false
 NEEDS_FULL_RESTART=false
-
-if echo "${CHANGED_FILES}" | grep -q "^OmniRoute/"; then
-    NEEDS_OMNIROUTE_BUILD=true
-fi
 
 if echo "${CHANGED_FILES}" | grep -q "^customer-portal/"; then
     NEEDS_PORTAL_BUILD=true
@@ -244,13 +255,50 @@ else
     roll_service_pair "customer-portal"
 fi
 
-# ── Reload nginx if config changed ──
-if echo "${CHANGED_FILES}" | grep -q "nginx/"; then
-    info "Nginx config changed — reloading"
+# ── Reload nginx if config changed or staging config is active ──
+if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf" ]] || grep -q "Staging Configuration" "/etc/nginx/nginx.conf"; then
+    info "Nginx config changed, missing, or staging config is active — reloading"
     DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
-    sudo cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
-    sudo sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" /etc/nginx/nginx.conf
-    sudo nginx -t 2>/dev/null && sudo systemctl reload nginx && log "Nginx reloaded" || warn "Nginx reload failed"
+
+    # Detect which SSL certificate directory to use
+    CERT_DOMAIN="${DOMAIN}"
+    if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
+        if [[ -d "/etc/letsencrypt/live/aikompute.indevs.in" ]]; then
+            CERT_DOMAIN="aikompute.indevs.in"
+        elif [[ -d "/etc/letsencrypt/live/aikompute.indevs.in-0001" ]]; then
+            CERT_DOMAIN="aikompute.indevs.in-0001"
+        else
+            FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" | head -n 1 || true)
+            if [[ -n "${FOUND_CERT}" ]]; then
+                CERT_DOMAIN=$(basename "${FOUND_CERT}")
+            fi
+        fi
+    fi
+    info "Using SSL certificate for domain: ${CERT_DOMAIN}"
+
+    # Prepare nginx config safely
+    TEMP_CONF="${SCRIPT_DIR}/nginx/nginx.conf.tmp"
+    cp "${SCRIPT_DIR}/nginx/nginx.conf" "${TEMP_CONF}"
+
+    sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${TEMP_CONF}"
+    sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
+
+    # Backup, copy, test, and reload
+    sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
+    sudo cp "${TEMP_CONF}" /etc/nginx/nginx.conf
+    rm -f "${TEMP_CONF}"
+
+    if sudo nginx -t; then
+        sudo systemctl reload nginx
+        log "Nginx reloaded successfully"
+        sudo rm -f /etc/nginx/nginx.conf.bak
+    else
+        warn "Nginx config test failed! Restoring backup config."
+        sudo cp /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf
+        sudo rm -f /etc/nginx/nginx.conf.bak
+        sudo systemctl reload nginx
+        error "Nginx deployment failed."
+    fi
 fi
 
 # ── Post-deploy confirmation ──

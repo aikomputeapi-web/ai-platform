@@ -39,6 +39,8 @@ interface UserListItem {
   name: string | null;
   emailVerified: boolean;
   isLocked: boolean;
+  isShadowLocked: boolean;
+  isShadowBanned: boolean;
   adminNote: string | null;
   plan: Plan;
   createdAt: string;
@@ -65,6 +67,16 @@ interface Summary {
   totalRequests: number;
   totalTokens: number;
   totalCost: number;
+  platformTotalRequests?: number;
+  platformTotalTokens?: number;
+  platformTotalCost?: number;
+  matchedRequests?: number;
+  matchedTokens?: number;
+  matchedCost?: number;
+  unmatchedRequests?: number;
+  unmatchedTokens?: number;
+  unmatchedCost?: number;
+  coveragePct?: number;
   planBreakdown: { id: string; name: string; priceCents: number; userCount: number }[];
 }
 
@@ -112,6 +124,8 @@ interface UserDetail {
   name: string | null;
   emailVerified: boolean;
   isLocked: boolean;
+  isShadowLocked: boolean;
+  isShadowBanned: boolean;
   adminNote: string | null;
   stripeCustomerId: string | null;
   plan: Plan;
@@ -126,6 +140,9 @@ interface UserDetail {
     promptTokens: number;
     completionTokens: number;
     topModels: { model: string; requests: number }[];
+    matchedRequests?: number;
+    unmatchedRequests?: number;
+    coveragePct?: number;
   };
   totalPaidCents: number;
   recentAudit: AuditLogItem[];
@@ -261,14 +278,21 @@ export default function AdminAccountsDashboard() {
     }
   }, [range]);
 
+
+
   useEffect(() => {
-    void fetchOverview(range);
+    const timer = window.setTimeout(() => {
+      void fetchOverview(range);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchOverview, range]);
 
   useEffect(() => {
-    if (selectedUserId) {
+    if (!selectedUserId) return;
+    const timer = window.setTimeout(() => {
       void fetchUserDetail(selectedUserId, range);
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [selectedUserId, range, fetchUserDetail]);
 
   const filteredUsers = useMemo(() => {
@@ -566,8 +590,11 @@ export default function AdminAccountsDashboard() {
                 <button
                   key={option}
                   onClick={() => setRange(option)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === option ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                  style={range === option ? { background: 'linear-gradient(135deg, #6366f1, #10b981)' } : { background: 'var(--color-bg-card)' }}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                    range === option
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                  }`}
                 >
                   {option.toUpperCase()}
                 </button>
@@ -585,14 +612,30 @@ export default function AdminAccountsDashboard() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
           {[
-            { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#6366f1' },
+            { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#ffffff' },
             { label: 'Revenue', value: fmtUSD(summary.totalRevenueCents), sub: `${fmt(totalPayingAccounts)} paying`, color: '#10b981' },
-            { label: 'Requests', value: fmtTokens(summary.totalRequests), sub: `range ${data.range.toUpperCase()}`, color: '#8b5cf6' },
-            { label: 'Tokens', value: fmtTokens(summary.totalTokens), sub: `$${summary.totalCost.toFixed(2)} est. cost`, color: '#ef4444' },
-            { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#f59e0b' },
-            { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#f97316' },
-            { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#22c55e' },
-            { label: 'Flags', value: fmt(totalLockedUsers + noteCount), sub: 'focus list signals', color: '#ec4899' },
+            {
+              label: 'Requests',
+              value: fmtTokens(summary.totalRequests),
+              sub:
+                typeof summary.matchedRequests === 'number'
+                  ? `${fmt(summary.matchedRequests)} matched · ${fmt(summary.unmatchedRequests || 0)} unmatched`
+                  : `range ${data.range.toUpperCase()}`,
+              color: '#a1a1aa',
+            },
+            {
+              label: 'Tokens',
+              value: fmtTokens(summary.totalTokens),
+              sub:
+                typeof summary.matchedTokens === 'number'
+                  ? `${fmtTokens(summary.matchedTokens)} matched · ${fmtTokens(summary.unmatchedTokens || 0)} unmatched`
+                  : `$${summary.totalCost.toFixed(2)} est. cost`,
+              color: '#71717a',
+            },
+            { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#52525b' },
+            { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#ef4444' },
+            { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#d4d4d8' },
+            { label: 'Flags', value: fmt(totalLockedUsers + noteCount), sub: 'focus list signals', color: '#f59e0b' },
           ].map((card, index) => (
             <div key={card.label} className="stat-card" style={{ animationDelay: `${index * 0.04}s` }}>
               <div className="flex items-center justify-between mb-2">
@@ -605,89 +648,110 @@ export default function AdminAccountsDashboard() {
           ))}
         </div>
 
-        <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8">
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Customer Accounts</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Search, sort, and open detailed actions for any account.</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
-                    type="text"
-                    className="input-field text-sm py-2 pl-9 w-full sm:w-80"
-                    placeholder="Search email, name, plan, or note..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+        {typeof summary.unmatchedRequests === 'number' && summary.unmatchedRequests > 0 && (
+          <div className="mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <span className="font-semibold">Analytics gap detected.</span>{' '}
+              {fmt(summary.unmatchedRequests)} requests and {fmtTokens(summary.unmatchedTokens || 0)} tokens are not yet tied to portal accounts.
+            </div>
+            <div className="text-xs uppercase tracking-wider text-amber-200/80">
+              Coverage {typeof summary.coveragePct === 'number' ? `${summary.coveragePct}%` : 'n/a'}
+            </div>
+          </div>
+        )}
+
+        <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8 w-full max-w-full">
+          <div className="glass-card overflow-hidden min-w-0 w-full">
+            <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Customer Accounts</h2>
+                  <p className="text-sm text-[var(--color-text-muted)]">Search, sort, and open detailed actions for any account.</p>
                 </div>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="input-field text-sm py-2 w-full sm:w-44"
-                  style={{ appearance: 'auto' }}
-                >
-                  <option value="recent">Newest First</option>
-                  <option value="requests">Most Requests</option>
-                  <option value="tokens">Most Tokens</option>
-                  <option value="paid">Highest Paid</option>
-                  <option value="status">Status Priority</option>
-                </select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setScope(item)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${scope === item ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-white'}`}
-                    style={scope === item ? { background: 'linear-gradient(135deg, #6366f1, #10b981)' } : { background: 'var(--color-bg-card)' }}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input
+                      type="text"
+                      className="input-field text-sm py-2 pl-9 w-full sm:w-80"
+                      placeholder="Search email, name, plan, or note..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="input-field text-sm py-2 w-full sm:w-44"
+                    style={{ appearance: 'auto' }}
                   >
-                    {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
-                  </button>
-                ))}
-                <button type="button" onClick={saveCurrentView} className="btn-secondary text-xs py-1.5 px-3">Save view</button>
+                    <option value="recent">Newest First</option>
+                    <option value="requests">Most Requests</option>
+                    <option value="tokens">Most Tokens</option>
+                    <option value="paid">Highest Paid</option>
+                    <option value="status">Status Priority</option>
+                  </select>
+                </div>
               </div>
-                {savedViews.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mr-1">Saved</span>
-                    {savedViews.map((view) => (
+
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
                     <button
-                      key={view.name}
+                      key={item}
                       type="button"
-                      onClick={() => applySavedView(view)}
-                      className="px-3 py-1 rounded-full text-[11px] font-medium"
-                      style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}
+                      onClick={() => setScope(item)}
+                      className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
+                        scope === item
+                          ? 'bg-white text-black border-white'
+                          : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
+                      }`}
                     >
-                      {view.name}
+                      {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
                     </button>
                   ))}
+                  <button type="button" onClick={saveCurrentView} className="btn-secondary text-xs py-1.5 px-3">Save view</button>
                 </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={exportFilteredCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                  <Download size={14} />
-                  Export CSV
-                </button>
-                <button type="button" onClick={() => importInputRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                  <Download size={14} />
-                  Import CSV
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      void importCsvFile(file);
-                    }
-                    e.currentTarget.value = '';
-                  }}
-                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {savedViews.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mr-2">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mr-1">Saved</span>
+                      {savedViews.map((view) => (
+                        <button
+                          key={view.name}
+                          type="button"
+                          onClick={() => applySavedView(view)}
+                          className="px-3 py-1 rounded-full text-[11px] font-medium"
+                          style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}
+                        >
+                          {view.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" onClick={exportFilteredCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                    <Download size={14} />
+                    Export CSV
+                  </button>
+                  <button type="button" onClick={() => importInputRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                    <Download size={14} />
+                    Import CSV
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        void importCsvFile(file);
+                      }
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </div>
               </div>
             </div>
             {importStatus && (
@@ -721,11 +785,11 @@ export default function AdminAccountsDashboard() {
               </div>
             )}
 
-              <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <th className="px-4 py-3 font-semibold">
+                    <th className="px-3 py-3 font-semibold w-10">
                       <input
                         ref={bulkSelectRef}
                         type="checkbox"
@@ -734,15 +798,15 @@ export default function AdminAccountsDashboard() {
                         className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)]"
                       />
                     </th>
-                    <th className="px-6 py-3 font-semibold">User</th>
-                    <th className="px-4 py-3 font-semibold">Plan</th>
-                    <th className="px-4 py-3 font-semibold">Joined</th>
-                    <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                    <th className="px-4 py-3 font-semibold text-right">Keys</th>
-                    <th className="px-4 py-3 font-semibold text-right">Paid</th>
-                    <th className="px-4 py-3 font-semibold text-center">Status</th>
-                    <th className="px-4 py-3 font-semibold text-center">Notes</th>
-                    <th className="px-4 py-3 font-semibold"></th>
+                    <th className="px-3 py-3 font-semibold">User</th>
+                    <th className="px-3 py-3 font-semibold w-20">Plan</th>
+                    <th className="px-3 py-3 font-semibold w-20">Joined</th>
+                    <th className="px-3 py-3 font-semibold text-right w-20">Requests</th>
+                    <th className="px-3 py-3 font-semibold text-right w-14">Keys</th>
+                    <th className="px-3 py-3 font-semibold text-right w-20">Paid</th>
+                    <th className="px-3 py-3 font-semibold text-center w-20">Status</th>
+                    <th className="px-3 py-3 font-semibold text-center w-16">Notes</th>
+                    <th className="px-3 py-3 font-semibold w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -758,48 +822,57 @@ export default function AdminAccountsDashboard() {
                           setSelectedUserId(user.id);
                         }}
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(user.id)}
+                            onChange={(e) => toggleSelection(user.id, e.target.checked)}
+                            className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
                           <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(user.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => toggleSelection(user.id, e.target.checked)}
-                              className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
-                            />
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #10b981)' }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--color-bg-card-hover)] border border-[var(--color-border)] text-white">
                               {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-medium truncate max-w-[220px]">{user.name || '—'}</div>
-                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[220px]">{user.email}</div>
+                              <div className="font-medium truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.name || '—'}</div>
+                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3">
                           <span className={`badge-${user.plan.id === 'free' ? 'warning' : user.plan.id === 'pro' ? 'accent' : 'success'}`}>{user.plan.name}</span>
                         </td>
-                        <td className="px-4 py-4 text-[var(--color-text-muted)]">
+                        <td className="px-3 py-3 text-[var(--color-text-muted)]">
                           {timeAgo(user.createdAt, now)}
                         </td>
-                        <td className="px-4 py-4 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
-                        <td className="px-4 py-4 text-right font-mono">{fmt(user.apiKeys.length)}</td>
-                        <td className="px-4 py-4 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
+                        <td className="px-3 py-3 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
+                        <td className="px-3 py-3 text-right font-mono">{fmt(user.apiKeys.length)}</td>
+                        <td className="px-3 py-3 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
                           {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          {user.isLocked ? (
-                            <span className="badge-danger">locked</span>
-                          ) : user.emailVerified ? (
-                            <span className="badge-success">verified</span>
-                          ) : (
-                            <span className="badge-warning">pending</span>
-                          )}
+                        <td className="px-3 py-3 text-center">
+                          <div className="flex flex-col gap-1 items-center">
+                            {user.isLocked ? (
+                              <span className="badge-danger">locked</span>
+                            ) : user.emailVerified ? (
+                              <span className="badge-success">verified</span>
+                            ) : (
+                              <span className="badge-warning">pending</span>
+                            )}
+                            {user.isShadowBanned && (
+                              <span className="badge-danger text-[10px] py-0.5 px-1.5">shadowbanned</span>
+                            )}
+                            {user.isShadowLocked && (
+                              <span className="badge-warning text-[10px] py-0.5 px-1.5">shadowlocked</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-3 py-3 text-center">
                           {user.adminNote ? <span className="badge-accent">note</span> : <span className="text-[var(--color-text-muted)]">—</span>}
                         </td>
-                        <td className="px-4 py-4 text-right text-[var(--color-text-muted)]">
+                        <td className="px-3 py-3 text-right text-[var(--color-text-muted)]">
                           <ChevronRight size={15} className={`inline-block transition-transform ${isSelected ? 'rotate-90' : ''}`} />
                         </td>
                       </tr>
@@ -810,7 +883,7 @@ export default function AdminAccountsDashboard() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0 w-full">
             <div className="glass-card p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-base font-semibold">Attention Queue</h2>
@@ -820,7 +893,7 @@ export default function AdminAccountsDashboard() {
                 {attentionUsers.length > 0 ? attentionUsers.map((user) => (
                   <button
                     key={user.id}
-                    className="w-full p-3 rounded-xl text-left border border-transparent hover:border-[rgba(99,102,241,0.2)] transition-colors"
+                    className="w-full p-3 rounded-xl text-left border border-transparent hover:border-[var(--color-border-focus)] transition-colors"
                     style={{ background: 'var(--color-bg-primary)' }}
                     onClick={() => {
                       setSelectedUser(null);
@@ -877,8 +950,8 @@ export default function AdminAccountsDashboard() {
                         <span className="font-medium">{plan.name}</span>
                         <span className="text-[var(--color-text-muted)]">{fmt(plan.userCount)} users</span>
                       </div>
-                      <div className="h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${Math.max(share, 4)}%`, background: 'linear-gradient(90deg, #6366f1, #10b981)' }} />
+                      <div className="h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(share, 4)}%` }} />
                       </div>
                     </div>
                   );
@@ -892,7 +965,7 @@ export default function AdminAccountsDashboard() {
       {selectedUserId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
           <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-[var(--color-bg-primary)] border-l border-[var(--color-border)] shadow-2xl overflow-y-auto">
-            <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(14px)' }}>
+            <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(14px)' }}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
@@ -932,19 +1005,25 @@ export default function AdminAccountsDashboard() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalRequests)}</div>
+                      <div className="stat-value text-2xl">{fmt(openUser.usage.totalRequests)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total API requests</div>
                     </div>
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Tokens</div>
                       <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalTokens)}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">
+                        {fmtTokens(openUser.usage.promptTokens)} prompt · {fmtTokens(openUser.usage.completionTokens)} completion
+                      </div>
                     </div>
                     <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">API Cost</div>
-                      <div className="stat-value text-2xl">{openUser.usage.totalCost.toFixed(4)}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Estimated Spend</div>
+                      <div className="stat-value text-2xl">{fmtUSD(Math.round(openUser.usage.totalCost * 100))}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Based on model usage</div>
                     </div>
                     <div className="stat-card">
                       <div className="text-xs text-[var(--color-text-muted)] mb-1">Paid</div>
                       <div className="stat-value text-2xl">{openUser.totalPaidCents > 0 ? fmtUSD(openUser.totalPaidCents) : '—'}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total payments received</div>
                     </div>
                   </div>
 
@@ -953,8 +1032,10 @@ export default function AdminAccountsDashboard() {
                       <div className="glass-card p-5">
                         <div className="flex items-center justify-between gap-3 mb-4">
                           <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Profile State</h4>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {openUser.isLocked ? <span className="badge-danger">locked</span> : <span className="badge-success">active</span>}
+                            {openUser.isShadowBanned && <span className="badge-danger">shadowbanned</span>}
+                            {openUser.isShadowLocked && <span className="badge-warning">shadowlocked</span>}
                             {openUser.emailVerified ? <span className="badge-success">verified</span> : <span className="badge-warning">pending</span>}
                           </div>
                         </div>
@@ -1079,6 +1160,28 @@ export default function AdminAccountsDashboard() {
                             <span className="inline-flex items-center gap-2">
                               {openUser.isLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
                               {openUser.isLocked ? 'Unlock account' : 'Lock account'}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                          </button>
+                          <button
+                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            onClick={() => void submitAction('shadowBan', { active: !openUser.isShadowBanned })}
+                            disabled={actionLoading === 'shadowBan'}
+                          >
+                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowBanned ? 'text-green-400' : 'text-red-400'}`}>
+                              {openUser.isShadowBanned ? <Unlock size={16} /> : <Ban size={16} />}
+                              {openUser.isShadowBanned ? 'Remove Shadowban' : 'Shadowban account'}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                          </button>
+                          <button
+                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            onClick={() => void submitAction('shadowLock', { active: !openUser.isShadowLocked })}
+                            disabled={actionLoading === 'shadowLock'}
+                          >
+                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowLocked ? 'text-green-400' : 'text-amber-400'}`}>
+                              {openUser.isShadowLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
+                              {openUser.isShadowLocked ? 'Remove Shadowlock' : 'Shadowlock account'}
                             </span>
                             <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
                           </button>

@@ -1,0 +1,115 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  AI Platform — Docker Compose Staging Overlay
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#  Usage:
+#    docker compose --env-file .env.staging \
+#      -f docker-compose.unified.yml \
+#      -f docker-compose.staging.yml \
+#      -p aikompute-staging up -d
+#
+#  This overlay gives staging its own:
+#    ✓ Container names (staging-*)
+#    ✓ Host ports (non-conflicting with production)
+#    ✓ Docker volumes (isolated data)
+#    ✓ Docker network (no crosstalk with production)
+#    ✓ Environment overrides (staging URLs, NODE_ENV)
+#
+#  Port mapping:
+#    Production → Staging
+#    3000       → 3301   (Customer Portal)
+#    20128      → 22028  (OmniRoute Dashboard)
+#    20129      → 22029  (OmniRoute API)
+#    5432       → 55432  (PostgreSQL)
+#    6379       → 56379  (Redis)
+#    8085       → 8185   (CLIProxyAPI UI)
+#
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  postgres:
+    container_name: staging-postgres
+    ports: !override
+      - "127.0.0.1:55432:5432"
+    volumes: !override
+      - staging_postgres_data:/var/lib/postgresql/data
+    networks: !override
+      ai-staging-network: null
+
+  redis:
+    container_name: staging-redis
+    ports: !override
+      - "127.0.0.1:56379:6379"
+    volumes: !override
+      - staging_redis_data:/data
+    networks: !override
+      ai-staging-network: null
+
+  omniroute:
+    container_name: staging-omniroute
+    env_file: !override
+      - ./OmniRoute/.env.staging
+    ports: !override
+      - "127.0.0.1:22028:20128"
+      - "127.0.0.1:22029:20129"
+    volumes: !override
+      - staging_omniroute_data:/app/data
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
+      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+    networks: !override
+      ai-staging-network: null
+
+  cliproxyapi:
+    container_name: staging-cliproxyapi
+    ports: !override
+      - "127.0.0.1:8185:8085"
+    volumes: !override
+      - ./cliproxyapi-config.yaml:/CLIProxyAPI/config.yaml:ro
+      - staging_cliproxyapi_data:/root/.cli-proxy-api
+    networks: !override
+      ai-staging-network: null
+
+  customer-portal:
+    container_name: staging-customer-portal
+    ports: !override
+      - "127.0.0.1:3301:3000"
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-aikompute [STAGING]}
+      NEXTAUTH_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
+    networks: !override
+      ai-staging-network: null
+
+  report-deliverer:
+    container_name: staging-report-deliverer
+    environment:
+      PORTAL_INTERNAL_URL: http://customer-portal:3000
+      REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:-staging-admin}
+      NODE_ENV: staging
+    networks: !override
+      ai-staging-network: null
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Volumes — completely separate from production
+# ═══════════════════════════════════════════════════════════════════════════════
+volumes:
+  staging_postgres_data:
+    name: ai-postgres-data-staging
+  staging_redis_data:
+    name: ai-redis-data-staging
+  staging_omniroute_data:
+    name: ai-omniroute-data-staging
+  staging_cliproxyapi_data:
+    name: ai-cliproxyapi-data-staging
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Network — isolated from production
+# ═══════════════════════════════════════════════════════════════════════════════
+networks:
+  ai-staging-network:
+    name: ai-staging-network
+    driver: bridge

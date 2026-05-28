@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getUsageAnalytics } from '@/lib/omniroute';
 import prisma from '@/lib/db';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
@@ -15,38 +16,83 @@ export async function GET(req: NextRequest) {
       select: { omnirouteKeyId: true, name: true },
     });
 
-    const keyIds = new Set(userKeys.map(k => k.omnirouteKeyId));
+    const keyIds = userKeys.map(k => k.omnirouteKeyId);
 
-    // Get full analytics from OmniRoute
-    const analytics = await getUsageAnalytics(range);
-
-    if (!analytics) {
+    if (keyIds.length === 0) {
       return NextResponse.json({
-        summary: { totalTokens: 0, totalRequests: 0, totalCost: 0 },
+        summary: { totalTokens: 0, totalRequests: 0, totalCost: 0, promptTokens: 0, completionTokens: 0 },
         dailyTrend: [],
         byModel: [],
+        byApiKey: [],
+        range,
       });
     }
 
-    // Filter byApiKey to only this user's keys
+    // Get analytics from OmniRoute filtered by this user's API key IDs
+    const analytics = await getUsageAnalytics(range, keyIds);
+
+    if (!analytics) {
+      return NextResponse.json({
+        summary: { totalTokens: 0, totalRequests: 0, totalCost: 0, promptTokens: 0, completionTokens: 0 },
+        dailyTrend: [],
+        byModel: [],
+        byApiKey: [],
+        range,
+      });
+    }
+
+    // Filter byApiKey to only this user's keys (defense-in-depth,
+    // OmniRoute already filters by apiKeyIds but also matches on api_key_name)
+    const keyIdSet = new Set(keyIds);
     const userApiKeyUsage = (analytics.byApiKey || []).filter((k: any) =>
-      keyIds.has(k.apiKeyId)
+      keyIdSet.has(k.apiKeyId)
     );
 
-    // Recalculate summary from user's keys only
+    // Use the server-side filtered summary from OmniRoute directly,
+    // but fall back to aggregating from byApiKey if the summary includes
+    // data from keys not belonging to this user
+    let userTotalCost = 0;
+    if (analytics.byModel && analytics.byModel.length > 0) {
+      for (const m of analytics.byModel) {
+        userTotalCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+      }
+    } else {
+      for (const k of userApiKeyUsage) {
+        let keyCost = k.cost || k.totalCost || 0;
+        if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+          const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+          keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+        }
+        userTotalCost += keyCost;
+      }
+    }
+
+    const userApiKeyUsageWithOfficialCost = userApiKeyUsage.map((k: any) => {
+      let keyCost = k.cost || k.totalCost || 0;
+      if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+        const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+        keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+      }
+      return {
+        ...k,
+        totalCost: keyCost,
+        cost: keyCost,
+      };
+    });
+
     const summary = {
-      totalTokens: userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.totalTokens || 0), 0),
-      totalRequests: userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.requests || 0), 0),
-      totalCost: userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.cost || 0), 0),
-      promptTokens: userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.promptTokens || 0), 0),
-      completionTokens: userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.completionTokens || 0), 0),
+      totalTokens: analytics.summary?.totalTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.totalTokens || 0), 0),
+      totalRequests: analytics.summary?.totalRequests || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.requests || 0), 0),
+      totalCost: userTotalCost,
+      promptTokens: analytics.summary?.promptTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.promptTokens || 0), 0),
+      completionTokens: analytics.summary?.completionTokens || userApiKeyUsage.reduce((sum: number, k: any) => sum + (k.completionTokens || 0), 0),
     };
 
     return NextResponse.json({
       summary,
       dailyTrend: analytics.dailyTrend || [],
       byModel: analytics.byModel || [],
-      byApiKey: userApiKeyUsage,
+      byApiKey: userApiKeyUsageWithOfficialCost,
       range,
     });
   } catch (error) {
@@ -57,3 +103,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch usage' }, { status: 500 });
   }
 }
+

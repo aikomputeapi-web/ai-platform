@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     // Enforce key limit based on plan
     const keyCount = await prisma.userApiKey.count({ where: { userId: user.id } });
-    const maxKeys = user.planId === 'free' ? 2 : user.planId === 'basic' ? 5 : 20;
+    const maxKeys = user.planId === 'free' ? 2 : user.planId === 'pro' ? 5 : user.planId === 'max-5x' ? 10 : 20;
     if (keyCount >= maxKeys) {
       return NextResponse.json(
         { error: `Maximum ${maxKeys} API keys allowed on your plan` },
@@ -38,9 +38,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Determine if user has shadowban/shadowlock active
+    const userWithShadow = user as typeof user & { isShadowLocked?: boolean; isShadowBanned?: boolean };
+    const scopes: string[] = [];
+    if (userWithShadow.isShadowLocked) {
+      scopes.push("shadow_lock");
+    }
+    if (userWithShadow.isShadowBanned) {
+      scopes.push("shadow_ban");
+    }
+
     // Create key in OmniRoute
     const keyName = `${user.email} - ${name || 'Default Key'}`;
-    const omniKey = await createOmniRouteKey(keyName);
+    const omniKey = await createOmniRouteKey(keyName, scopes);
 
     // Set limits based on user's plan
     const userWithPlan = await prisma.user.findUnique({

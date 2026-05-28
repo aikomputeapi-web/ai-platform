@@ -2,17 +2,57 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyAdminAccess } from '@/lib/admin';
 import { getUsageAnalytics } from '@/lib/omniroute';
+import { calculateOfficialCost } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
 interface ApiKeyUsage {
   apiKeyId: string;
+  apiKey?: string;
+  apiKeyName?: string;
+  historicalApiKeyNames?: string[];
   requests?: number;
   totalTokens?: number;
+  cost?: number;
   totalCost?: number;
   promptTokens?: number;
   completionTokens?: number;
   byModel?: { model: string; requests: number }[];
+}
+
+function normalizeUsageLookupKey(value: string | null | undefined) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function indexApiKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  entry: ApiKeyUsage
+) {
+  if (entry.apiKeyId) {
+    usageByKeyId[entry.apiKeyId] = entry;
+  }
+
+  const apiKeyNames = [entry.apiKeyName, entry.apiKey, ...(entry.historicalApiKeyNames || [])];
+  for (const name of apiKeyNames) {
+    const normalized = normalizeUsageLookupKey(name);
+    if (normalized && !usageByName.has(normalized)) {
+      usageByName.set(normalized, entry);
+    }
+  }
+}
+
+function resolvePortalKeyUsage(
+  usageByKeyId: Record<string, ApiKeyUsage>,
+  usageByName: Map<string, ApiKeyUsage>,
+  apiKeyId: string,
+  portalKeyName: string
+) {
+  const byId = usageByKeyId[apiKeyId];
+  if (byId) return byId;
+
+  const byName = usageByName.get(normalizeUsageLookupKey(portalKeyName));
+  return byName || null;
 }
 
 /**
@@ -57,23 +97,42 @@ export async function GET(req: NextRequest) {
 
     // 4. Build a lookup: omnirouteKeyId -> usage stats
     const usageByKeyId: Record<string, ApiKeyUsage> = {};
+    const usageByName = new Map<string, ApiKeyUsage>();
     if (analytics?.byApiKey) {
       for (const entry of analytics.byApiKey) {
-        usageByKeyId[entry.apiKeyId] = entry;
+        indexApiKeyUsage(usageByKeyId, usageByName, entry);
       }
     }
 
     // 5. Enrich each user with their aggregated usage
     const enrichedUsers = users.map(user => {
       const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
-      const userKeyIds = user.apiKeys.map(k => k.omnirouteKeyId);
-      const keyUsages = userKeyIds
-        .map(id => usageByKeyId[id])
+      const keyUsages = user.apiKeys
+        .map((key) =>
+          resolvePortalKeyUsage(
+            usageByKeyId,
+            usageByName,
+            key.omnirouteKeyId,
+            `${user.email} - ${key.name}`
+          )
+        )
         .filter((entry): entry is ApiKeyUsage => Boolean(entry));
 
       const totalTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalTokens || 0), 0);
       const totalRequests = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.requests || 0), 0);
-      const totalCost = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.totalCost || 0), 0);
+      
+      let userTotalCost = 0;
+      for (const k of keyUsages) {
+        let keyCost = k.cost || k.totalCost || 0;
+        if (keyCost === 0 && (k.promptTokens || k.completionTokens)) {
+          const topModel = k.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+          keyCost = calculateOfficialCost(topModel, k.promptTokens || 0, k.completionTokens || 0);
+        }
+        k.totalCost = keyCost;
+        k.cost = keyCost;
+        userTotalCost += keyCost;
+      }
+
       const promptTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.promptTokens || 0), 0);
       const completionTokens = keyUsages.reduce((sum: number, k: ApiKeyUsage) => sum + (k.completionTokens || 0), 0);
 
@@ -101,23 +160,43 @@ export async function GET(req: NextRequest) {
         name: user.name,
         emailVerified: user.emailVerified,
         isLocked: account.isLocked || false,
+        isShadowLocked: (account as any).isShadowLocked || false,
+        isShadowBanned: (account as any).isShadowBanned || false,
         adminNote: account.adminNote || null,
         plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        apiKeys: user.apiKeys.map(k => ({
-          id: k.id,
-          name: k.name,
-          lastFour: k.lastFour,
-          isActive: k.isActive,
-          createdAt: k.createdAt,
-          usage: usageByKeyId[k.omnirouteKeyId] || null,
-        })),
+        apiKeys: user.apiKeys.map(k => {
+          const usage =
+            resolvePortalKeyUsage(
+              usageByKeyId,
+              usageByName,
+              k.omnirouteKeyId,
+              `${user.email} - ${k.name}`
+            ) || null;
+          if (usage) {
+            let keyCost = usage.cost || usage.totalCost || 0;
+            if (keyCost === 0 && (usage.promptTokens || usage.completionTokens)) {
+              const topModel = usage.byModel?.sort((a: any, b: any) => b.requests - a.requests)[0]?.model;
+              keyCost = calculateOfficialCost(topModel, usage.promptTokens || 0, usage.completionTokens || 0);
+            }
+            usage.totalCost = keyCost;
+            usage.cost = keyCost;
+          }
+          return {
+            id: k.id,
+            name: k.name,
+            lastFour: k.lastFour,
+            isActive: k.isActive,
+            createdAt: k.createdAt,
+            usage,
+          };
+        }),
         payments: user.payments,
         usage: {
           totalTokens,
           totalRequests,
-          totalCost,
+          totalCost: userTotalCost,
           promptTokens,
           completionTokens,
           topModels,
@@ -127,6 +206,22 @@ export async function GET(req: NextRequest) {
     });
 
     // 6. Platform-wide aggregates
+    const matchedRequests = enrichedUsers.reduce((sum, user) => sum + (user.usage.totalRequests || 0), 0);
+    const matchedTokens = enrichedUsers.reduce((sum, user) => sum + (user.usage.totalTokens || 0), 0);
+    const matchedCost = enrichedUsers.reduce((sum, user) => sum + (user.usage.totalCost || 0), 0);
+    const totalRequests = analytics?.summary?.totalRequests || 0;
+    const totalTokens = analytics?.summary?.totalTokens || 0;
+    
+    // Recalculate platform-wide cost based on model breakdown for precision
+    let platformTotalCost = 0;
+    if (analytics?.byModel) {
+      for (const m of analytics.byModel) {
+        platformTotalCost += calculateOfficialCost(m.model, m.promptTokens || 0, m.completionTokens || 0);
+      }
+    } else {
+      platformTotalCost = analytics?.summary?.totalCost || 0;
+    }
+
     const platformSummary = {
       totalUsers: users.length,
       verifiedUsers: users.filter(u => u.emailVerified).length,
@@ -143,9 +238,16 @@ export async function GET(req: NextRequest) {
             .reduce((s, p) => s + p.amountCents, 0),
         0
       ),
-      totalRequests: analytics?.summary?.totalRequests || 0,
-      totalTokens: analytics?.summary?.totalTokens || 0,
-      totalCost: analytics?.summary?.totalCost || 0,
+      totalRequests,
+      totalTokens,
+      totalCost: platformTotalCost,
+      matchedRequests,
+      matchedTokens,
+      matchedCost,
+      unmatchedRequests: Math.max(0, totalRequests - matchedRequests),
+      unmatchedTokens: Math.max(0, totalTokens - matchedTokens),
+      unmatchedCost: Math.max(0, platformTotalCost - matchedCost),
+      coveragePct: totalRequests > 0 ? Number(((matchedRequests / totalRequests) * 100).toFixed(2)) : 0,
       planBreakdown: plans.map(p => ({
         id: p.id,
         name: p.name,

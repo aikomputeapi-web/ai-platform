@@ -21,7 +21,7 @@ It asks for your domain, then does everything automatically.
 
 | URL | What It Does |
 |-----|-------------|
-| `yourdomain.com` | **Customer Landing Page & Portal** — where your users sign up, log in, manage API keys, and handle billing. |
+| `yourdomain.com` | **Customer Landing Page & Portal** — where your users sign up, log in, manage API keys, and handle billing (Stripe integrated). |
 | `admin.yourdomain.com` | **Your Admin Dashboard** — manage user accounts, provider accounts, models, and routing. Protected by the admin password. |
 | `yourdomain.com/v1` | **API Endpoint** — your users connect their applications here using the API keys they generated in the Customer Portal. |
 
@@ -105,6 +105,32 @@ When you update OmniRoute, commit inside `OmniRoute/` first, then commit the upd
 ./manage.sh ssl-renew  # Force SSL renewal
 ./manage.sh shell omniroute  # Debug inside container
 ```
+
+---
+
+## 💳 Stripe Payment Integration
+
+The platform includes a **complete, production-ready Stripe integration** for subscription billing:
+
+✅ **Fully Implemented Features:**
+- Stripe Checkout for plan upgrades
+- Webhook handling for subscription events
+- Customer Portal for subscription management
+- Automatic plan upgrades/downgrades
+- Payment tracking and history
+- API key limit synchronization
+
+**Quick Setup (5 minutes):**
+
+1. Get Stripe API keys from [stripe.com](https://stripe.com)
+2. Add to `.env`: `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
+3. Run: `cd customer-portal && node scripts/setup-stripe.mjs`
+4. Test with card: `4242 4242 4242 4242`
+
+**Documentation:**
+- 📖 [Quick Start Guide](docs/STRIPE_QUICKSTART.md) - 5-minute setup
+- 📚 [Complete Integration Guide](docs/STRIPE_INTEGRATION.md) - Full technical docs
+- 📋 [Integration Summary](docs/STRIPE_SUMMARY.md) - What's built and ready
 
 ---
 
