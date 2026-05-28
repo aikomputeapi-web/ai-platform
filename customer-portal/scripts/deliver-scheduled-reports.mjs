@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 const PORTAL_URL = (process.env.PORTAL_INTERNAL_URL || 'http://customer-portal:3000').replace(/\/$/, '');
 const SECRET = process.env.REPORT_DELIVERY_SECRET || process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
 const LIMIT = Math.min(Math.max(Number(process.env.REPORT_DELIVERY_LIMIT || 20) || 20, 1), 100);
@@ -39,6 +41,11 @@ async function runLoop() {
   running = true;
   try {
     await deliverOnce();
+    try {
+      fs.writeFileSync('/tmp/healthy', Date.now().toString());
+    } catch (e) {
+      console.warn('[scheduled-reports] failed to write health file:', e.message);
+    }
   } catch (error) {
     console.error('[scheduled-reports] delivery cycle failed:', error);
   } finally {

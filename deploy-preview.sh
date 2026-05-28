@@ -6,9 +6,6 @@
 #  Called by GitHub Actions CI/CD on pushes to the staging branch.
 #  Can also be run manually:  ./deploy-preview.sh
 #
-#  This deploys the isolated preview stack using docker-compose.preview.yml
-#  so it can run beside production without colliding on ports or volumes.
-#
 # ══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -56,14 +53,46 @@ log "Build complete"
 info "Starting preview stack"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -f "${PREVIEW_FILE}" -p aikompute-preview up -d --remove-orphans
 
-info "Waiting for services..."
-sleep 10
+# ── Helper: Wait for Healthcheck ──
+wait_for_health() {
+    local container_name="$1"
+    info "Waiting for ${container_name} to be healthy..."
+    local max_attempts=30
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        local status=$(docker inspect --format '{{json .State.Health.Status}}' "${container_name}" 2>/dev/null | tr -d '"')
+        if [[ "${status}" == "healthy" ]]; then
+            log "${container_name} is healthy!"
+            return 0
+        elif [[ "${status}" == "unhealthy" ]]; then
+            error "${container_name} reported unhealthy state."
+        fi
+        
+        # Fallback
+        if [[ -z "${status}" ]]; then
+            local running=$(docker inspect --format '{{.State.Running}}' "${container_name}" 2>/dev/null)
+            if [[ "${running}" != "true" ]]; then
+                error "${container_name} is not running."
+            fi
+        fi
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    error "Timeout waiting for ${container_name} to become healthy."
+}
 
+# Wait for core databases first
+wait_for_health "aikompute-preview-postgres"
+wait_for_health "aikompute-preview-redis"
+
+# Wait for sidecar and apps
+wait_for_health "aikompute-preview-cliproxyapi"
+wait_for_health "aikompute-preview-omniroute-1"
+wait_for_health "aikompute-preview-customer-portal-1"
+
+echo ""
 docker compose -f "${COMPOSE_FILE}" -f "${PREVIEW_FILE}" -p aikompute-preview ps --format "table {{.Name}}\t{{.Status}}"
 echo ""
 
-RUNNING=$(docker compose -f "${COMPOSE_FILE}" -f "${PREVIEW_FILE}" -p aikompute-preview ps --status running -q 2>/dev/null | wc -l || echo 0)
-TOTAL=$(docker compose -f "${COMPOSE_FILE}" -f "${PREVIEW_FILE}" -p aikompute-preview ps -q 2>/dev/null | wc -l || echo 0)
-
-log "Preview deploy complete — ${RUNNING}/${TOTAL} containers running"
+log "Preview deploy complete — all containers running and healthy!"
 echo ""

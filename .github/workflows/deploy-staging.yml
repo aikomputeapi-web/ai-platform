@@ -3,14 +3,53 @@ name: Deploy to Staging
 on:
   push:
     branches: [staging]
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
+  validate:
+    name: Validate Codebase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          cd customer-portal
+          npm install --no-audit --no-fund
+
+      - name: Generate Prisma client
+        run: |
+          cd customer-portal
+          npx prisma generate
+
+      - name: Check types
+        run: |
+          cd customer-portal
+          npx tsc --noEmit
+
+      - name: Lint code
+        run: |
+          cd customer-portal
+          npm run lint
+
+      - name: Test production build
+        run: |
+          cd customer-portal
+          npm run build
+
   deploy-staging:
     name: Deploy (Staging)
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1

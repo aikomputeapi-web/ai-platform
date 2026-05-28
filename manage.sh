@@ -42,7 +42,7 @@ cmd_status() {
     echo ""
 
     echo -e "${BOLD}Health:${NC}"
-    for svc in "OmniRoute Dashboard:20128" "OmniRoute API:20129" "Customer Portal:3000"; do
+    for svc in "OmniRoute Dashboard 1:20128" "OmniRoute API 1:20129" "OmniRoute Dashboard 2:20130" "OmniRoute API 2:20131" "Customer Portal 1:3000" "Customer Portal 2:3002"; do
         local name="${svc%%:*}" port="${svc##*:}"
         if curl -sf -o /dev/null --max-time 3 "http://127.0.0.1:${port}" 2>/dev/null; then
             echo -e "  ${GREEN}●${NC} ${name} — ${GREEN}OK${NC}"
@@ -68,12 +68,28 @@ cmd_status() {
 
 cmd_logs() {
     local svc="${1:-}"
-    [[ -n "${svc}" ]] && dc logs -f --tail 100 "${svc}" || dc logs -f --tail 50
+    if [[ -z "${svc}" ]]; then
+        dc logs -f --tail 50
+    elif [[ "${svc}" == "omniroute" ]]; then
+        dc logs -f --tail 100 omniroute-1 omniroute-2
+    elif [[ "${svc}" == "customer-portal" ]]; then
+        dc logs -f --tail 100 customer-portal-1 customer-portal-2
+    else
+        dc logs -f --tail 100 "${svc}"
+    fi
 }
 
 cmd_restart() {
     local svc="${1:-}"
-    [[ -n "${svc}" ]] && dc restart "${svc}" || dc restart
+    if [[ -z "${svc}" ]]; then
+        dc restart
+    elif [[ "${svc}" == "omniroute" ]]; then
+        dc restart omniroute-1 omniroute-2
+    elif [[ "${svc}" == "customer-portal" ]]; then
+        dc restart customer-portal-1 customer-portal-2
+    else
+        dc restart "${svc}"
+    fi
 }
 
 cmd_stop()    { dc down; }
@@ -94,7 +110,7 @@ cmd_backup() {
     sleep 2
     docker cp ai-redis:/data/dump.rdb "${BK}/redis.rdb" 2>/dev/null || true
 
-    for vol in omniroute_data cliproxyapi_data; do
+    for vol in omniroute-data cliproxyapi-data; do
         docker run --rm -v "ai-${vol}:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || true
     done
 
@@ -121,7 +137,7 @@ cmd_restore() {
     dc up -d postgres; sleep 5
     [[ -f "${d}/postgres.sql" ]] && dc exec -T postgres psql -U aiplatform -d aiplatform < "${d}/postgres.sql"
 
-    for vol in omniroute_data cliproxyapi_data; do
+    for vol in omniroute-data cliproxyapi-data; do
         [[ -f "${d}/${vol}.tar" ]] && docker run --rm -v "ai-${vol}:/dst" -v "${d}:/bk:ro" alpine sh -c "rm -rf /dst/* && tar xf /bk/${vol}.tar -C /dst"
     done
 

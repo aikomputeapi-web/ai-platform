@@ -13,8 +13,8 @@ services:
     volumes:
       - preview_redis_data:/data
 
-  omniroute:
-    container_name: aikompute-preview-omniroute
+  omniroute-1:
+    container_name: aikompute-preview-omniroute-1
     ports:
       - "127.0.0.1:22028:20128"
       - "127.0.0.1:22029:20129"
@@ -23,21 +23,28 @@ services:
       NEXT_PUBLIC_BASE_URL: ${PREVIEW_PUBLIC_URL:-http://localhost:22028}
       BASE_URL: ${PREVIEW_PUBLIC_URL:-http://localhost:22028}
 
+  omniroute-2:
+    scale: 0
+
   cliproxyapi:
     container_name: aikompute-preview-cliproxyapi
 
-  customer-portal:
-    container_name: aikompute-preview-customer-portal
+  customer-portal-1:
+    container_name: aikompute-preview-customer-portal-1
     ports:
       - "127.0.0.1:3301:3000"
     environment:
       NEXT_PUBLIC_APP_URL: ${PREVIEW_PUBLIC_URL:-http://localhost:3301}
       NEXT_PUBLIC_APP_NAME: ${PREVIEW_APP_NAME:-AI API Platform Preview}
+      OMNIROUTE_INTERNAL_URL: http://omniroute-1:20128
+
+  customer-portal-2:
+    scale: 0
 
   report-deliverer:
     container_name: aikompute-preview-report-deliverer
     environment:
-      PORTAL_INTERNAL_URL: http://customer-portal:3000
+      PORTAL_INTERNAL_URL: http://customer-portal-1:3000
       REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:-admin}
       REPORT_DELIVERY_LIMIT: 20
       REPORT_DELIVERY_INTERVAL_SECONDS: 300
