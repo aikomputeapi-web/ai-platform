@@ -139,6 +139,9 @@ log "Domain: ${DOMAIN}"
 [[ -f "${ENV_FILE}" ]] && cp "${ENV_FILE}" "${ENV_FILE}.bak.$(date +%s)"
 
 ADMIN_PASS="admin-$(gen_pass)"
+PG_PASS=$(gen_hex)
+PORTAL_ADMIN_API_SECRET="prod-$(gen_hex | head -c 16)"
+NEXTAUTH_SECRET=$(gen_base64)
 
 cat > "${ENV_FILE}" << ENV
 # AI Platform — Auto-Generated $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -151,7 +154,7 @@ SSL_ENABLED=true
 
 # PostgreSQL
 POSTGRES_USER=aiplatform
-POSTGRES_PASSWORD=$(gen_hex)
+POSTGRES_PASSWORD=${PG_PASS}
 POSTGRES_DB=aiplatform
 
 # Redis
@@ -170,6 +173,9 @@ PORTAL_JWT_SECRET=$(gen_base64)
 PORTAL_PORT=3000
 RESEND_API_KEY=
 EMAIL_FROM=noreply@${DOMAIN}
+ADMIN_API_SECRET=${PORTAL_ADMIN_API_SECRET}
+DATABASE_URL="postgresql://aiplatform:${PG_PASS}@postgres:5432/aiplatform"
+NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 ENV
 
 chmod 600 "${ENV_FILE}"

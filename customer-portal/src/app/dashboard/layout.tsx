@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -47,8 +48,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    // Clear legacy session cookie first, then let NextAuth handle full signout
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    await signOut({ callbackUrl: '/login', redirect: true });
   }
 
   if (loading) {

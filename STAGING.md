@@ -131,7 +131,20 @@ This triggers the **Deploy to Production** GitHub Action.
 
 ---
 
-## DNS & SSL Setup
+## Required GitHub Actions Secrets
+
+Before the **Deploy to Staging** CI workflow can run, the following repository secrets must be set under **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|---|---|
+| `STAGING_SERVER_HOST` | IP or hostname of the staging server |
+| `STAGING_SERVER_USER` | SSH user (e.g. `ubuntu` or `root`) |
+| `STAGING_SERVER_SSH_KEY` | Private SSH key with access to the staging server |
+
+> **Important:** The CI workflow clones into `~/ai-platform-staging` on the staging server. Run `setup-staging.sh` first to create and configure this directory. Without it, the very first CI deploy will fail with a "no such directory" error.
+
+---
+
 
 The staging environment is mapped to the domain `aikompute.indevs.in` and `admin.aikompute.indevs.in`.
 

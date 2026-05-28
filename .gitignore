@@ -26,3 +26,9 @@ node_modules/
 
 # ── Docker ──
 .docker/
+
+# ── Debug / scratch files (never commit these) ──
+debug-*.js
+debug-*.mjs
+debug-*.ts
+/a

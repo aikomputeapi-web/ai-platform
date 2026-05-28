@@ -17,9 +17,12 @@
 #
 #  Port mapping:
 #    Production → Staging
-#    3000       → 3301   (Customer Portal)
-#    20128      → 22028  (OmniRoute Dashboard)
-#    20129      → 22029  (OmniRoute API)
+#    3000       → 3301   (Customer Portal instance 1)
+#    3002       → 3303   (Customer Portal instance 2)
+#    20128      → 22028  (OmniRoute-1 Dashboard)
+#    20129      → 22029  (OmniRoute-1 API)
+#    20130      → 22030  (OmniRoute-2 Dashboard)
+#    20131      → 22031  (OmniRoute-2 API)
 #    5432       → 55432  (PostgreSQL)
 #    6379       → 56379  (Redis)
 #    8085       → 8185   (CLIProxyAPI UI)
@@ -27,14 +30,30 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # PostgreSQL — staging gets its own isolated database
+  # ─────────────────────────────────────────────────────────────────────────
   postgres:
+    image: postgres:15-alpine
     container_name: staging-postgres
-    ports: !override
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiplatform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-aiplatform}
+    ports:
       - "127.0.0.1:55432:5432"
-    volumes: !override
+    volumes:
       - staging_postgres_data:/var/lib/postgresql/data
-    networks: !override
-      ai-staging-network: null
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiplatform}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai-staging-network
 
   redis:
     container_name: staging-redis
@@ -42,23 +61,6 @@ services:
       - "127.0.0.1:56379:6379"
     volumes: !override
       - staging_redis_data:/data
-    networks: !override
-      ai-staging-network: null
-
-  omniroute:
-    container_name: staging-omniroute
-    env_file: !override
-      - ./OmniRoute/.env.staging
-    ports: !override
-      - "127.0.0.1:22028:20128"
-      - "127.0.0.1:22029:20129"
-    volumes: !override
-      - staging_omniroute_data:/app/data
-    environment:
-      NODE_ENV: staging
-      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
-      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.staging.aikompute.com}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
     networks: !override
       ai-staging-network: null
 
@@ -72,15 +74,71 @@ services:
     networks: !override
       ai-staging-network: null
 
-  customer-portal:
-    container_name: staging-customer-portal
+  # ─────────────────────────────────────────────────────────────────────────
+  # OmniRoute — dual instances remapped to staging ports
+  # ─────────────────────────────────────────────────────────────────────────
+  omniroute-1:
+    container_name: staging-omniroute-1
+    env_file: !override
+      - ./OmniRoute/.env.staging
+    ports: !override
+      - "127.0.0.1:22028:20128"
+      - "127.0.0.1:22029:20129"
+    volumes: !override
+      - staging_omniroute_data:/app/data
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
+      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+    networks: !override
+      ai-staging-network:
+        aliases:
+          - omniroute
+
+  omniroute-2:
+    container_name: staging-omniroute-2
+    env_file: !override
+      - ./OmniRoute/.env.staging
+    ports: !override
+      - "127.0.0.1:22030:20128"
+      - "127.0.0.1:22031:20129"
+    volumes: !override
+      - staging_omniroute_data:/app/data
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
+      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+    networks: !override
+      ai-staging-network: null
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Customer Portal — dual instances remapped to staging ports
+  # ─────────────────────────────────────────────────────────────────────────
+  customer-portal-1:
+    container_name: staging-customer-portal-1
     ports: !override
       - "127.0.0.1:3301:3000"
     environment:
       NODE_ENV: staging
-      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-aikompute [STAGING]}
-      NEXTAUTH_URL: ${PUBLIC_URL:-https://staging.aikompute.com}
+      NEXTAUTH_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
+    networks: !override
+      ai-staging-network:
+        aliases:
+          - customer-portal
+
+  customer-portal-2:
+    container_name: staging-customer-portal-2
+    ports: !override
+      - "127.0.0.1:3303:3000"
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-aikompute [STAGING]}
+      NEXTAUTH_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
     networks: !override
       ai-staging-network: null
 
@@ -90,6 +148,17 @@ services:
       PORTAL_INTERNAL_URL: http://customer-portal:3000
       REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:-staging-admin}
       NODE_ENV: staging
+    networks: !override
+      ai-staging-network: null
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Free Models Extractor — isolated staging data volume
+  # ─────────────────────────────────────────────────────────────────────────
+  free-models-extractor:
+    container_name: staging-free-models-extractor
+    volumes: !override
+      - ./scripts:/app/scripts
+      - staging_omniroute_data:/app/data
     networks: !override
       ai-staging-network: null
 
