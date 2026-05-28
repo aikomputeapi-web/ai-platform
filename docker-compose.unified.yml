@@ -2,22 +2,7 @@
 #  AI Platform — Docker Compose (Unified Stack)
 # ══════════════════════════════════════════════════════════════════════════════
 #
-#  ONE dashboard to rule them all: OmniRoute
-#
-#  Architecture:
-#    OmniRoute (dashboard + API gateway + routing + account management)
-#      └── CLIProxyAPI (invisible sidecar for CLI OAuth accounts)
-#      └── PostgreSQL + Redis (infrastructure)
-#
-#  All account management happens in the OmniRoute dashboard:
-#    - OAuth logins: Claude, Gemini, Antigravity, Codex, Copilot, Kiro, Qwen, Kimi, Qoder
-#    - API keys: DeepSeek, Groq, xAI, Mistral, Perplexity, Together, etc.
-#    - Routing rules, circuit breakers, rate limits
-#    - Account health monitoring, usage logs
-#
-#  Usage:
-#    cp .env.example .env   (or let setup.sh generate it)
-#    docker compose up -d
+#  Dual-instance rolling-deployment config for zero downtime.
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -27,32 +12,148 @@ x-logging: &logging
     max-size: "50m"
     max-file: "5"
 
+x-omniroute-base: &omniroute-base
+  build:
+    context: ./OmniRoute
+    target: runner-cli
+  image: omniroute:cli
+  restart: unless-stopped
+  stop_grace_period: 40s
+  logging: *logging
+  env_file: ./OmniRoute/.env
+  depends_on:
+    cliproxyapi:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  environment:
+    # ── Core ──
+    NODE_ENV: production
+    DATA_DIR: /app/data
+    PORT: 20128
+    DASHBOARD_PORT: 20128
+    API_PORT: 20129
+    API_HOST: 0.0.0.0
+
+    # ── Security ──
+    JWT_SECRET: ${OMNIROUTE_JWT_SECRET:?OMNIROUTE_JWT_SECRET is required}
+    API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET:?OMNIROUTE_API_KEY_SECRET is required}
+    INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:?OMNIROUTE_INITIAL_PASSWORD is required}
+    STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:?OMNIROUTE_STORAGE_ENCRYPTION_KEY is required}
+
+    # ── Redis & Database Integration ──
+    REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+    PORTAL_DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+
+    # ── Public URL (for OAuth callbacks) ──
+    NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+    BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+
+    # ── Auth settings ──
+    REQUIRE_API_KEY: "true"
+    AUTH_COOKIE_SECURE: ${SSL_ENABLED:-false}
+
+    # ── CLIProxyAPI sidecar bridge ──
+    CLIPROXYAPI_HOST: cliproxyapi
+    CLIPROXYAPI_PORT: 8317
+
+    # ── Anti-Detection ──
+    CLI_COMPAT_ALL: "1"
+    ENABLE_TLS_FINGERPRINT: "true"
+    ENABLE_SOCKS5_PROXY: "true"
+
+    # ── Performance ──
+    OMNIROUTE_MEMORY_MB: 512
+    STREAM_IDLE_TIMEOUT_MS: 600000
+    FETCH_TIMEOUT_MS: 600000
+
+    # ── Logging ──
+    APP_LOG_TO_FILE: "true"
+    APP_LOG_LEVEL: info
+
+    # ── Provider Settings ──
+    OPENROUTER_FREE_ONLY: "true"
+    NVIDIA_FREE_ONLY: "true"
+  volumes:
+    - omniroute_data:/app/data
+  networks:
+    ai-network:
+      aliases:
+        - omniroute
+  healthcheck:
+    test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request('http://127.0.0.1:20128', { timeout: 2000 }, (res) => { process.exit(res.statusCode === 200 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 404 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 15s
+
+x-portal-base: &portal-base
+  build: ./customer-portal
+  image: customer-portal:latest
+  restart: unless-stopped
+  logging: *logging
+  depends_on:
+    omniroute-1:
+      condition: service_healthy
+  environment:
+    DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    JWT_SECRET: ${PORTAL_JWT_SECRET:?PORTAL_JWT_SECRET is required}
+    OMNIROUTE_INTERNAL_URL: http://omniroute:20128
+    OMNIROUTE_ADMIN_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:?OMNIROUTE_INITIAL_PASSWORD is required}
+    NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:3000}
+    NEXT_PUBLIC_APP_NAME: ${APP_NAME:-AI API Platform}
+    STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+    RESEND_API_KEY: ${RESEND_API_KEY:-}
+    EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+    ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
+    NODE_ENV: production
+    NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
+    NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+    GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+    APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+  networks:
+    ai-network:
+      aliases:
+        - customer-portal
+  healthcheck:
+    test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request('http://127.0.0.1:3000/api/health', { timeout: 2000 }, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 15s
+
 services:
 
   # ─────────────────────────────────────────────────────────────────────────
   # PostgreSQL 15 — Persistent storage for user data & billing
   # ─────────────────────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
-    container_name: ai-postgres
-    restart: unless-stopped
-    logging: *logging
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-aiplatform}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:-aiplatform}
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiplatform}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - ai-network
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: ai-postgres
+  #   restart: unless-stopped
+  #   logging: *logging
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-aiplatform}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+  #     POSTGRES_DB: ${POSTGRES_DB:-aiplatform}
+  #   ports:
+  #     - "127.0.0.1:5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiplatform}"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #     start_period: 10s
+  #   networks:
+  #     - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
   # Redis 7 — Session cache, rate-limit state, account cooldowns
@@ -67,109 +168,21 @@ services:
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --appendonly yes
-      --requirepass ${REDIS_PASSWORD:-changeme_redis}
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis}", "ping"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
+      interval: 5s
+      timeout: 3s
       retries: 5
     networks:
       - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
-  # OmniRoute — THE dashboard. Everything in one place.
-  #
-  # This is your single admin panel for:
-  #   ✓ Adding OAuth accounts (Claude, Gemini, Antigravity, Copilot, etc.)
-  #   ✓ Adding API key providers (DeepSeek, Groq, xAI, etc.)
-  #   ✓ Managing routing rules and fallback chains
-  #   ✓ Circuit breakers and account health monitoring
-  #   ✓ Usage logs and analytics
-  #   ✓ Virtual API keys for your users
-  #   ✓ Anti-detection fingerprinting
-  # ─────────────────────────────────────────────────────────────────────────
-  omniroute:
-    build:
-      context: ./OmniRoute
-      target: runner-cli
-    image: omniroute:cli
-    container_name: omniroute
-    restart: unless-stopped
-    stop_grace_period: 40s
-    logging: *logging
-    env_file: ./OmniRoute/.env
-    depends_on:
-      cliproxyapi:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      # ── Core ──
-      NODE_ENV: production
-      DATA_DIR: /app/data
-      PORT: 20128
-      DASHBOARD_PORT: 20128
-      API_PORT: 20129
-      API_HOST: 0.0.0.0
-
-      # ── Redis ──
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
-
-      # ── Customer Portal DB ──
-      PORTAL_DATABASE_URL: postgresql://${POSTGRES_USER:-aiplatform}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aiplatform}
-
-      # ── Security ──
-      JWT_SECRET: ${OMNIROUTE_JWT_SECRET:?OMNIROUTE_JWT_SECRET is required}
-      API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET:?OMNIROUTE_API_KEY_SECRET is required}
-      INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-admin123}
-      STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:-}
-
-      # ── Public URL (for OAuth callbacks) ──
-      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-http://localhost:20128}
-      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-http://localhost:20128}
-
-      # ── Auth settings ──
-      REQUIRE_API_KEY: "true"
-      AUTH_COOKIE_SECURE: ${SSL_ENABLED:-false}
-
-      # ── CLIProxyAPI sidecar bridge ──
-      CLIPROXYAPI_HOST: cliproxyapi
-      CLIPROXYAPI_PORT: 8317
-
-      # ── Anti-Detection: match official CLI fingerprints ──
-      CLI_COMPAT_ALL: "1"
-      ENABLE_TLS_FINGERPRINT: "true"
-      ENABLE_SOCKS5_PROXY: "true"
-
-      # ── Performance ──
-      OMNIROUTE_MEMORY_MB: 512
-      STREAM_IDLE_TIMEOUT_MS: 600000
-      FETCH_TIMEOUT_MS: 600000
-
-      # ── Logging ──
-      APP_LOG_TO_FILE: "true"
-      APP_LOG_LEVEL: info
-
-      # ── Provider Settings ──
-      OPENROUTER_FREE_ONLY: "true"
-      NVIDIA_FREE_ONLY: "true"
-    ports:
-      - "127.0.0.1:${OMNIROUTE_DASHBOARD_PORT:-20128}:20128"
-      - "127.0.0.1:${OMNIROUTE_API_PORT:-20129}:20129"
-    volumes:
-      - omniroute_data:/app/data
-    networks:
-      - ai-network
-
-  # ─────────────────────────────────────────────────────────────────────────
   # CLIProxyAPI — Invisible sidecar, managed through OmniRoute
-  #
-  # You never need to touch this directly. OmniRoute's dashboard
-  # talks to it internally to manage CLI-based OAuth accounts.
   # ─────────────────────────────────────────────────────────────────────────
   cliproxyapi:
     image: eceasy/cli-proxy-api:latest
@@ -179,88 +192,78 @@ services:
     environment:
       PORT: 8317
       HOST: 0.0.0.0
-    # No external ports exposed for API — only accessible within Docker network
-    # OmniRoute connects to it at cliproxyapi:8317
     expose:
       - "8317"
     ports:
-      - "127.0.0.1:8085:8085"  # Management UI for OAuth login flows
+      - "127.0.0.1:8085:8085"
     volumes:
       - ./cliproxyapi-config.yaml:/CLIProxyAPI/config.yaml:ro
       - cliproxyapi_data:/root/.cli-proxy-api
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8317/v1/models"]
-      interval: 30s
-      timeout: 5s
+      interval: 10s
+      timeout: 3s
       retries: 5
-      start_period: 30s
+      start_period: 10s
     networks:
       - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Customer Portal — Self-service for your customers
-  #
-  # This is the customer-facing layer:
-  #   ✓ Signup / Login / Account management
-  #   ✓ Self-service API key creation
-  #   ✓ Per-user usage analytics
-  #   ✓ Billing & plan management (Stripe)
+  # OmniRoute — THE dashboard. Dual instances.
   # ─────────────────────────────────────────────────────────────────────────
-  customer-portal:
-    build: ./customer-portal
-    container_name: customer-portal
-    restart: unless-stopped
-    logging: *logging
-    depends_on:
-      postgres:
-        condition: service_healthy
-      omniroute:
-        condition: service_started
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aiplatform}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aiplatform}
-      JWT_SECRET: ${PORTAL_JWT_SECRET:-portal-change-me}
-      NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-      APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
-      OMNIROUTE_INTERNAL_URL: http://omniroute:20128
-      OMNIROUTE_ADMIN_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-admin123}
-      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:3000}
-      NEXT_PUBLIC_APP_NAME: ${APP_NAME:-AI API Platform}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
-      ADMIN_API_SECRET: ${ADMIN_API_SECRET:-admin}
-      NODE_ENV: production
+  omniroute-1:
+    <<: *omniroute-base
+    container_name: omniroute-1
     ports:
-      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
-    networks:
-      - ai-network
+      - "127.0.0.1:20128:20128"
+      - "127.0.0.1:20129:20129"
+
+  omniroute-2:
+    <<: *omniroute-base
+    container_name: omniroute-2
+    ports:
+      - "127.0.0.1:20130:20128"
+      - "127.0.0.1:20131:20129"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Customer Portal — Self-service for customers. Dual instances.
+  # ─────────────────────────────────────────────────────────────────────────
+  customer-portal-1:
+    <<: *portal-base
+    container_name: customer-portal-1
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  customer-portal-2:
+    <<: *portal-base
+    container_name: customer-portal-2
+    ports:
+      - "127.0.0.1:3002:3000"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Scheduled Report Deliverer — polls the portal and sends due reports
   # ─────────────────────────────────────────────────────────────────────────
   report-deliverer:
     build: ./customer-portal
+    image: customer-portal:latest
     container_name: report-deliverer
     restart: unless-stopped
     logging: *logging
     depends_on:
-      customer-portal:
-        condition: service_started
+      customer-portal-1:
+        condition: service_healthy
     command: ["node", "scripts/deliver-scheduled-reports.mjs"]
     environment:
       PORTAL_INTERNAL_URL: http://customer-portal:3000
-      REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:-admin}
+      REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
       REPORT_DELIVERY_LIMIT: 20
       REPORT_DELIVERY_INTERVAL_SECONDS: 300
       NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/healthy -mmin -10 | grep -q healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - ai-network
 
@@ -287,8 +290,8 @@ services:
 # Volumes
 # ═══════════════════════════════════════════════════════════════════════════════
 volumes:
-  postgres_data:
-    name: ai-postgres-data
+#  postgres_data:
+#    name: ai-postgres-data
   redis_data:
     name: ai-redis-data
   omniroute_data:
