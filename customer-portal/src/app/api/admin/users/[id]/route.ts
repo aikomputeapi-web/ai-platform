@@ -314,6 +314,68 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         response = { user: updated };
         break;
       }
+      case 'shadowBan': {
+        const active = Boolean(body?.active);
+        const updated = await prisma.user.update({
+          where: { id },
+          data: {
+            isShadowBanned: active,
+          } as never,
+          include: { plan: true, apiKeys: true, payments: true },
+        });
+
+        const scopes: string[] = [];
+        if (updated.isShadowLocked) scopes.push('shadow_lock');
+        if (updated.isShadowBanned) scopes.push('shadow_ban');
+
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes });
+          } catch (err) {
+            console.error(`Failed to update scopes for key ${key.id}:`, err);
+          }
+        }
+
+        await recordAdminAction({
+          action: active ? 'user.shadow_banned' : 'user.shadow_unbanned',
+          req,
+          targetUserId: user.id,
+          targetUserEmail: user.email,
+        });
+        response = { user: updated };
+        break;
+      }
+      case 'shadowLock': {
+        const active = Boolean(body?.active);
+        const updated = await prisma.user.update({
+          where: { id },
+          data: {
+            isShadowLocked: active,
+          } as never,
+          include: { plan: true, apiKeys: true, payments: true },
+        });
+
+        const scopes: string[] = [];
+        if (updated.isShadowLocked) scopes.push('shadow_lock');
+        if (updated.isShadowBanned) scopes.push('shadow_ban');
+
+        for (const key of user.apiKeys) {
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, { scopes });
+          } catch (err) {
+            console.error(`Failed to update scopes for key ${key.id}:`, err);
+          }
+        }
+
+        await recordAdminAction({
+          action: active ? 'user.shadow_locked' : 'user.shadow_unlocked',
+          req,
+          targetUserId: user.id,
+          targetUserEmail: user.email,
+        });
+        response = { user: updated };
+        break;
+      }
       case 'plan': {
         const planId = String(body?.planId || '');
         if (!planId) {

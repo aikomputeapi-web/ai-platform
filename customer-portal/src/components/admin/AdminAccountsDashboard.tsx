@@ -39,6 +39,8 @@ interface UserListItem {
   name: string | null;
   emailVerified: boolean;
   isLocked: boolean;
+  isShadowLocked: boolean;
+  isShadowBanned: boolean;
   adminNote: string | null;
   plan: Plan;
   createdAt: string;
@@ -122,6 +124,8 @@ interface UserDetail {
   name: string | null;
   emailVerified: boolean;
   isLocked: boolean;
+  isShadowLocked: boolean;
+  isShadowBanned: boolean;
   adminNote: string | null;
   stripeCustomerId: string | null;
   plan: Plan;
@@ -849,13 +853,21 @@ export default function AdminAccountsDashboard() {
                           {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
                         </td>
                         <td className="px-3 py-3 text-center">
-                          {user.isLocked ? (
-                            <span className="badge-danger">locked</span>
-                          ) : user.emailVerified ? (
-                            <span className="badge-success">verified</span>
-                          ) : (
-                            <span className="badge-warning">pending</span>
-                          )}
+                          <div className="flex flex-col gap-1 items-center">
+                            {user.isLocked ? (
+                              <span className="badge-danger">locked</span>
+                            ) : user.emailVerified ? (
+                              <span className="badge-success">verified</span>
+                            ) : (
+                              <span className="badge-warning">pending</span>
+                            )}
+                            {user.isShadowBanned && (
+                              <span className="badge-danger text-[10px] py-0.5 px-1.5">shadowbanned</span>
+                            )}
+                            {user.isShadowLocked && (
+                              <span className="badge-warning text-[10px] py-0.5 px-1.5">shadowlocked</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3 text-center">
                           {user.adminNote ? <span className="badge-accent">note</span> : <span className="text-[var(--color-text-muted)]">—</span>}
@@ -1020,8 +1032,10 @@ export default function AdminAccountsDashboard() {
                       <div className="glass-card p-5">
                         <div className="flex items-center justify-between gap-3 mb-4">
                           <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Profile State</h4>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {openUser.isLocked ? <span className="badge-danger">locked</span> : <span className="badge-success">active</span>}
+                            {openUser.isShadowBanned && <span className="badge-danger">shadowbanned</span>}
+                            {openUser.isShadowLocked && <span className="badge-warning">shadowlocked</span>}
                             {openUser.emailVerified ? <span className="badge-success">verified</span> : <span className="badge-warning">pending</span>}
                           </div>
                         </div>
@@ -1146,6 +1160,28 @@ export default function AdminAccountsDashboard() {
                             <span className="inline-flex items-center gap-2">
                               {openUser.isLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
                               {openUser.isLocked ? 'Unlock account' : 'Lock account'}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                          </button>
+                          <button
+                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            onClick={() => void submitAction('shadowBan', { active: !openUser.isShadowBanned })}
+                            disabled={actionLoading === 'shadowBan'}
+                          >
+                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowBanned ? 'text-green-400' : 'text-red-400'}`}>
+                              {openUser.isShadowBanned ? <Unlock size={16} /> : <Ban size={16} />}
+                              {openUser.isShadowBanned ? 'Remove Shadowban' : 'Shadowban account'}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                          </button>
+                          <button
+                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            onClick={() => void submitAction('shadowLock', { active: !openUser.isShadowLocked })}
+                            disabled={actionLoading === 'shadowLock'}
+                          >
+                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowLocked ? 'text-green-400' : 'text-amber-400'}`}>
+                              {openUser.isShadowLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
+                              {openUser.isShadowLocked ? 'Remove Shadowlock' : 'Shadowlock account'}
                             </span>
                             <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
                           </button>

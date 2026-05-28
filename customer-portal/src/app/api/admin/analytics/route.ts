@@ -160,6 +160,8 @@ export async function GET(req: NextRequest) {
         name: user.name,
         emailVerified: user.emailVerified,
         isLocked: account.isLocked || false,
+        isShadowLocked: (account as any).isShadowLocked || false,
+        isShadowBanned: (account as any).isShadowBanned || false,
         adminNote: account.adminNote || null,
         plan: user.plan,
         createdAt: user.createdAt,
