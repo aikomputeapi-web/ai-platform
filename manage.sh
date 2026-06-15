@@ -42,22 +42,48 @@ cmd_status() {
     echo ""
 
     echo -e "${BOLD}Health:${NC}"
-    for svc in "OmniRoute Dashboard 1:20128" "OmniRoute API 1:20129" "OmniRoute Dashboard 2:20130" "OmniRoute API 2:20131" "Customer Portal 1:3000" "Customer Portal 2:3002"; do
-        local name="${svc%%:*}" port="${svc##*:}"
-        if curl -sf -o /dev/null --max-time 3 "http://127.0.0.1:${port}" 2>/dev/null; then
+    for svc in "OmniRoute Dashboard:20128/" "OmniRoute API:20129/v1/models" "Customer Portal:3000/api/health"; do
+        local entry="${svc##*:}"
+        local name="${svc%%:*}"
+        local port="${entry%%/*}"
+        local path="/${entry#*/}"
+        local code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://127.0.0.1:${port}${path}" 2>/dev/null || echo "000")
+        if [[ "${code}" =~ ^(200|302|307|308|401)$ ]]; then
             echo -e "  ${GREEN}●${NC} ${name} — ${GREEN}OK${NC}"
         else
-            echo -e "  ${RED}●${NC} ${name} — ${RED}Down${NC}"
+            echo -e "  ${RED}●${NC} ${name} — ${RED}Down${NC} (HTTP ${code})"
         fi
     done
 
-    dc exec -T postgres pg_isready -U aiplatform &>/dev/null && \
-        echo -e "  ${GREEN}●${NC} PostgreSQL — ${GREEN}Ready${NC}" || \
-        echo -e "  ${RED}●${NC} PostgreSQL — ${RED}Down${NC}"
+    # PostgreSQL (External / Cloud SQL) — check socket connection
+    local db_url=$(grep "^DATABASE_URL=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+    if [[ -n "${db_url}" ]]; then
+        local db_host=$(echo "${db_url}" | sed -E 's/.*@([^:]+):.*/\1/')
+        local db_port=$(echo "${db_url}" | sed -E 's/.*:([0-9]+)\/.*/\1/' | cut -d/ -f1)
+        if nc -w 3 -z "${db_host}" "${db_port}" &>/dev/null; then
+            echo -e "  ${GREEN}●${NC} PostgreSQL — ${GREEN}Ready${NC}"
+        else
+            echo -e "  ${RED}●${NC} PostgreSQL — ${RED}Down${NC}"
+        fi
+    else
+        echo -e "  ${RED}●${NC} PostgreSQL — ${RED}Down (No URL)${NC}"
+    fi
 
-    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} 2>/dev/null | cut -d= -f2-)" ping 2>/dev/null | grep -q PONG && \
-        echo -e "  ${GREEN}●${NC} Redis — ${GREEN}PONG${NC}" || \
-        echo -e "  ${RED}●${NC} Redis — ${RED}Down${NC}"
+    # Redis (External / Memorystore) — check remote ping (with TLS if rediss://)
+    local redis_url=$(grep "^REDIS_URL=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+    local redis_pwd=$(grep "^REDIS_PASSWORD=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+    if [[ -n "${redis_url}" ]]; then
+        local redis_host=$(echo "${redis_url}" | sed 's/.*@//;s/:6379.*//')
+        local redis_tls=""
+        if [[ "${redis_url}" =~ ^rediss:// ]]; then
+            redis_tls="--tls"
+        fi
+        redis-cli ${redis_tls} -h "${redis_host}" -a "${redis_pwd}" ping 2>/dev/null | grep -q PONG && \
+            echo -e "  ${GREEN}●${NC} Redis (Memorystore) — ${GREEN}PONG${NC}" || \
+            echo -e "  ${RED}●${NC} Redis (Memorystore) — ${RED}Down${NC}"
+    else
+        echo -e "  ${RED}●${NC} Redis (Memorystore) — ${RED}Down (No URL)${NC}"
+    fi
 
     echo ""
     echo -e "${BOLD}Resources:${NC}"
@@ -70,10 +96,6 @@ cmd_logs() {
     local svc="${1:-}"
     if [[ -z "${svc}" ]]; then
         dc logs -f --tail 50
-    elif [[ "${svc}" == "omniroute" ]]; then
-        dc logs -f --tail 100 omniroute-1 omniroute-2
-    elif [[ "${svc}" == "customer-portal" ]]; then
-        dc logs -f --tail 100 customer-portal-1 customer-portal-2
     else
         dc logs -f --tail 100 "${svc}"
     fi
@@ -83,10 +105,6 @@ cmd_restart() {
     local svc="${1:-}"
     if [[ -z "${svc}" ]]; then
         dc restart
-    elif [[ "${svc}" == "omniroute" ]]; then
-        dc restart omniroute-1 omniroute-2
-    elif [[ "${svc}" == "customer-portal" ]]; then
-        dc restart customer-portal-1 customer-portal-2
     else
         dc restart "${svc}"
     fi
@@ -106,9 +124,8 @@ cmd_backup() {
 
     dc exec -T postgres pg_dump -U aiplatform aiplatform > "${BK}/postgres.sql" 2>/dev/null || true
 
-    dc exec -T redis redis-cli -a "$(grep REDIS_PASSWORD ${ENV_FILE} | cut -d= -f2-)" BGSAVE 2>/dev/null
-    sleep 2
-    docker cp ai-redis:/data/dump.rdb "${BK}/redis.rdb" 2>/dev/null || true
+    # Redis is external (GCP Memorystore) — backup via remote redis-cli
+    redis-cli -h "$(grep REDIS_URL ${ENV_FILE} | sed 's/.*@//;s/:6379.*//')" -a "$(grep REDIS_PASSWORD ${ENV_FILE} | cut -d= -f2-)" --rdb "${BK}/redis.rdb" 2>/dev/null || true
 
     for vol in omniroute-data cliproxyapi-data; do
         docker run --rm -v "ai-${vol}:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || true

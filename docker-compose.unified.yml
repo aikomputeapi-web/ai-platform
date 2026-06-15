@@ -24,8 +24,6 @@ x-omniroute-base: &omniroute-base
   depends_on:
     cliproxyapi:
       condition: service_healthy
-    redis:
-      condition: service_healthy
   environment:
     # ── Core ──
     NODE_ENV: production
@@ -42,12 +40,12 @@ x-omniroute-base: &omniroute-base
     STORAGE_ENCRYPTION_KEY: ${OMNIROUTE_STORAGE_ENCRYPTION_KEY:?OMNIROUTE_STORAGE_ENCRYPTION_KEY is required}
 
     # ── Redis & Database Integration ──
-    REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+    REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
     PORTAL_DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
 
     # ── Public URL (for OAuth callbacks) ──
-    NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
-    BASE_URL: ${PUBLIC_URL:-http://localhost:20128}
+    NEXT_PUBLIC_BASE_URL: https://admin.aikompute.com
+    BASE_URL: https://admin.aikompute.com
 
     # ── Auth settings ──
     REQUIRE_API_KEY: "true"
@@ -63,7 +61,8 @@ x-omniroute-base: &omniroute-base
     ENABLE_SOCKS5_PROXY: "true"
 
     # ── Performance ──
-    OMNIROUTE_MEMORY_MB: 512
+    OMNIROUTE_MEMORY_MB: 1024
+    NODE_OPTIONS: "--max-old-space-size=1024"
     STREAM_IDLE_TIMEOUT_MS: 600000
     FETCH_TIMEOUT_MS: 600000
 
@@ -84,8 +83,8 @@ x-omniroute-base: &omniroute-base
     test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request('http://127.0.0.1:20128', { timeout: 2000 }, (res) => { process.exit(res.statusCode === 200 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 404 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"]
     interval: 5s
     timeout: 3s
-    retries: 5
-    start_period: 15s
+    retries: 10
+    start_period: 60s
 
 x-portal-base: &portal-base
   build: ./customer-portal
@@ -93,7 +92,7 @@ x-portal-base: &portal-base
   restart: unless-stopped
   logging: *logging
   depends_on:
-    omniroute-1:
+    omniroute:
       condition: service_healthy
   environment:
     DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
@@ -156,30 +155,30 @@ services:
   #     - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Redis 7 — Session cache, rate-limit state, account cooldowns
+  # Redis — Externalized to GCP Memorystore
   # ─────────────────────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: ai-redis
-    restart: unless-stopped
-    logging: *logging
-    command: >
-      redis-server
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-      --appendonly yes
-      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - ai-network
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ai-redis
+  #   restart: unless-stopped
+  #   logging: *logging
+  #   command: >
+  #     redis-server
+  #     --maxmemory 256mb
+  #     --maxmemory-policy allkeys-lru
+  #     --appendonly yes
+  #     --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+  #   ports:
+  #     - "127.0.0.1:6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   networks:
+  #     - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
   # CLIProxyAPI — Invisible sidecar, managed through OmniRoute
@@ -209,36 +208,23 @@ services:
       - ai-network
 
   # ─────────────────────────────────────────────────────────────────────────
-  # OmniRoute — THE dashboard. Dual instances.
+  # OmniRoute — THE dashboard. Single instance.
   # ─────────────────────────────────────────────────────────────────────────
-  omniroute-1:
+  omniroute:
     <<: *omniroute-base
-    container_name: omniroute-1
+    container_name: omniroute
     ports:
       - "127.0.0.1:20128:20128"
       - "127.0.0.1:20129:20129"
 
-  omniroute-2:
-    <<: *omniroute-base
-    container_name: omniroute-2
-    ports:
-      - "127.0.0.1:20130:20128"
-      - "127.0.0.1:20131:20129"
-
   # ─────────────────────────────────────────────────────────────────────────
-  # Customer Portal — Self-service for customers. Dual instances.
+  # Customer Portal — Self-service for customers. Single instance.
   # ─────────────────────────────────────────────────────────────────────────
-  customer-portal-1:
+  customer-portal:
     <<: *portal-base
-    container_name: customer-portal-1
+    container_name: customer-portal
     ports:
       - "127.0.0.1:3000:3000"
-
-  customer-portal-2:
-    <<: *portal-base
-    container_name: customer-portal-2
-    ports:
-      - "127.0.0.1:3002:3000"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Scheduled Report Deliverer — polls the portal and sends due reports
@@ -250,7 +236,7 @@ services:
     restart: unless-stopped
     logging: *logging
     depends_on:
-      customer-portal-1:
+      customer-portal:
         condition: service_healthy
     command: ["node", "scripts/deliver-scheduled-reports.mjs"]
     environment:
@@ -292,8 +278,8 @@ services:
 volumes:
 #  postgres_data:
 #    name: ai-postgres-data
-  redis_data:
-    name: ai-redis-data
+#  redis_data:
+#    name: ai-redis-data
   omniroute_data:
     name: ai-omniroute-data
   cliproxyapi_data:

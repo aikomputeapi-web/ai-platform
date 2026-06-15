@@ -56,13 +56,26 @@ services:
       - ai-staging-network
 
   redis:
+    image: redis:7-alpine
     container_name: staging-redis
-    ports: !override
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
       - "127.0.0.1:56379:6379"
-    volumes: !override
+    volumes:
       - staging_redis_data:/data
-    networks: !override
-      ai-staging-network: null
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ai-staging-network
 
   cliproxyapi:
     container_name: staging-cliproxyapi
@@ -75,10 +88,10 @@ services:
       ai-staging-network: null
 
   # ─────────────────────────────────────────────────────────────────────────
-  # OmniRoute — dual instances remapped to staging ports
+  # OmniRoute — single instance remapped to staging ports
   # ─────────────────────────────────────────────────────────────────────────
-  omniroute-1:
-    container_name: staging-omniroute-1
+  omniroute:
+    container_name: staging-omniroute
     env_file: !override
       - ./OmniRoute/.env.staging
     ports: !override
@@ -91,33 +104,17 @@ services:
       NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
       BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      NODE_OPTIONS: "--max-old-space-size=1024"
     networks: !override
       ai-staging-network:
         aliases:
           - omniroute
 
-  omniroute-2:
-    container_name: staging-omniroute-2
-    env_file: !override
-      - ./OmniRoute/.env.staging
-    ports: !override
-      - "127.0.0.1:22030:20128"
-      - "127.0.0.1:22031:20129"
-    volumes: !override
-      - staging_omniroute_data:/app/data
-    environment:
-      NODE_ENV: staging
-      NEXT_PUBLIC_BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
-      BASE_URL: ${OMNIROUTE_PUBLIC_URL:-https://admin.aikompute.indevs.in}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
-    networks: !override
-      ai-staging-network: null
-
   # ─────────────────────────────────────────────────────────────────────────
-  # Customer Portal — dual instances remapped to staging ports
+  # Customer Portal — single instance remapped to staging ports
   # ─────────────────────────────────────────────────────────────────────────
-  customer-portal-1:
-    container_name: staging-customer-portal-1
+  customer-portal:
+    container_name: staging-customer-portal
     ports: !override
       - "127.0.0.1:3301:3000"
     environment:
@@ -129,18 +126,6 @@ services:
       ai-staging-network:
         aliases:
           - customer-portal
-
-  customer-portal-2:
-    container_name: staging-customer-portal-2
-    ports: !override
-      - "127.0.0.1:3303:3000"
-    environment:
-      NODE_ENV: staging
-      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
-      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-aikompute [STAGING]}
-      NEXTAUTH_URL: ${PUBLIC_URL:-https://aikompute.indevs.in}
-    networks: !override
-      ai-staging-network: null
 
   report-deliverer:
     container_name: staging-report-deliverer

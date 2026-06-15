@@ -128,7 +128,7 @@ echo ""
 echo -e "  Point your staging domain's A record to: ${GREEN}${PUBLIC_IP}${NC}"
 echo ""
 
-read -rp "  Staging Domain (e.g. aikompute.indevs.in): " DOMAIN
+read -rp "  Staging Domain (e.g. staging.aikompute.com): " DOMAIN
 [[ -z "${DOMAIN}" ]] && error "Staging Domain required"
 
 read -rp "  Email for SSL cert: " CERT_EMAIL
@@ -168,6 +168,7 @@ POSTGRES_DB=aiplatform
 
 # Redis
 REDIS_PASSWORD=${REDIS_PASS}
+REDIS_URL=redis://:${REDIS_PASS}@redis:6379
 
 # OmniRoute (all secrets are staging-specific, separate from production)
 OMNIROUTE_JWT_SECRET=${OMNI_JWT}

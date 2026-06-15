@@ -5,12 +5,14 @@ import { verifyAdminSession } from './src/lib/admin-session';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if accessing admin routes (except login and auth endpoints)
-  if (pathname.startsWith('/admin')) {
-    // Allow access to login page and auth API endpoints
+  const isAdminPage = pathname.startsWith('/admin');
+  const isAdminApi = pathname.startsWith('/api/admin');
+
+  // Only apply auth logic to admin pages and admin API routes
+  if (isAdminPage || isAdminApi) {
+    // Allow access to login page and auth API endpoints without a session
     if (
       pathname === '/admin/login' ||
-      pathname.startsWith('/admin/auth/') ||
       pathname.startsWith('/api/admin/auth/')
     ) {
       return NextResponse.next();
@@ -20,7 +22,11 @@ export async function middleware(request: NextRequest) {
     const sessionToken = request.cookies.get('admin_session')?.value;
 
     if (!sessionToken) {
-      // Redirect to admin login
+      // For API routes, return 401 instead of redirecting
+      if (isAdminApi) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      // Redirect UI routes to admin login
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
@@ -30,7 +36,13 @@ export async function middleware(request: NextRequest) {
     const isValid = await verifyAdminSession(sessionToken);
 
     if (!isValid) {
-      // Invalid session, redirect to login
+      // For API routes, return 401 instead of redirecting
+      if (isAdminApi) {
+        const response = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        response.cookies.delete('admin_session');
+        return response;
+      }
+      // Invalid session — redirect UI to login and clear cookie
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       const response = NextResponse.redirect(loginUrl);

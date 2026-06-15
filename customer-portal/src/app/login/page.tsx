@@ -18,21 +18,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
+      // Use the legacy portal_session route — CredentialsProvider is incompatible
+      // with NextAuth database session strategy, so email/password auth bypasses NextAuth.
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (result?.error) {
-        setError(result.error);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Invalid email or password');
         return;
       }
 
-      if (result?.ok) {
-        router.push('/dashboard');
-        router.refresh();
-      }
+      router.push('/dashboard');
+      router.refresh();
     } catch {
       setError('Network error. Please try again.');
     } finally {

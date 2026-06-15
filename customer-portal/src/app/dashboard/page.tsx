@@ -33,7 +33,7 @@ export default function DashboardOverview() {
     {
       label: 'API Keys',
       value: keys.length.toString(),
-      sub: `of ${user?.plan?.id === 'free' ? '2' : user?.plan?.id === 'pro' ? '5' : user?.plan?.id === 'max-5x' ? '10' : '20'} max`,
+      sub: `of ${user?.plan?.id === 'free' ? '2' : user?.plan?.id === 'pro' ? '5' : (user?.plan?.id === 'max-5x' || user?.plan?.id === 'pay-as-you-go') ? '10' : '20'} max`,
       icon: '🔑',
     },
     {

@@ -37,6 +37,29 @@ info()  { echo -e "${BLUE}[i]${NC} $1"; }
 
 dc() { docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -f "${STAGING_FILE}" -p "${PROJECT}" "$@"; }
 
+# ── Sync environment variable helper ──
+sync_env_var() {
+    local key="$1"
+    local val="$2"
+    local file="$3"
+    
+    export TEMP_SYNC_VAL="${val}"
+    node -e "
+        const fs = require('fs');
+        let content = fs.readFileSync('${file}', 'utf8');
+        const key = '${key}';
+        const val = process.env.TEMP_SYNC_VAL;
+        const regex = new RegExp('^' + key + '=.*', 'm');
+        if (content.match(regex)) {
+            content = content.replace(regex, key + '=' + val);
+        } else {
+            content += '\n' + key + '=' + val;
+        }
+        fs.writeFileSync('${file}', content);
+    "
+    unset TEMP_SYNC_VAL
+}
+
 echo ""
 echo -e "${CYAN}${BOLD}═══ AI Platform — Staging Deploy ═══${NC}"
 echo ""
@@ -79,12 +102,12 @@ if [[ -f "./OmniRoute/.env.staging" ]]; then
     ADMIN_PASS=$(grep '^OMNIROUTE_INITIAL_PASSWORD=' "${ENV_FILE}" | cut -d= -f2-)
     OMNI_PUBLIC=$(grep '^OMNIROUTE_PUBLIC_URL=' "${ENV_FILE}" | cut -d= -f2-)
 
-    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${JWT}|" ./OmniRoute/.env.staging
-    sed -i "s|^API_KEY_SECRET=.*|API_KEY_SECRET=${API_KEY}|" ./OmniRoute/.env.staging
-    sed -i "s|^STORAGE_ENCRYPTION_KEY=.*|STORAGE_ENCRYPTION_KEY=${STORAGE_KEY}|" ./OmniRoute/.env.staging
-    sed -i "s|^INITIAL_PASSWORD=.*|INITIAL_PASSWORD=${ADMIN_PASS}|" ./OmniRoute/.env.staging
-    sed -i "s|^NEXT_PUBLIC_BASE_URL=.*|NEXT_PUBLIC_BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env.staging
-    sed -i "s|^BASE_URL=.*|BASE_URL=${OMNI_PUBLIC}|" ./OmniRoute/.env.staging
+    sync_env_var "JWT_SECRET" "${JWT}" "./OmniRoute/.env.staging"
+    sync_env_var "API_KEY_SECRET" "${API_KEY}" "./OmniRoute/.env.staging"
+    sync_env_var "STORAGE_ENCRYPTION_KEY" "${STORAGE_KEY}" "./OmniRoute/.env.staging"
+    sync_env_var "INITIAL_PASSWORD" "${ADMIN_PASS}" "./OmniRoute/.env.staging"
+    sync_env_var "NEXT_PUBLIC_BASE_URL" "${OMNI_PUBLIC}" "./OmniRoute/.env.staging"
+    sync_env_var "BASE_URL" "${OMNI_PUBLIC}" "./OmniRoute/.env.staging"
 
     log "OmniRoute .env.staging synced"
 fi

@@ -100,6 +100,12 @@ else
     CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "unknown")
 fi
 
+# Include uncommitted changes in the working directory
+if [[ "${CHANGED_FILES}" != "unknown" ]]; then
+    UNCOMMITTED_FILES=$(git status --porcelain | sed 's/^...//' || echo "")
+    CHANGED_FILES="${CHANGED_FILES} ${UNCOMMITTED_FILES}"
+fi
+
 # OmniRoute is a git submodule, and its updates can be missed by a single-commit
 # diff after the deploy script itself changes. Rebuild it on every deploy so the
 # container always picks up the latest submodule commit.
@@ -132,9 +138,8 @@ cd "${SCRIPT_DIR}"
 
 if [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] || [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
     SERVICES=""
-    # Building base image triggers both instances
-    [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] && SERVICES="${SERVICES} omniroute-1" && info "OmniRoute changed — rebuilding image"
-    [[ "${NEEDS_PORTAL_BUILD}" == "true" ]] && SERVICES="${SERVICES} customer-portal-1" && info "Customer Portal changed — rebuilding image"
+    [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] && SERVICES="${SERVICES} omniroute" && info "OmniRoute changed — rebuilding image"
+    [[ "${NEEDS_PORTAL_BUILD}" == "true" ]] && SERVICES="${SERVICES} customer-portal" && info "Customer Portal changed — rebuilding image"
 
     set +e
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" build --parallel ${SERVICES} 2>&1
@@ -163,7 +168,7 @@ rollback_and_exit() {
     fi
 
     info "Restoring stable backups to all instances..."
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --force-recreate omniroute-1 omniroute-2 customer-portal-1 customer-portal-2
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --force-recreate omniroute customer-portal
     
     error "Deploy failed on ${failed_svc}. Reverted to previous stable version."
 }
@@ -197,27 +202,18 @@ wait_for_health() {
 }
 
 # ── Helper: Rolling Update ──
-roll_service_pair() {
-    local svc_name_base="$1"
-    local svc1="${svc_name_base}-1"
-    local svc2="${svc_name_base}-2"
-
-    info "Rolling update: restarting ${svc1}..."
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps --remove-orphans "${svc1}"
-    wait_for_health "${svc1}"
-
-    info "Rolling update: restarting ${svc2}..."
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps --remove-orphans "${svc2}"
-    wait_for_health "${svc2}"
+roll_service_single() {
+    local svc="$1"
+    info "Rolling update: restarting ${svc}..."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps --remove-orphans "${svc}"
+    wait_for_health "${svc}"
 }
 
 # ── Restart services ──
 if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
     info "Config changed — systematic rolling restart of all services"
     
-    # 1. Update Core Cache layers
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d redis
-    wait_for_health "ai-redis"
+    # 1. Redis is external (GCP Memorystore) — no local container to start
 
     # 2. Update Sidecar proxy API
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d cliproxyapi
@@ -226,12 +222,12 @@ if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
     # 3. Run database migrations once
     if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
         info "Running database migrations..."
-        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm customer-portal-1 sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
     fi
 
     # 4. Roll gateways
-    roll_service_pair "omniroute"
-    roll_service_pair "customer-portal"
+    roll_service_single "omniroute"
+    roll_service_single "customer-portal"
 
     # 5. Background workers
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d report-deliverer
@@ -240,19 +236,19 @@ elif [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] || [[ "${NEEDS_PORTAL_BUILD}" ==
     # Run migrations if portal code changed
     if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
         info "Running database migrations..."
-        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm customer-portal-1 sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
     fi
 
     if [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]]; then
-        roll_service_pair "omniroute"
+        roll_service_single "omniroute"
     fi
     if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        roll_service_pair "customer-portal"
+        roll_service_single "customer-portal"
     fi
 else
     info "No builds needed — doing rolling restart"
-    roll_service_pair "omniroute"
-    roll_service_pair "customer-portal"
+    roll_service_single "omniroute"
+    roll_service_single "customer-portal"
 fi
 
 # ── Reload nginx if config changed or staging config is active ──

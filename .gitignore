@@ -32,3 +32,4 @@ debug-*.js
 debug-*.mjs
 debug-*.ts
 /a
+kiro-cli.deb

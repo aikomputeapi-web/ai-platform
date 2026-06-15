@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     // Enforce key limit based on plan
     const keyCount = await prisma.userApiKey.count({ where: { userId: user.id } });
-    const maxKeys = user.planId === 'free' ? 2 : user.planId === 'pro' ? 5 : user.planId === 'max-5x' ? 10 : 20;
+    const maxKeys = user.planId === 'free' ? 2 : user.planId === 'pro' ? 5 : (user.planId === 'max-5x' || user.planId === 'pay-as-you-go') ? 10 : 20;
     if (keyCount >= maxKeys) {
       return NextResponse.json(
         { error: `Maximum ${maxKeys} API keys allowed on your plan` },

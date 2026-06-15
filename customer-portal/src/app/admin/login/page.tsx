@@ -142,8 +142,8 @@ function AdminLoginForm() {
 
           <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
             <p className="text-xs text-[var(--color-text-muted)] text-center">
-              Session will expire after 30 minutes of inactivity
-            </p>
+                  Session expires 30 minutes after login
+                </p>
           </div>
         </form>
 

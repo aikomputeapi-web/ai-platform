@@ -8,7 +8,7 @@ const plans = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    requests: '50/month',
+    requests: '20/day',
     rpm: '5 rpm',
     models: 'Free-tier models',
     features: ['2 API keys', 'Basic analytics', 'Community support'],
@@ -18,8 +18,8 @@ const plans = [
     name: 'Pro',
     price: '$5',
     period: '/month',
-    requests: '2,000-3,000/month',
-    rpm: '60 rpm',
+    requests: '300/day',
+    rpm: '30 rpm',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['5 API keys', 'Priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
     featured: true,
@@ -29,8 +29,8 @@ const plans = [
     name: 'Max 5x',
     price: '$20',
     period: '/month',
-    requests: '4,000-6,000/month',
-    rpm: '150 rpm',
+    requests: '600/day',
+    rpm: '30 rpm',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['10 API keys', 'Higher priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
   },
@@ -39,10 +39,27 @@ const plans = [
     name: 'Max 20x',
     price: '$40',
     period: '/month',
-    requests: '8,000-12,000/month',
-    rpm: '300 rpm',
+    requests: '1,200/day',
+    rpm: '30 rpm',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['20 API keys', 'Highest priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
+  },
+  {
+    id: 'pay-as-you-go',
+    name: 'Pay As You Go',
+    price: 'Metered',
+    period: 'per token',
+    requests: '1,200/day limit',
+    rpm: '30 rpm',
+    models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
+    features: [
+      '10 API keys',
+      'Pay only for what you use',
+      'Metered usage per token',
+      'Claude 3.5 Sonnet base rate ($3/$15 per M)',
+      'Scale to other models via multipliers',
+      'Webhooks',
+    ],
   },
 ];
 
@@ -86,7 +103,7 @@ export default function BillingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
         {plans.map((plan) => (
           <div key={plan.id} className={`glass-card p-6 relative ${plan.featured ? 'ring-2 ring-[var(--color-accent)]' : ''}`}>
             {plan.featured && (

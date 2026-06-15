@@ -41,12 +41,16 @@ cmd_status() {
     echo ""
 
     echo -e "${BOLD}Health:${NC}"
-    for svc in "OmniRoute Dashboard:22028" "OmniRoute API:22029" "Customer Portal:3301"; do
-        local name="${svc%%:*}" port="${svc##*:}"
-        if curl -sf -o /dev/null --max-time 3 "http://127.0.0.1:${port}" 2>/dev/null; then
+    for svc in "OmniRoute Dashboard:22028/" "OmniRoute API:22029/v1/models" "Customer Portal:3301/api/health"; do
+        local entry="${svc##*:}"
+        local name="${svc%%:*}"
+        local port="${entry%%/*}"
+        local path="/${entry#*/}"
+        local code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://127.0.0.1:${port}${path}" 2>/dev/null || echo "000")
+        if [[ "${code}" =~ ^(200|302|307|308|401)$ ]]; then
             echo -e "  ${GREEN}●${NC} ${name} — ${GREEN}OK${NC}"
         else
-            echo -e "  ${RED}●${NC} ${name} — ${RED}Down${NC}"
+            echo -e "  ${RED}●${NC} ${name} — ${RED}Down${NC} (HTTP ${code})"
         fi
     done
 
@@ -108,12 +112,12 @@ cmd_backup() {
 cmd_health() {
     echo ""
     echo -e "${BOLD}Staging Health Checks:${NC}"
-    for ep in "Dashboard|http://127.0.0.1:22028" "API|http://127.0.0.1:22029/v1/models" "Portal|http://127.0.0.1:3301"; do
+    for ep in "Dashboard|http://127.0.0.1:22028/" "API|http://127.0.0.1:22029/v1/models" "Portal|http://127.0.0.1:3301/api/health"; do
         local n="${ep%%|*}" u="${ep##*|}"
         local s=$(date +%s%N)
-        local c=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 5 "${u}" 2>/dev/null || echo "000")
+        local c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "${u}" 2>/dev/null || echo "000")
         local ms=$(( ($(date +%s%N) - s) / 1000000 ))
-        [[ "${c}" =~ ^2 ]] && echo -e "  ${GREEN}●${NC} ${n}: ${c} (${ms}ms)" || echo -e "  ${RED}●${NC} ${n}: ${c}"
+        [[ "${c}" =~ ^(200|302|307|308|401)$ ]] && echo -e "  ${GREEN}●${NC} ${n}: ${c} (${ms}ms)" || echo -e "  ${RED}●${NC} ${n}: ${c}"
     done
     echo ""
 }

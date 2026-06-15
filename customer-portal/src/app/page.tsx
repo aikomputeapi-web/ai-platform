@@ -512,11 +512,12 @@ export default function Home() {
           <p className="text-[var(--color-text-secondary)] text-lg mb-16 max-w-2xl mx-auto">
             Same usage limits, same model access, and a lower price than Anthropic's subscription tiers, with OpenAI models included, for free.
           </p>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto text-left">
             {[
               {
                 name: 'Pro',
                 price: '$5',
+                period: '/month',
                 desc: 'Entry tier for everyday usage',
                 features: [
                   '2,000-3,000 requests/month',
@@ -530,6 +531,7 @@ export default function Home() {
               {
                 name: 'Max 5x',
                 price: '$20',
+                period: '/month',
                 desc: 'Mid-volume plan with higher throughput',
                 features: [
                   '4,000-6,000 requests/month',
@@ -543,6 +545,7 @@ export default function Home() {
               {
                 name: 'Max 20x',
                 price: '$40',
+                period: '/month',
                 desc: 'Highest-volume tier for heavy usage',
                 features: [
                   '8,000-12,000 requests/month',
@@ -553,10 +556,25 @@ export default function Home() {
                 featured: false,
                 href: '/signup?plan=max-20x',
               },
+              {
+                name: 'Pay As You Go',
+                price: 'Metered',
+                period: ' per token',
+                desc: 'Usage-based billing per token',
+                features: [
+                  'Unlimited requests/month',
+                  'No token quota or rate limits',
+                  `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
+                  'Base: $3/M input, $15/M output',
+                  '10 API keys included',
+                ],
+                featured: false,
+                href: '/signup?plan=pay-as-you-go',
+              },
             ].map((plan, i) => (
               <div
                 key={i}
-                className={`glass-card p-8 relative flex flex-col ${
+                className={`glass-card p-6 relative flex flex-col ${
                   plan.featured ? 'ring-2 ring-[var(--color-accent)] md:-translate-y-4' : ''
                 }`}
               >
@@ -569,7 +587,7 @@ export default function Home() {
                 <p className="text-[var(--color-text-secondary)] text-sm mb-6">{plan.desc}</p>
                 <div className="flex items-baseline gap-1 mb-8">
                   <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-[var(--color-text-muted)]">/month</span>
+                  <span className="text-[var(--color-text-muted)]">{plan.period}</span>
                 </div>
                 <ul className="space-y-4 mb-8 flex-1">
                   {plan.features.map((f, j) => (

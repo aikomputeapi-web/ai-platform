@@ -7,13 +7,28 @@ const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 // Get JWT secret from environment
 function getJwtSecret(): Uint8Array {
-  const secret = process.env.PORTAL_JWT_SECRET || process.env.JWT_SECRET || 'change-me-in-production';
+  const secret = process.env.PORTAL_JWT_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('PORTAL_JWT_SECRET environment variable is required in production');
+    }
+    console.warn('[admin-session] WARNING: PORTAL_JWT_SECRET is not set. Using insecure default — set this env var before deploying.');
+    return new TextEncoder().encode('change-me-in-production');
+  }
   return new TextEncoder().encode(secret);
 }
 
 // Admin secret for validation
 export function getAdminSecret(): string {
-  return process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
+  const secret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_API_SECRET environment variable is required in production');
+    }
+    console.warn('[admin-session] WARNING: ADMIN_API_SECRET is not set. Using insecure default password "admin".');
+    return 'admin';
+  }
+  return secret;
 }
 
 // Verify admin password
@@ -52,7 +67,7 @@ export async function setAdminSessionCookie(response: NextResponse): Promise<Nex
     name: ADMIN_SESSION_COOKIE,
     value: token,
     httpOnly: true,
-    secure: true, // Required for HTTPS in production
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: SESSION_DURATION / 1000,
     path: '/',

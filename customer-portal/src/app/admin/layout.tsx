@@ -58,8 +58,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setLoggingOut(true);
     try {
       await fetch('/api/admin/auth/logout', { method: 'POST' });
-      router.push('/admin/login');
       router.refresh();
+      router.push('/admin/login');
     } catch {
       setLoggingOut(false);
     }

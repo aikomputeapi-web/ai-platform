@@ -3,112 +3,135 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import AppleProvider from 'next-auth/providers/apple';
-import CredentialsProvider from 'next-auth/providers/credentials';
 import prisma from './db';
-import { verifyPassword } from './password';
 
 const baseAdapter = PrismaAdapter(prisma);
 const customAdapter = {
   ...baseAdapter,
-  createUser: (data: any) => {
-    const { image, emailVerified, ...rest } = data;
-    const email = data.email || '';
-    const parts = email.split('@');
-    const username = parts[0] || '';
-    const dotCount = (username.match(/\./g) || []).length;
-
-    let isShadowLocked = false;
-    let isShadowBanned = false;
-    let adminNote: string | undefined = undefined;
-
-    if (dotCount === 1) {
-      isShadowLocked = true;
-      adminNote = "Automatically shadow locked: exactly 1 dot in email local part.";
-    } else if (dotCount > 1) {
-      isShadowBanned = true;
-      adminNote = "Automatically shadow banned: more than 1 dot in email local part.";
+  getUser: async (id: string) => {
+    console.log('[NextAuth Adapter] getUser called with:', id);
+    try {
+      const res = await baseAdapter.getUser!(id);
+      console.log('[NextAuth Adapter] getUser returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] getUser error:', e);
+      throw e;
     }
-
-    return baseAdapter.createUser!({
-      ...rest,
-      emailVerified: true, // OAuth users are pre-verified
-      isShadowLocked,
-      isShadowBanned,
-      adminNote,
-    } as any);
   },
-  updateUser: (data: any) => {
-    const { image, emailVerified, ...rest } = data;
-    const updateData: any = { ...rest };
-    if (emailVerified !== undefined) {
-      updateData.emailVerified = emailVerified !== null;
+  getUserByEmail: async (email: string) => {
+    console.log('[NextAuth Adapter] getUserByEmail called with:', email);
+    try {
+      const res = await baseAdapter.getUserByEmail!(email);
+      console.log('[NextAuth Adapter] getUserByEmail returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] getUserByEmail error:', e);
+      throw e;
     }
-    return baseAdapter.updateUser!(updateData);
+  },
+  getUserByAccount: async (provider_providerAccountId: any) => {
+    console.log('[NextAuth Adapter] getUserByAccount called with:', JSON.stringify(provider_providerAccountId));
+    try {
+      const res = await baseAdapter.getUserByAccount!(provider_providerAccountId);
+      console.log('[NextAuth Adapter] getUserByAccount returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] getUserByAccount error:', e);
+      throw e;
+    }
+  },
+  createUser: async (data: any) => {
+    console.log('[NextAuth Adapter] createUser called with:', JSON.stringify(data));
+    try {
+      const { image, emailVerified, ...rest } = data;
+      const email = data.email || '';
+      const parts = email.split('@');
+      const username = parts[0] || '';
+      const dotCount = (username.match(/\./g) || []).length;
+
+      let isShadowLocked = false;
+      let isShadowBanned = false;
+      let adminNote: string | undefined = undefined;
+
+      if (dotCount === 1) {
+        isShadowLocked = true;
+        adminNote = "Automatically shadow locked: exactly 1 dot in email local part.";
+      } else if (dotCount > 1) {
+        isShadowBanned = true;
+        adminNote = "Automatically shadow banned: more than 1 dot in email local part.";
+      }
+
+      const res = await baseAdapter.createUser!({
+        ...rest,
+        emailVerified: true, // OAuth users are pre-verified
+        isShadowLocked,
+        isShadowBanned,
+        adminNote,
+      } as any);
+      console.log('[NextAuth Adapter] createUser returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] createUser error:', e);
+      throw e;
+    }
+  },
+  updateUser: async (data: any) => {
+    console.log('[NextAuth Adapter] updateUser called with:', JSON.stringify(data));
+    try {
+      const { image, emailVerified, ...rest } = data;
+      const updateData: any = { ...rest };
+      if (emailVerified !== undefined) {
+        updateData.emailVerified = emailVerified !== null;
+      }
+      const res = await baseAdapter.updateUser!(updateData);
+      console.log('[NextAuth Adapter] updateUser returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] updateUser error:', e);
+      throw e;
+    }
+  },
+  linkAccount: async (account: any) => {
+    console.log('[NextAuth Adapter] linkAccount called with:', JSON.stringify(account));
+    try {
+      const res = await baseAdapter.linkAccount!(account);
+      console.log('[NextAuth Adapter] linkAccount returned:', JSON.stringify(res));
+      return res;
+    } catch (e) {
+      console.error('[NextAuth Adapter] linkAccount error:', e);
+      throw e;
+    }
   },
 };
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   adapter: customAdapter as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
+      authorization: {
+        params: {
+          prompt: 'select_account',
+        },
+      },
     }),
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || '',
       clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     AppleProvider({
       clientId: process.env.APPLE_CLIENT_ID || '',
       clientSecret: process.env.APPLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
-    }),
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password required');
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { plan: true },
-        });
-
-        if (!user || !user.passwordHash) {
-          throw new Error('Invalid credentials');
-        }
-
-        if (user.isLocked) {
-          throw new Error('Account is locked');
-        }
-
-        const isValid = await verifyPassword(credentials.password, user.passwordHash);
-        if (!isValid) {
-          throw new Error('Invalid credentials');
-        }
-
-        if (!user.emailVerified) {
-          throw new Error('Please verify your email first');
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          emailVerified: user.emailVerified ? new Date() : null,
-        };
-      },
+      allowDangerousEmailAccountLinking: false,
     }),
   ],
   session: {
-    strategy: 'jwt',
+    strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
@@ -117,63 +140,55 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Check if account is locked
-      if (user.email) {
+      try {
+        if (!user.email) return false;
+
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
-        
+
+        // Block locked accounts
         if (dbUser?.isLocked) {
-          return false; // Prevent sign in for locked accounts
+          return false;
         }
 
-        // For OAuth users, ensure email is verified
+        // For OAuth sign-ins, mark email as verified if not already
         if (account?.provider !== 'credentials' && dbUser && !dbUser.emailVerified) {
           await prisma.user.update({
             where: { id: dbUser.id },
             data: { emailVerified: true },
           });
         }
-      }
-      return true;
-    },
-    async jwt({ token, user, account, trigger }) {
-      // Initial sign in
-      if (user) {
-        token.userId = user.id;
-        token.email = user.email;
-      }
-      
-      // Refresh user data on update
-      if (trigger === 'update' && token.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email as string },
-        });
-        if (dbUser) {
-          token.userId = dbUser.id;
-        }
-      }
-      
-      return token;
-    },
-    async session({ session, token }) {
-      if (token?.userId && session.user) {
-        // Fetch full user data
-        const user = await prisma.user.findUnique({
-          where: { id: token.userId as string },
-          include: { plan: true, apiKeys: true },
-        });
 
-        if (user && !user.isLocked) {
-          session.user.id = user.id;
-          (session.user as any).userId = user.id;
-          (session.user as any).email = user.email;
-          (session.user as any).name = user.name;
-          (session.user as any).planId = user.planId;
-          (session.user as any).plan = user.plan;
-        }
+        return true;
+      } catch (e) {
+        console.error('[NextAuth Callback] signIn error:', e);
+        return false;
       }
-      return session;
+    },
+    async session({ session, user }) {
+      // With database strategy, `user` is the DB user object — no token lookups needed
+      try {
+        if (session.user && user) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: { plan: true, apiKeys: true },
+          });
+
+          if (dbUser && !dbUser.isLocked) {
+            session.user.id = dbUser.id;
+            (session.user as any).userId = dbUser.id;
+            (session.user as any).email = dbUser.email;
+            (session.user as any).name = dbUser.name;
+            (session.user as any).planId = dbUser.planId;
+            (session.user as any).plan = dbUser.plan;
+          }
+        }
+        return session;
+      } catch (e) {
+        console.error('[NextAuth Callback] session error:', e);
+        return session;
+      }
     },
   },
   events: {

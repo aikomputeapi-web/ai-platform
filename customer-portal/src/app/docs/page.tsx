@@ -156,12 +156,20 @@ export default function Docs() {
                 <strong>Free Tier:</strong> 5 requests per minute, 50 requests per month (total across any model).
               </li>
               <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                <strong>Basic Tier:</strong> 20 requests per minute, 1,000 requests per day.
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <strong>Pro Tier:</strong> 60 requests per minute, 3,000 requests per day.
               </li>
               <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                <strong>Pro Tier:</strong> 60 requests per minute, 10,000 requests per day.
+                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                <strong>Max 5x Tier:</strong> 150 requests per minute, 6,000 requests per day.
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-pink-500"></span>
+                <strong>Max 20x Tier:</strong> 300 requests per minute, 12,000 requests per day.
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <strong>Pay As You Go:</strong> 300 requests per minute, 12,000 requests per day (completely unlimited monthly requests and tokens).
               </li>
             </ul>
             <p className="text-[var(--color-text-secondary)] leading-relaxed">
