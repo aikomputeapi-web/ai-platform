@@ -75,6 +75,7 @@ x-omniroute-base: &omniroute-base
     NVIDIA_FREE_ONLY: "true"
   volumes:
     - omniroute_data:/app/data
+    - ./OmniRoute/proxy_scraper_data:/app/proxy_scraper_data:ro
   networks:
     ai-network:
       aliases:
@@ -104,9 +105,14 @@ x-portal-base: &portal-base
     STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
     STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+    STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+    STRIPE_PRICE_ID_MAX_5X: ${STRIPE_PRICE_ID_MAX_5X:-}
+    STRIPE_PRICE_ID_MAX_20X: ${STRIPE_PRICE_ID_MAX_20X:-}
+    STRIPE_PRICE_ID_PAYG: ${STRIPE_PRICE_ID_PAYG:-}
     RESEND_API_KEY: ${RESEND_API_KEY:-}
     EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
     ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
+    AA_API_KEY: ${AA_API_KEY:-}
     NODE_ENV: production
     NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
     NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}

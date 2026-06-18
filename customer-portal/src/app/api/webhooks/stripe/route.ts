@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     case 'checkout.session.completed': {
       const session = event.data.object;
       const customerId = session.customer as string;
+      const subscriptionId = session.subscription as string;
 
       // Find user by Stripe customer ID
       const user = await prisma.user.findFirst({
@@ -42,10 +43,13 @@ export async function POST(req: NextRequest) {
       if (!plan) break;
       const billedPlan = plan as typeof plan & { requestsPerMonth?: number };
 
-      // Update user plan
+      // Update user plan and store subscription ID
       await prisma.user.update({
         where: { id: user.id },
-        data: { planId: plan.id },
+        data: {
+          planId: plan.id,
+          stripeSubscriptionId: subscriptionId,
+        },
       });
 
       // Update all user's API keys with new limits
@@ -92,10 +96,13 @@ export async function POST(req: NextRequest) {
       });
       if (!user) break;
 
-      // Downgrade to free
+      // Downgrade to free and clear subscription ID
       await prisma.user.update({
         where: { id: user.id },
-        data: { planId: 'free' },
+        data: {
+          planId: 'free',
+          stripeSubscriptionId: null,
+        },
       });
 
       await prisma.$executeRaw`

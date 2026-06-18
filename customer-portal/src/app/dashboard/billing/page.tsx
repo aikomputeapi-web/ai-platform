@@ -66,6 +66,8 @@ const plans = [
 export default function BillingPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState('');
+  const [canceling, setCanceling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json()).then((d) => setUser(d.user));
@@ -92,6 +94,26 @@ export default function BillingPage() {
     const res = await fetch('/api/billing/checkout');
     const data = await res.json();
     if (data.url) window.location.href = data.url;
+  }
+
+  async function handleCancelSubscription() {
+    setCanceling(true);
+    try {
+      const res = await fetch('/api/billing/subscription', {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Subscription canceled successfully. You have been downgraded to the Free plan.');
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to cancel subscription');
+      }
+    } catch {
+      alert('Failed to cancel subscription');
+    }
+    setCanceling(false);
+    setShowCancelConfirm(false);
   }
 
   return (
@@ -163,9 +185,47 @@ export default function BillingPage() {
           <p className="text-sm text-[var(--color-text-secondary)] mb-4">
             Update payment method, view invoices, or cancel your subscription.
           </p>
-          <button onClick={handleManage} className="btn-secondary">
-            Open Billing Portal
-          </button>
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={handleManage} className="btn-secondary">
+              Open Billing Portal
+            </button>
+            {user?.stripeSubscriptionId && user?.plan?.id !== 'free' && (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="btn-danger"
+                disabled={canceling}
+              >
+                {canceling ? 'Canceling...' : 'Cancel Subscription'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="glass-card p-6 max-w-md mx-4">
+            <h3 className="font-semibold text-lg mb-2">Cancel Subscription?</h3>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+              Are you sure you want to cancel your subscription? You will be downgraded to the Free plan and may lose access to premium features.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="btn-secondary"
+                disabled={canceling}
+              >
+                Keep Subscription
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                className="btn-danger"
+                disabled={canceling}
+              >
+                {canceling ? 'Canceling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
