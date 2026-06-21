@@ -1,0 +1,12 @@
+{
+  "name": "gcp-relay-function",
+  "version": "1.0.0",
+  "description": "OmniRoute GCP Cloud Function relay proxy — forwards requests with rotating egress IPs",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0"
+  }
+}

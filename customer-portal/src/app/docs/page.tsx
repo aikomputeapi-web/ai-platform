@@ -157,20 +157,17 @@ export default function Docs() {
               </li>
               <li className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                <strong>Pro Tier:</strong> 60 requests per minute, 3,000 requests per day.
+                <strong>Pro Tier:</strong> 30 requests per minute, 300 requests per day (6,300/month cap).
               </li>
               <li className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                <strong>Max 5x Tier:</strong> 150 requests per minute, 6,000 requests per day.
+                <strong>Max 5x Tier:</strong> 30 requests per minute, 1,500 requests per day (31,500/month cap).
               </li>
               <li className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-pink-500"></span>
-                <strong>Max 20x Tier:</strong> 300 requests per minute, 12,000 requests per day.
+                <strong>Max 20x Tier:</strong> 60 requests per minute, 6,000 requests per day (126,000/month cap).
               </li>
-              <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <strong>Pay As You Go:</strong> 300 requests per minute, 12,000 requests per day (completely unlimited monthly requests and tokens).
-              </li>
+
             </ul>
             <p className="text-[var(--color-text-secondary)] leading-relaxed">
               You can track your current usage and remaining quota in the dashboard. Need higher limits? Contact our support team for an Enterprise plan.

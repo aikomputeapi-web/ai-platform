@@ -520,8 +520,8 @@ export default function Home() {
                 period: '/month',
                 desc: 'Entry tier for everyday usage',
                 features: [
-                  '2,000-3,000 requests/month',
-                  '50-100 requests per 5-hour window',
+                  '300 requests/day · 6,300/month',
+                  '30 requests per minute',
                   `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
                   'Priority routing',
                 ],
@@ -534,8 +534,8 @@ export default function Home() {
                 period: '/month',
                 desc: 'Mid-volume plan with higher throughput',
                 features: [
-                  '4,000-6,000 requests/month',
-                  '100-200 requests per 5-hour window',
+                  '1,500 requests/day · 31,500/month',
+                  '30 requests per minute',
                   `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
                   'Higher priority routing',
                 ],
@@ -548,29 +548,15 @@ export default function Home() {
                 period: '/month',
                 desc: 'Highest-volume tier for heavy usage',
                 features: [
-                  '8,000-12,000 requests/month',
-                  '200-400 requests per 5-hour window',
+                  '6,000 requests/day · 126,000/month',
+                  '60 requests per minute',
                   `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
                   'Highest priority routing',
                 ],
                 featured: false,
                 href: '/signup?plan=max-20x',
               },
-              {
-                name: 'Pay As You Go',
-                price: 'Metered',
-                period: ' per token',
-                desc: 'Usage-based billing per token',
-                features: [
-                  'Unlimited requests/month',
-                  'No token quota or rate limits',
-                  `Claude 4.7 Opus, Claude 4.6 Sonnet, and ${MODELS.OPENAI_FLAGSHIP}`,
-                  'Base: $3/M input, $15/M output',
-                  '10 API keys included',
-                ],
-                featured: false,
-                href: '/signup?plan=pay-as-you-go',
-              },
+
             ].map((plan, i) => (
               <div
                 key={i}

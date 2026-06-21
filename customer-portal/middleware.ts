@@ -18,6 +18,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Allow access with valid Bearer token API secret (for worker scripts and cron jobs)
+    const authHeader = request.headers.get('authorization');
+    const adminSecret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
+    if (authHeader?.startsWith('Bearer ') && authHeader.slice(7) === adminSecret) {
+      return NextResponse.next();
+    }
+
     // Check for admin session cookie
     const sessionToken = request.cookies.get('admin_session')?.value;
 

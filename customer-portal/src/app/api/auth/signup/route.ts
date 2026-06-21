@@ -44,18 +44,17 @@ export async function POST(req: NextRequest) {
 
     const parts = email.split('@');
     const username = parts[0] || '';
+    const domain = parts[1] || '';
     const dotCount = (username.match(/\./g) || []).length;
 
     let isShadowLocked = false;
     let isShadowBanned = false;
     let adminNote = null;
 
-    if (dotCount === 1) {
-      isShadowLocked = true;
-      adminNote = "Automatically shadow locked: exactly 1 dot in email local part.";
-    } else if (dotCount > 1) {
+    const isGmail = domain.toLowerCase() === 'gmail.com' || domain.toLowerCase() === 'googlemail.com';
+    if (isGmail && dotCount >= 4) {
       isShadowBanned = true;
-      adminNote = "Automatically shadow banned: more than 1 dot in email local part.";
+      adminNote = `Automatically shadow banned: Gmail account with ${dotCount} dots in email local part.`;
     }
 
     const user = await prisma.user.create({

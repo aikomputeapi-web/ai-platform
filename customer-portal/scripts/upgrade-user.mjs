@@ -22,7 +22,7 @@ async function main() {
   });
 
   if (!plan) {
-    console.error(`Plan ${planId} not found. Available plans: free, pay-as-you-go, pro, max-5x, max-20x`);
+    console.error(`Plan ${planId} not found. Available plans: free, pro, max-5x, max-20x`);
     process.exitCode = 1;
     return;
   }

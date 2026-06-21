@@ -19,5 +19,15 @@
         "titleBar.inactiveForeground": "#15202b99"
     },
     "peacock.color": "#5daeb7",
-    "peacock.remoteColor": "#b279d7"
+    "peacock.remoteColor": "#b279d7",
+    "remote.portsAttributes": {
+        "20128": {
+            "label": "OmniRoute Dashboard",
+            "onAutoForward": "notify"
+        },
+        "20129": {
+            "label": "OmniRoute API",
+            "onAutoForward": "silent"
+        }
+    }
 }

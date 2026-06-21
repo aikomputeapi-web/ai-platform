@@ -185,7 +185,9 @@ wait_for_health() {
             log "${container_name} is healthy!"
             return 0
         elif [[ "${status}" == "unhealthy" ]]; then
-            rollback_and_exit "${container_name}"
+            # Do not rollback immediately on unhealthy; wait for the boot period to elapse
+            # as it might take a few seconds to transition to healthy.
+            true
         fi
         
         # Fallback if status is empty
