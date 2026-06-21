@@ -93,9 +93,12 @@ functions.http("relay", async (req, res) => {
 
   // Clone headers, removing relay-specific and hop-by-hop headers
   const forwardHeaders = { ...req.headers };
+  const originalAuth = req.headers["x-relay-auth"];
+
   const stripHeaders = [
     "x-relay-target",
     "x-relay-path",
+    "x-relay-auth",
     "host",
     "authorization",
     "x-forwarded-for",
@@ -107,6 +110,10 @@ functions.http("relay", async (req, res) => {
   ];
   for (const h of stripHeaders) {
     delete forwardHeaders[h];
+  }
+
+  if (originalAuth) {
+    forwardHeaders["authorization"] = originalAuth;
   }
 
   // --- Forward request upstream ---
