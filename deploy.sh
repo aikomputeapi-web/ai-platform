@@ -35,26 +35,36 @@ docker compose version &>/dev/null || error "Docker Compose not found."
 log "Environment OK"
 
 # ── Sync OmniRoute .env secrets helper ──
+#   Writes/updates KEY=VALUE in the target .env file.
+#   Value is passed through a temp file to avoid shell injection.
 sync_env_var() {
     local key="$1"
     local val="$2"
     local file="$3"
-    
-    export TEMP_SYNC_VAL="${val}"
-    node -e "
-        const fs = require('fs');
-        let content = fs.readFileSync('${file}', 'utf8');
-        const key = '${key}';
-        const val = process.env.TEMP_SYNC_VAL;
-        const regex = new RegExp('^' + key + '=.*', 'm');
-        if (content.match(regex)) {
-            content = content.replace(regex, key + '=' + val);
-        } else {
-            content += '\n' + key + '=' + val;
-        }
-        fs.writeFileSync('${file}', content);
-    "
-    unset TEMP_SYNC_VAL
+    local tmp_val
+    tmp_val=$(mktemp)
+    local tmp_out
+    tmp_out=$(mktemp)
+
+    printf '%s' "${val}" > "${tmp_val}"
+
+    node -e '
+        const fs = require("fs");
+        const file = process.argv[1];
+        const key  = process.argv[2];
+        const val  = fs.readFileSync(process.argv[3], "utf8");
+        const out  = process.argv[4];
+        let content = "";
+        try { content = fs.readFileSync(file, "utf8"); } catch {}
+        const re = new RegExp("^" + key.replace(/[.*+?^${}()|[\]\\\\]/g, "\\$&") + "=.*", "m");
+        const line = key + "=" + val;
+        const nl = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
+        const next = content.match(re) ? content.replace(re, line) : content + nl + line;
+        fs.writeFileSync(out, next);
+    ' "${file}" "${key}" "${tmp_val}" "${tmp_out}"
+
+    mv "${tmp_out}" "${file}"
+    rm -f "${tmp_val}"
 }
 
 # ── Sync OmniRoute .env secrets ──
@@ -106,12 +116,20 @@ if [[ "${CHANGED_FILES}" != "unknown" ]]; then
     CHANGED_FILES="${CHANGED_FILES} ${UNCOMMITTED_FILES}"
 fi
 
-# OmniRoute is a git submodule, and its updates can be missed by a single-commit
-# diff after the deploy script itself changes. Rebuild it on every deploy so the
-# container always picks up the latest submodule commit.
-NEEDS_OMNIROUTE_BUILD=true
+NEEDS_OMNIROUTE_BUILD=false
 NEEDS_PORTAL_BUILD=false
 NEEDS_FULL_RESTART=false
+
+# OmniRoute is a git submodule — detect if it points to a different commit
+if git submodule status OmniRoute 2>/dev/null | grep -q "^[+-]"; then
+    NEEDS_OMNIROUTE_BUILD=true
+    info "OmniRoute submodule has changed — will rebuild"
+fi
+
+# Rebuild OmniRoute when the deploy script itself changes (submodule refs in script)
+if echo "${CHANGED_FILES}" | grep -q "^deploy.sh"; then
+    NEEDS_OMNIROUTE_BUILD=true
+fi
 
 if echo "${CHANGED_FILES}" | grep -q "^customer-portal/"; then
     NEEDS_PORTAL_BUILD=true
@@ -211,6 +229,19 @@ roll_service_single() {
     wait_for_health "${svc}"
 }
 
+# ── Helper: Database Migrations + Seed ──
+run_migrations() {
+    info "Running database migrations..."
+    if docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy"; then
+        log "Migrations applied"
+        info "Running database seed..."
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js db seed" || warn "Seed failed (non-fatal)"
+    else
+        warn "Migration failed! Schema may be partially applied — manual inspection required."
+        warn "Continuing deploy to avoid cascading outage; fix migrations manually."
+    fi
+}
+
 # ── Restart services ──
 if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
     info "Config changed — systematic rolling restart of all services"
@@ -221,10 +252,9 @@ if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d cliproxyapi
     wait_for_health "cliproxyapi"
 
-    # 3. Run database migrations once
+    # 3. Run database migrations + seed once
     if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        info "Running database migrations..."
-        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
+        run_migrations
     fi
 
     # 4. Roll gateways
@@ -233,12 +263,12 @@ if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
 
     # 5. Background workers
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d report-deliverer
+    wait_for_health "report-deliverer"
     
 elif [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] || [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-    # Run migrations if portal code changed
+    # Run migrations + seed if portal code changed
     if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        info "Running database migrations..."
-        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy" || rollback_and_exit "database-migration"
+        run_migrations
     fi
 
     if [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]]; then
@@ -261,15 +291,9 @@ if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf"
     # Detect which SSL certificate directory to use
     CERT_DOMAIN="${DOMAIN}"
     if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
-        if [[ -d "/etc/letsencrypt/live/aikompute.indevs.in" ]]; then
-            CERT_DOMAIN="aikompute.indevs.in"
-        elif [[ -d "/etc/letsencrypt/live/aikompute.indevs.in-0001" ]]; then
-            CERT_DOMAIN="aikompute.indevs.in-0001"
-        else
-            FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" | head -n 1 || true)
-            if [[ -n "${FOUND_CERT}" ]]; then
-                CERT_DOMAIN=$(basename "${FOUND_CERT}")
-            fi
+        FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" 2>/dev/null | sort | head -n 1 || true)
+        if [[ -n "${FOUND_CERT}" ]]; then
+            CERT_DOMAIN=$(basename "${FOUND_CERT}")
         fi
     fi
     info "Using SSL certificate for domain: ${CERT_DOMAIN}"
@@ -298,6 +322,11 @@ if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf"
         error "Nginx deployment failed."
     fi
 fi
+
+# ── Cleanup ──
+info "Cleaning up Docker artifacts..."
+docker image prune -f 2>/dev/null || true
+docker builder prune -f 2>/dev/null || true
 
 # ── Post-deploy confirmation ──
 echo ""
