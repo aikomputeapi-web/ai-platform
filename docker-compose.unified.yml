@@ -21,6 +21,8 @@ x-omniroute-base: &omniroute-base
   stop_grace_period: 40s
   logging: *logging
   env_file: ./OmniRoute/.env
+  mem_limit: 1536m
+  memswap_limit: 1536m
   depends_on:
     cliproxyapi:
       condition: service_healthy
@@ -92,6 +94,8 @@ x-portal-base: &portal-base
   image: customer-portal:latest
   restart: unless-stopped
   logging: *logging
+  mem_limit: 512m
+  memswap_limit: 512m
   depends_on:
     omniroute:
       condition: service_healthy
@@ -194,6 +198,8 @@ services:
     container_name: cliproxyapi
     restart: unless-stopped
     logging: *logging
+    mem_limit: 256m
+    memswap_limit: 256m
     environment:
       PORT: 8317
       HOST: 0.0.0.0
@@ -241,6 +247,8 @@ services:
     container_name: report-deliverer
     restart: unless-stopped
     logging: *logging
+    mem_limit: 256m
+    memswap_limit: 256m
     depends_on:
       customer-portal:
         condition: service_healthy
@@ -267,6 +275,8 @@ services:
     container_name: free-models-extractor
     restart: unless-stopped
     logging: *logging
+    mem_limit: 256m
+    memswap_limit: 256m
     volumes:
       - ./scripts:/app/scripts
       - omniroute_data:/app/data
