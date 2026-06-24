@@ -124,6 +124,25 @@ cmd_update()  {
     if [[ -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
         echo -e "${BLUE}[i]${NC} Pulling OmniRoute origin/main…"
         ( cd "${SCRIPT_DIR}/OmniRoute" && git pull --ff-only ) || echo -e "${YELLOW}[!]${NC} OmniRoute pull skipped"
+
+        # Fetch updates from the original creator's upstream repo so they can
+        # be merged deliberately (may need conflict resolution). We do NOT
+        # auto-merge here — only fetch and report whether new commits exist.
+        if ( cd "${SCRIPT_DIR}/OmniRoute" && git remote get-url upstream ) >/dev/null 2>&1; then
+            echo -e "${BLUE}[i]${NC} Fetching OmniRoute upstream (original creator)…"
+            if ( cd "${SCRIPT_DIR}/OmniRoute" && git fetch upstream ); then
+                local omni_behind
+                omni_behind=$( cd "${SCRIPT_DIR}/OmniRoute" && git rev-list --count HEAD..upstream/main 2>/dev/null || echo 0 )
+                if [[ "${omni_behind}" -gt 0 ]]; then
+                    echo -e "${YELLOW}[!]${NC} OmniRoute is ${omni_behind} commit(s) behind upstream/main."
+                    echo -e "${YELLOW}[!]${NC} Merge with:  cd OmniRoute && git merge upstream/main"
+                else
+                    echo -e "${GREEN}[✓]${NC} OmniRoute is up to date with upstream/main"
+                fi
+            else
+                echo -e "${YELLOW}[!]${NC} OmniRoute upstream fetch skipped"
+            fi
+        fi
     fi
     dc pull; dc build --parallel; dc up -d
 }
