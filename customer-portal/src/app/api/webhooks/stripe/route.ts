@@ -105,16 +105,18 @@ async function processWebhookEvent(event: any) {
           VALUES (${crypto.randomUUID()}, ${user.id}, 'subscription_canceled', 0, ${`Stripe subscription ${sub.id} ended`}, 'applied', 'stripe', NOW())
         `;
 
-        // Reset API key limits to free tier
+        // Reset API key limits to free tier.
+        // Free tier gates on tokens/month (enforced by userRateLimitManager via the
+        // plan row), so per-key request day/month caps are cleared (null = unlimited);
+        // only the RPM abuse limiter is set on the key.
         const freePlan = await prisma.plan.findUnique({ where: { id: 'free' } });
-        const freeTier = freePlan as typeof freePlan & { requestsPerMonth?: number };
         const userKeys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
 
         for (const key of userKeys) {
           await updateKeyLimits(key.omnirouteKeyId, {
             maxRequestsPerDay: null,
             maxRequestsPerMinute: freePlan?.requestsPerMinute || 5,
-            maxRequestsPerMonth: freeTier?.requestsPerMonth || 50,
+            maxRequestsPerMonth: null,
           });
         }
 

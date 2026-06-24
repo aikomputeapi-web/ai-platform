@@ -7,12 +7,16 @@ const plans = [
     id: 'free',
     name: 'Free',
     priceCents: 0,
-    requestsPerDay: 20,
+    // Free tier: token-monthly cap only (mirrors one Pro 5h allowance as a monthly budget).
+    // Request-count day/month caps are disabled (0 = unlimited); RPM=5 remains as the
+    // abuse limiter. 5h and weekly token windows are disabled (0) — the calendar-month
+    // token limit is the sole quota gate for free users.
+    requestsPerDay: 0,
     requestsPerMinute: 5,
-    requestsPerMonth: 50,
-    limit5hTokens: 150000,
-    limitWeekTokens: 500000,
-    limitMonthTokens: 1500000,
+    requestsPerMonth: 0,
+    limit5hTokens: 0,
+    limitWeekTokens: 0,
+    limitMonthTokens: 3000000,
     allowedModels: '*',
     stripePriceId: null,
   },

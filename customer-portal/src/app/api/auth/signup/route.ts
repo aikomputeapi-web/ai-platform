@@ -31,9 +31,15 @@ export async function POST(req: NextRequest) {
         id: 'free',
         name: 'Free',
         priceCents: 0,
+        // Free tier: token-monthly cap only (3,000,000 tokens/calendar month, mirroring
+        // one Pro 5h allowance). Request day/month caps disabled (0 = unlimited);
+        // RPM=5 stays as the abuse limiter. 5h/week token windows disabled (0).
         requestsPerDay: 0,
         requestsPerMinute: 5,
-        requestsPerMonth: 50,
+        requestsPerMonth: 0,
+        limit5hTokens: 0,
+        limitWeekTokens: 0,
+        limitMonthTokens: 3000000,
         allowedModels: '*',
         sortOrder: 0,
       } as never,
