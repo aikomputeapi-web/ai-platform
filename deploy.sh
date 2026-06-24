@@ -34,6 +34,21 @@ docker compose version &>/dev/null || error "Docker Compose not found."
 
 log "Environment OK"
 
+# ── Ensure OmniRoute source is present ──
+#   OmniRoute is a standalone nested repo (no longer a submodule).
+#   scripts/setup-omniroute.sh clones the fork + registers the upstream
+#   remote; it is idempotent and skips the clone if OmniRoute/ already exists.
+SETUP_OMNIROUTE="${SCRIPT_DIR}/scripts/setup-omniroute.sh"
+if [[ -x "${SETUP_OMNIROUTE}" ]]; then
+    if [[ ! -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
+        info "OmniRoute source missing — running setup-omniroute.sh"
+        bash "${SETUP_OMNIROUTE}" || error "Failed to bootstrap OmniRoute source"
+        log "OmniRoute source ready"
+    fi
+else
+    warn "scripts/setup-omniroute.sh not found — assuming OmniRoute/ already present"
+fi
+
 # ── Sync OmniRoute .env secrets helper ──
 #   Writes/updates KEY=VALUE in the target .env file.
 #   Value is passed through a temp file to avoid shell injection.
@@ -120,14 +135,20 @@ NEEDS_OMNIROUTE_BUILD=false
 NEEDS_PORTAL_BUILD=false
 NEEDS_FULL_RESTART=false
 
-# OmniRoute is a git submodule — detect if it points to a different commit
-if git submodule status OmniRoute 2>/dev/null | grep -q "^[+-]"; then
-    NEEDS_OMNIROUTE_BUILD=true
-    info "OmniRoute submodule has changed — will rebuild"
+# OmniRoute is a standalone nested repo (NOT a submodule). Since it is
+# gitignored, the parent repo's CHANGED_FILES will never mention it — detect
+# whether the local OmniRoute HEAD differs from its origin/main.
+if [[ -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
+    OMNI_LOCAL=$(cd "${SCRIPT_DIR}/OmniRoute" && git rev-parse HEAD 2>/dev/null || echo "")
+    OMNI_REMOTE=$(cd "${SCRIPT_DIR}/OmniRoute" && git rev-parse origin/main 2>/dev/null || echo "")
+    if [[ -n "${OMNI_LOCAL}" && -n "${OMNI_REMOTE}" && "${OMNI_LOCAL}" != "${OMNI_REMOTE}" ]]; then
+        NEEDS_OMNIROUTE_BUILD=true
+        info "OmniRoute HEAD differs from origin/main — will rebuild"
+    fi
 fi
 
-# Rebuild OmniRoute when the deploy script itself changes (submodule refs in script)
-if echo "${CHANGED_FILES}" | grep -q "^deploy.sh"; then
+# Rebuild OmniRoute when the deploy/bootstrap scripts change
+if echo "${CHANGED_FILES}" | grep -qE "^deploy\.sh|^scripts/setup-omniroute\.sh"; then
     NEEDS_OMNIROUTE_BUILD=true
 fi
 

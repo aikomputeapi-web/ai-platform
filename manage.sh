@@ -113,7 +113,20 @@ cmd_restart() {
 cmd_stop()    { dc down; }
 cmd_start()   { dc up -d; }
 cmd_rebuild() { dc down; dc build --parallel; dc up -d; }
-cmd_update()  { dc pull; dc build --parallel; dc up -d; }
+cmd_update()  {
+    # Ensure OmniRoute source is present & up to date (standalone repo, not a submodule)
+    local setup="${SCRIPT_DIR}/scripts/setup-omniroute.sh"
+    if [[ -x "${setup}" ]]; then
+        echo -e "${BLUE}[i]${NC} Ensuring OmniRoute source (setup-omniroute.sh)…"
+        bash "${setup}" || { echo -e "${RED}[✗]${NC} OmniRoute bootstrap failed"; return 1; }
+    fi
+    # Pull latest OmniRoute from its own fork (origin/main)
+    if [[ -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
+        echo -e "${BLUE}[i]${NC} Pulling OmniRoute origin/main…"
+        ( cd "${SCRIPT_DIR}/OmniRoute" && git pull --ff-only ) || echo -e "${YELLOW}[!]${NC} OmniRoute pull skipped"
+    fi
+    dc pull; dc build --parallel; dc up -d
+}
 
 cmd_backup() {
     local TS=$(date +%Y%m%d_%H%M%S)
