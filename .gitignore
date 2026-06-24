@@ -33,3 +33,9 @@ debug-*.mjs
 debug-*.ts
 /a
 kiro-cli.deb
+
+# ── Standalone nested repos (managed via scripts/setup-omniroute.sh) ──
+# OmniRoute and scratch are independent git repos cloned into the platform,
+# NOT submodules. Keep them out of the parent repo's index.
+/OmniRoute/
+/scratch/
