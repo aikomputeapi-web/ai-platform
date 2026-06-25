@@ -8,7 +8,7 @@
 #  Commands:
 #    status      Health dashboard
 #    logs        Tail all logs
-#    logs <svc>  Tail one service (omniroute, cliproxyapi, postgres, redis)
+#    logs <svc>  Tail one service (omniroute, postgres, redis)
 #    restart     Restart all
 #    restart <s> Restart one service
 #    stop / start / rebuild
@@ -181,7 +181,7 @@ cmd_backup() {
         warn "Redis backup skipped — no REDIS_URL"
     fi
 
-    for vol in omniroute-data cliproxyapi-data; do
+    for vol in omniroute-data; do
         docker run --rm -v "ai-${vol}:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || true
     done
 
@@ -208,7 +208,7 @@ cmd_restore() {
     dc up -d postgres; sleep 5
     [[ -f "${d}/postgres.sql" ]] && dc exec -T postgres psql -U aiplatform -d aiplatform < "${d}/postgres.sql"
 
-    for vol in omniroute-data cliproxyapi-data; do
+    for vol in omniroute-data; do
         [[ -f "${d}/${vol}.tar" ]] && docker run --rm -v "ai-${vol}:/dst" -v "${d}:/bk:ro" alpine sh -c "rm -rf /dst/* && tar xf /bk/${vol}.tar -C /dst"
     done
 
@@ -230,7 +230,7 @@ cmd_health() {
 
 cmd_shell() {
     local svc="${1:-}"
-    [[ -z "${svc}" ]] && { echo "Usage: ./manage.sh shell <omniroute|cliproxyapi|postgres|redis>"; return 1; }
+    [[ -z "${svc}" ]] && { echo "Usage: ./manage.sh shell <omniroute|postgres|redis>"; return 1; }
     dc exec "${svc}" sh -c 'command -v bash >/dev/null && bash || sh'
 }
 

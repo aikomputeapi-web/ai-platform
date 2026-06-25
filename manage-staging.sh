@@ -8,7 +8,7 @@
 #  Commands:
 #    status      Health dashboard (staging)
 #    logs        Tail all staging logs
-#    logs <svc>  Tail one service (omniroute, cliproxyapi, postgres, redis, customer-portal)
+#    logs <svc>  Tail one service (omniroute, postgres, redis, customer-portal)
 #    restart     Restart all staging services
 #    restart <s> Restart one staging service
 #    stop / start / rebuild
@@ -96,7 +96,7 @@ cmd_backup() {
     sleep 2
     docker cp staging-redis:/data/dump.rdb "${BK}/redis.rdb" 2>/dev/null || true
 
-    for vol in staging_omniroute_data staging_cliproxyapi_data; do
+    for vol in staging_omniroute_data; do
         # Map staging_*_data → ai-*-data-staging (replace underscores appropriately)
         local base="${vol#staging_}"
         base="${base%_data}"
@@ -128,7 +128,7 @@ cmd_health() {
 
 cmd_shell() {
     local svc="${1:-}"
-    [[ -z "${svc}" ]] && { echo "Usage: ./manage-staging.sh shell <omniroute|cliproxyapi|postgres|redis|customer-portal>"; return 1; }
+    [[ -z "${svc}" ]] && { echo "Usage: ./manage-staging.sh shell <omniroute|postgres|redis|customer-portal>"; return 1; }
     dc exec "${svc}" sh -c 'command -v bash >/dev/null && bash || sh'
 }
 

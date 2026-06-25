@@ -159,13 +159,8 @@ run_migrations() {
 # ── Run migrations ──
 run_migrations
 
-# ── Restart services (start cliproxyapi first, then everything else) ──
-info "Starting cliproxyapi..."
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d cliproxyapi
-wait_for_health "cliproxyapi"
-log "cliproxyapi is healthy"
-
-info "Starting remaining services..."
+# ── Restart services ──
+info "Restarting all services..."
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 wait_for_health "omniroute"
 wait_for_health "customer-portal"
