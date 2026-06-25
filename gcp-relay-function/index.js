@@ -1,12 +1,39 @@
 const functions = require("@google-cloud/functions-framework");
 
+const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10MB
+const FETCH_TIMEOUT = 120_000; // 120s
+
+/**
+ * Resolve a hostname to its canonical decimal IPv4 or IPv6 address,
+ * handling hex, octal, and integer encodings used in SSRF bypass attempts.
+ */
+function resolveIP(host) {
+  // If already a valid decimal-dotted IPv4, return as-is
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) return host;
+
+  // Try to detect non-standard IP formats — Node's URL parser may convert some
+  // but not all. Block any host that contains hex (0x), octal (leading 0 with > 1 digits),
+  // or is a pure integer.
+  if (/^0x/i.test(host)) return "reserved-hex";
+  if (/^\d+$/.test(host) && host.length >= 5) return "reserved-integer";
+  if (/^0/.test(host) && host.length > 1 && /^[0-7.]+$/.test(host)) return "reserved-octal";
+
+  return host;
+}
+
 /**
  * SSRF guard — blocks requests to private/loopback/link-local hosts.
- * Mirrors the same guard used in the Vercel relay function.
+ * Also blocks non-standard IP encodings (hex, octal, integer) used in bypass attempts.
  */
 function isPrivateHostname(h) {
   if (!h) return true;
   const host = h.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  const resolved = resolveIP(host);
+
+  // Block non-standard IP encodings used in SSRF bypass
+  if (resolved.startsWith("reserved-")) return true;
+
   if (
     host === "localhost" ||
     host === "0.0.0.0" ||
@@ -116,15 +143,33 @@ functions.http("relay", async (req, res) => {
     forwardHeaders["authorization"] = originalAuth;
   }
 
+  // --- Validate request body size ---
+  if (
+    req.method !== "GET" &&
+    req.method !== "HEAD" &&
+    req.headers["content-length"]
+  ) {
+    const contentLength = parseInt(req.headers["content-length"], 10);
+    if (contentLength > MAX_BODY_SIZE) {
+      res.status(413).send("request body too large");
+      return;
+    }
+  }
+
   // --- Forward request upstream ---
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
     const upstreamResponse = await fetch(upstreamUrl, {
       method: req.method,
       headers: forwardHeaders,
       body:
-        req.method !== "GET" && req.method !== "HEAD" ? req.rawBody : undefined,
+        req.method !== "GET" && req.method !== "HEAD" ? (req.rawBody || JSON.stringify(req.body)) : undefined,
+      signal: controller.signal,
       // Cloud Functions gen2 uses Node.js undici fetch which supports duplex
     });
+    clearTimeout(timeoutId);
 
     // --- Stream response back ---
     res.status(upstreamResponse.status);
@@ -180,7 +225,12 @@ functions.http("relay", async (req, res) => {
       res.send(Buffer.from(body));
     }
   } catch (fetchErr) {
-    console.error("Upstream fetch error:", fetchErr.message);
-    res.status(502).send("upstream request failed");
+    if (fetchErr.name === "AbortError") {
+      console.error("Upstream fetch timed out");
+      res.status(504).send("upstream request timed out");
+    } else {
+      console.error("Upstream fetch error:", fetchErr.message);
+      res.status(502).send("upstream request failed");
+    }
   }
 });

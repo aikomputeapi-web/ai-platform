@@ -6,7 +6,7 @@ import prisma from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 // DELETE /api/billing/subscription — cancel the user's Stripe subscription
-export async function DELETE(req: NextRequest) {
+export async function DELETE(_req: NextRequest) {
   try {
     const user = await requireAuth();
     

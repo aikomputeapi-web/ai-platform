@@ -80,7 +80,7 @@ services:
   cliproxyapi:
     container_name: staging-cliproxyapi
     ports: !override
-      - "127.0.0.1:8185:8085"
+      - "127.0.0.1:8185:8317"
     volumes: !override
       - ./cliproxyapi-config.yaml:/CLIProxyAPI/config.yaml:ro
       - staging_cliproxyapi_data:/root/.cli-proxy-api

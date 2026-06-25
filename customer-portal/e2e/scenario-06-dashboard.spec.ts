@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { screenshot, loginAsTestUser } from './helpers';
+import { screenshot } from './helpers';
 
 test.describe('Scenario 6: Dashboard Overview', () => {
   test('dashboard loads with stats and quick start after login', async ({ page }) => {

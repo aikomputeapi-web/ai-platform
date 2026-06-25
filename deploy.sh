@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-#  AI Platform — Deploy (pull & rebuild)
+#  AI Platform — Deploy (pull pre-built images from GHCR)
 # ══════════════════════════════════════════════════════════════════════════════
 #
-#  Called by GitHub Actions CI/CD on every push to main.
-#  Can also be run manually:  ./deploy.sh
+#  Called by GitHub Actions CI/CD after images are built & pushed.
+#  Can also be run manually:  IMAGE_TAG=abc123 ./deploy.sh
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -16,7 +16,9 @@ BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.unified.yml"
 ENV_FILE="${SCRIPT_DIR}/.env"
-LAST_DEPLOYED_FILE="${SCRIPT_DIR}/.last_deployed_commit"
+
+IMAGE_TAG="${IMAGE_TAG:-latest}"
+export IMAGE_TAG
 
 log()   { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -34,10 +36,7 @@ docker compose version &>/dev/null || error "Docker Compose not found."
 
 log "Environment OK"
 
-# ── Ensure OmniRoute source is present ──
-#   OmniRoute is a standalone nested repo (no longer a submodule).
-#   scripts/setup-omniroute.sh clones the fork + registers the upstream
-#   remote; it is idempotent and skips the clone if OmniRoute/ already exists.
+# ── Ensure OmniRoute source is present (for env syncing, not build) ──
 SETUP_OMNIROUTE="${SCRIPT_DIR}/scripts/setup-omniroute.sh"
 if [[ -x "${SETUP_OMNIROUTE}" ]]; then
     if [[ ! -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
@@ -50,8 +49,6 @@ else
 fi
 
 # ── Sync OmniRoute .env secrets helper ──
-#   Writes/updates KEY=VALUE in the target .env file.
-#   Value is passed through a temp file to avoid shell injection.
 sync_env_var() {
     local key="$1"
     local val="$2"
@@ -84,7 +81,6 @@ sync_env_var() {
 
 # ── Sync OmniRoute .env secrets ──
 if [[ -f "./OmniRoute/.env.example" ]] && [[ -f "./OmniRoute/.env" ]]; then
-    # Ensure OMNIROUTE_PUBLIC_URL is in .env
     if ! grep -q "^OMNIROUTE_PUBLIC_URL=" "${ENV_FILE}"; then
         DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
         SSL_ENABLED=$(grep "^SSL_ENABLED=" "${ENV_FILE}" | cut -d= -f2- || echo "true")
@@ -112,105 +108,15 @@ if [[ -f "./OmniRoute/.env.example" ]] && [[ -f "./OmniRoute/.env" ]]; then
     log "OmniRoute .env synced"
 fi
 
-# ── Check what changed to decide rebuild scope ──
-CHANGED_FILES="unknown"
-if [[ -f "${LAST_DEPLOYED_FILE}" ]]; then
-    LAST_COMMIT=$(cat "${LAST_DEPLOYED_FILE}")
-    if git cat-file -e "${LAST_COMMIT}" 2>/dev/null; then
-        CHANGED_FILES=$(git diff --name-only "${LAST_COMMIT}" HEAD 2>/dev/null || echo "unknown")
-    else
-        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "unknown")
-    fi
-else
-    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "unknown")
-fi
-
-# Include uncommitted changes in the working directory
-if [[ "${CHANGED_FILES}" != "unknown" ]]; then
-    UNCOMMITTED_FILES=$(git status --porcelain | sed 's/^...//' || echo "")
-    CHANGED_FILES="${CHANGED_FILES} ${UNCOMMITTED_FILES}"
-fi
-
-NEEDS_OMNIROUTE_BUILD=false
-NEEDS_PORTAL_BUILD=false
-NEEDS_FULL_RESTART=false
-
-# OmniRoute is a standalone nested repo (NOT a submodule). Since it is
-# gitignored, the parent repo's CHANGED_FILES will never mention it — detect
-# whether the local OmniRoute HEAD differs from its origin/main.
-if [[ -d "${SCRIPT_DIR}/OmniRoute/.git" ]]; then
-    OMNI_LOCAL=$(cd "${SCRIPT_DIR}/OmniRoute" && git rev-parse HEAD 2>/dev/null || echo "")
-    OMNI_REMOTE=$(cd "${SCRIPT_DIR}/OmniRoute" && git rev-parse origin/main 2>/dev/null || echo "")
-    if [[ -n "${OMNI_LOCAL}" && -n "${OMNI_REMOTE}" && "${OMNI_LOCAL}" != "${OMNI_REMOTE}" ]]; then
-        NEEDS_OMNIROUTE_BUILD=true
-        info "OmniRoute HEAD differs from origin/main — will rebuild"
-    fi
-fi
-
-# Rebuild OmniRoute when the deploy/bootstrap scripts change
-if echo "${CHANGED_FILES}" | grep -qE "^deploy\.sh|^scripts/setup-omniroute\.sh"; then
-    NEEDS_OMNIROUTE_BUILD=true
-fi
-
-if echo "${CHANGED_FILES}" | grep -q "^customer-portal/"; then
-    NEEDS_PORTAL_BUILD=true
-fi
-
-if echo "${CHANGED_FILES}" | grep -q "docker-compose\|\.env\|nginx"; then
-    NEEDS_FULL_RESTART=true
-fi
-
-# If we can't determine changes (first deploy, etc.), rebuild everything
-if echo "${CHANGED_FILES}" | grep -q "unknown"; then
-    NEEDS_OMNIROUTE_BUILD=true
-    NEEDS_PORTAL_BUILD=true
-    NEEDS_FULL_RESTART=true
-fi
-
 # ── Image Tagging for Rollbacks ──
-info "Creating image backups for rollback security..."
-docker tag omniroute:cli omniroute:backup 2>/dev/null || true
-docker tag customer-portal:latest customer-portal:backup 2>/dev/null || true
+info "Tagging current images as backup..."
+docker tag ghcr.io/aikomputeapi-web/ai-platform/omniroute:latest omniroute:backup 2>/dev/null || true
+docker tag ghcr.io/aikomputeapi-web/ai-platform/customer-portal:latest customer-portal:backup 2>/dev/null || true
 
-# ── Build only what changed ──
-cd "${SCRIPT_DIR}"
-
-if [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] || [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-    SERVICES=""
-    [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] && SERVICES="${SERVICES} omniroute" && info "OmniRoute changed — rebuilding image"
-    [[ "${NEEDS_PORTAL_BUILD}" == "true" ]] && SERVICES="${SERVICES} customer-portal" && info "Customer Portal changed — rebuilding image"
-
-    set +e
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" build --parallel ${SERVICES} 2>&1
-    BUILD_RC=$?
-    set -e
-
-    if [[ $BUILD_RC -ne 0 ]]; then
-        error "Build failed (exit ${BUILD_RC}). Check output above."
-    fi
-    log "Build complete"
-else
-    info "No Docker images need rebuilding"
-fi
-
-# ── Helper: Rollback and Exit ──
-rollback_and_exit() {
-    local failed_svc="$1"
-    warn "Rollback triggered due to deploy failure on: ${failed_svc}"
-    
-    # Restore backups if they exist
-    if docker image inspect omniroute:backup &>/dev/null; then
-        docker tag omniroute:backup omniroute:cli
-    fi
-    if docker image inspect customer-portal:backup &>/dev/null; then
-        docker tag customer-portal:backup customer-portal:latest
-    fi
-
-    info "Restoring stable backups to all instances..."
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --force-recreate omniroute customer-portal
-    
-    error "Deploy failed on ${failed_svc}. Reverted to previous stable version."
-}
+# ── Pull pre-built images from GHCR ──
+info "Pulling images from GHCR (tag: ${IMAGE_TAG})..."
+IMAGE_TAG="${IMAGE_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
+log "Images pulled"
 
 # ── Helper: Wait for Healthcheck ──
 wait_for_health() {
@@ -223,34 +129,21 @@ wait_for_health() {
         if [[ "${status}" == "healthy" ]]; then
             log "${container_name} is healthy!"
             return 0
-        elif [[ "${status}" == "unhealthy" ]]; then
-            # Do not rollback immediately on unhealthy; wait for the boot period to elapse
-            # as it might take a few seconds to transition to healthy.
-            true
         fi
-        
-        # Fallback if status is empty
+
         if [[ -z "${status}" ]]; then
             local running=$(docker inspect --format '{{.State.Running}}' "${container_name}" 2>/dev/null)
             if [[ "${running}" != "true" ]]; then
-                rollback_and_exit "${container_name}"
+                error "${container_name} failed to start"
             fi
         fi
         sleep 2
         attempt=$((attempt + 1))
     done
-    rollback_and_exit "${container_name}"
+    error "${container_name} did not become healthy within ${max_attempts} attempts"
 }
 
-# ── Helper: Rolling Update ──
-roll_service_single() {
-    local svc="$1"
-    info "Rolling update: restarting ${svc}..."
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps --remove-orphans "${svc}"
-    wait_for_health "${svc}"
-}
-
-# ── Helper: Database Migrations + Seed ──
+# ── Helper: Database Migrations ──
 run_migrations() {
     info "Running database migrations..."
     if docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy"; then
@@ -263,53 +156,25 @@ run_migrations() {
     fi
 }
 
+# ── Run migrations ──
+run_migrations
+
 # ── Restart services ──
-if [[ "${NEEDS_FULL_RESTART}" == "true" ]]; then
-    info "Config changed — systematic rolling restart of all services"
-    
-    # 1. Redis is external (GCP Memorystore) — no local container to start
+info "Restarting all services..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
+log "Services restarted"
 
-    # 2. Update Sidecar proxy API
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d cliproxyapi
-    wait_for_health "cliproxyapi"
+# ── Wait for health ──
+wait_for_health "cliproxyapi"
+wait_for_health "omniroute"
+wait_for_health "customer-portal"
+wait_for_health "report-deliverer"
 
-    # 3. Run database migrations + seed once
-    if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        run_migrations
-    fi
-
-    # 4. Roll gateways
-    roll_service_single "omniroute"
-    roll_service_single "customer-portal"
-
-    # 5. Background workers
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d report-deliverer
-    wait_for_health "report-deliverer"
-    
-elif [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]] || [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-    # Run migrations + seed if portal code changed
-    if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        run_migrations
-    fi
-
-    if [[ "${NEEDS_OMNIROUTE_BUILD}" == "true" ]]; then
-        roll_service_single "omniroute"
-    fi
-    if [[ "${NEEDS_PORTAL_BUILD}" == "true" ]]; then
-        roll_service_single "customer-portal"
-    fi
-else
-    info "No builds needed — doing rolling restart"
-    roll_service_single "omniroute"
-    roll_service_single "customer-portal"
-fi
-
-# ── Reload nginx if config changed or staging config is active ──
-if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf" ]] || grep -q "Staging Configuration" "/etc/nginx/nginx.conf"; then
-    info "Nginx config changed, missing, or staging config is active — reloading"
+# ── Update nginx config from template ──
+TARGET_NGINX="/etc/nginx/nginx.conf"
+SOURCE_NGINX="${SCRIPT_DIR}/nginx/nginx.conf"
+if [[ -f "${SOURCE_NGINX}" ]]; then
     DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
-
-    # Detect which SSL certificate directory to use
     CERT_DOMAIN="${DOMAIN}"
     if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
         FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" 2>/dev/null | sort | head -n 1 || true)
@@ -317,45 +182,41 @@ if echo "${CHANGED_FILES}" | grep -q "nginx/" || [[ ! -f "/etc/nginx/nginx.conf"
             CERT_DOMAIN=$(basename "${FOUND_CERT}")
         fi
     fi
-    info "Using SSL certificate for domain: ${CERT_DOMAIN}"
 
-    # Prepare nginx config safely
-    TEMP_CONF="${SCRIPT_DIR}/nginx/nginx.conf.tmp"
-    cp "${SCRIPT_DIR}/nginx/nginx.conf" "${TEMP_CONF}"
-
+    TEMP_CONF=$(mktemp)
+    cp "${SOURCE_NGINX}" "${TEMP_CONF}"
     sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${TEMP_CONF}"
     sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
 
-    # Backup, copy, test, and reload
-    sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
-    sudo cp "${TEMP_CONF}" /etc/nginx/nginx.conf
-    rm -f "${TEMP_CONF}"
-
-    if sudo nginx -t; then
-        sudo systemctl reload nginx
-        log "Nginx reloaded successfully"
-        sudo rm -f /etc/nginx/nginx.conf.bak
+    if ! diff -q "${TEMP_CONF}" "${TARGET_NGINX}" &>/dev/null; then
+        info "Nginx config changed — updating..."
+        sudo cp "${TARGET_NGINX}" "${TARGET_NGINX}.bak" 2>/dev/null || true
+        sudo cp "${TEMP_CONF}" "${TARGET_NGINX}"
+        if sudo nginx -t; then
+            sudo systemctl reload nginx
+            log "Nginx reloaded"
+            sudo rm -f "${TARGET_NGINX}.bak"
+        else
+            warn "Nginx config test failed! Restoring backup."
+            sudo cp "${TARGET_NGINX}.bak" "${TARGET_NGINX}" 2>/dev/null || true
+            sudo systemctl reload nginx || true
+        fi
     else
-        warn "Nginx config test failed! Restoring backup config."
-        sudo cp /etc/nginx/nginx.conf.bak /etc/nginx/nginx.conf
-        sudo rm -f /etc/nginx/nginx.conf.bak
-        sudo systemctl reload nginx
-        error "Nginx deployment failed."
+        log "Nginx config unchanged"
     fi
+    rm -f "${TEMP_CONF}"
+else
+    warn "nginx.conf template not found — skipping config update"
 fi
 
 # ── Cleanup ──
 info "Cleaning up Docker artifacts..."
 docker image prune -f 2>/dev/null || true
-docker builder prune -f 2>/dev/null || true
 
 # ── Post-deploy confirmation ──
 echo ""
 docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}"
 echo ""
-
-# Record successful deploy commit
-git rev-parse HEAD > "${LAST_DEPLOYED_FILE}" 2>/dev/null || true
 
 log "Deploy complete — all containers running and healthy!"
 echo ""

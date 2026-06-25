@@ -1,12 +1,13 @@
 name: Deploy to Staging
 
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [staging]
   workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   validate:
@@ -15,8 +16,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,7 +68,6 @@ jobs:
             git fetch origin staging
             git checkout staging
             git reset --hard origin/staging
-            git submodule update --init --recursive
 
             echo "══ Deploying to Staging ══"
             chmod +x deploy-staging.sh manage-staging.sh

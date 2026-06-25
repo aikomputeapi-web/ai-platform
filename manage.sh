@@ -154,10 +154,32 @@ cmd_backup() {
 
     cp "${ENV_FILE}" "${BK}/.env"
 
-    dc exec -T postgres pg_dump -U aiplatform aiplatform > "${BK}/postgres.sql" 2>/dev/null || true
+    # PostgreSQL is external (GCP Cloud SQL) — backup via pg_dump if local, else via DATABASE_URL
+    if docker compose -f "${COMPOSE_FILE}" ps --filter "name=postgres" --format "{{.Name}}" 2>/dev/null | grep -q postgres; then
+        dc exec -T postgres pg_dump -U aiplatform aiplatform > "${BK}/postgres.sql" 2>/dev/null || warn "PostgreSQL dump failed"
+    else
+        local db_url=$(grep "^DATABASE_URL=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+        if [[ -n "${db_url}" ]]; then
+            info "PostgreSQL is external — attempting remote pg_dump via DATABASE_URL"
+            pg_dump "${db_url}" > "${BK}/postgres.sql" 2>/dev/null || warn "Remote PostgreSQL dump failed (is pg_dump installed and network accessible?)"
+        else
+            warn "PostgreSQL backup skipped — external service with no DATABASE_URL"
+        fi
+    fi
 
     # Redis is external (GCP Memorystore) — backup via remote redis-cli
-    redis-cli -h "$(grep REDIS_URL ${ENV_FILE} | sed 's/.*@//;s/:6379.*//')" -a "$(grep REDIS_PASSWORD ${ENV_FILE} | cut -d= -f2-)" --rdb "${BK}/redis.rdb" 2>/dev/null || true
+    local redis_url=$(grep "^REDIS_URL=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+    local redis_pwd=$(grep "^REDIS_PASSWORD=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || echo "")
+    if [[ -n "${redis_url}" ]]; then
+        local redis_host=$(echo "${redis_url}" | sed 's/.*@//;s/:6379.*//')
+        local redis_tls=""
+        if [[ "${redis_url}" =~ ^rediss:// ]]; then
+            redis_tls="--tls"
+        fi
+        redis-cli ${redis_tls} -h "${redis_host}" -a "${redis_pwd}" --rdb "${BK}/redis.rdb" 2>/dev/null || warn "Redis backup failed"
+    else
+        warn "Redis backup skipped — no REDIS_URL"
+    fi
 
     for vol in omniroute-data cliproxyapi-data; do
         docker run --rm -v "ai-${vol}:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || true

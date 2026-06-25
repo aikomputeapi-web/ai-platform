@@ -1,12 +1,13 @@
-name: Deploy to Production
+name: Build & Deploy to Production
+
+concurrency:
+  group: deploy-production-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   validate:
@@ -15,8 +16,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,17 +42,57 @@ jobs:
           cd customer-portal
           npm run lint
 
-      - name: Test production build
-        run: |
-          cd customer-portal
-          npm run build
-
-  deploy:
-    name: Deploy to Server
+  build-and-deploy:
+    name: Build & Deploy
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push customer-portal
+        uses: docker/build-push-action@v6
+        with:
+          context: ./customer-portal
+          push: true
+          tags: |
+            ghcr.io/aikomputeapi-web/ai-platform/customer-portal:latest
+            ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup OmniRoute source
+        run: |
+          chmod +x scripts/setup-omniroute.sh
+          ./scripts/setup-omniroute.sh
+
+      - name: Build & push omniroute
+        uses: docker/build-push-action@v6
+        with:
+          context: ./OmniRoute
+          target: runner-cli
+          push: true
+          tags: |
+            ghcr.io/aikomputeapi-web/ai-platform/omniroute:latest
+            ghcr.io/aikomputeapi-web/ai-platform/omniroute:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -61,15 +100,18 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          command_timeout: 12m
+          command_timeout: 5m
           script: |
+            echo "══ Authenticating to GHCR ══"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
             cd ~/ai-platform
 
             echo "══ Pulling latest changes ══"
             git fetch origin main
+            git checkout main
             git reset --hard origin/main
-            git submodule update --init --recursive
 
             echo "══ Deploying ══"
             chmod +x deploy.sh manage.sh
-            ./deploy.sh
+            IMAGE_TAG=${{ github.sha }} ./deploy.sh

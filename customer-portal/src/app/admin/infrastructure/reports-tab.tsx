@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Play, RefreshCw, Search, Plus, Trash2 } from 'lucide-react';
+import { Play, RefreshCw, Search, Plus, Trash2 } from 'lucide-react';
 
 interface ScheduledReport {
   id: string;

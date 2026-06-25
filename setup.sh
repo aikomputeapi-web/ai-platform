@@ -105,6 +105,7 @@ cat > /etc/docker/daemon.json << 'EOF'
     "storage-driver": "overlay2"
 }
 EOF
+warn "Restarting Docker daemon — this will briefly interrupt any running containers"
 systemctl restart docker
 log "Docker daemon tuned"
 

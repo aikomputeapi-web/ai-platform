@@ -13,10 +13,7 @@ x-logging: &logging
     max-file: "5"
 
 x-omniroute-base: &omniroute-base
-  build:
-    context: ./OmniRoute
-    target: runner-cli
-  image: omniroute:cli
+  image: ghcr.io/aikomputeapi-web/ai-platform/omniroute:${IMAGE_TAG:-latest}
   restart: unless-stopped
   stop_grace_period: 40s
   logging: *logging
@@ -90,8 +87,7 @@ x-omniroute-base: &omniroute-base
     start_period: 60s
 
 x-portal-base: &portal-base
-  build: ./customer-portal
-  image: customer-portal:latest
+  image: ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${IMAGE_TAG:-latest}
   restart: unless-stopped
   logging: *logging
   mem_limit: 512m
@@ -206,7 +202,7 @@ services:
     expose:
       - "8317"
     ports:
-      - "127.0.0.1:8085:8085"
+      - "127.0.0.1:8085:8317"
     volumes:
       - ./cliproxyapi-config.yaml:/CLIProxyAPI/config.yaml:ro
       - cliproxyapi_data:/root/.cli-proxy-api
@@ -242,8 +238,7 @@ services:
   # Scheduled Report Deliverer — polls the portal and sends due reports
   # ─────────────────────────────────────────────────────────────────────────
   report-deliverer:
-    build: ./customer-portal
-    image: customer-portal:latest
+    image: ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${IMAGE_TAG:-latest}
     container_name: report-deliverer
     restart: unless-stopped
     logging: *logging
@@ -260,10 +255,11 @@ services:
       REPORT_DELIVERY_INTERVAL_SECONDS: 300
       NODE_ENV: production
     healthcheck:
-      test: ["CMD-SHELL", "find /tmp/healthy -mmin -10 | grep -q healthy || exit 1"]
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://customer-portal:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 15s
     networks:
       - ai-network
 

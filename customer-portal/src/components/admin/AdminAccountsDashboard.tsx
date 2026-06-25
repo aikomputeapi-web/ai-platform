@@ -218,6 +218,9 @@ export default function AdminAccountsDashboard() {
   const [now] = useState(() => Date.now());
   const bulkSelectRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  // Shadowban rule toggle state
+  const [shadowbanRuleEnabled, setShadowbanRuleEnabled] = useState(false);
+  const [shadowbanRuleLoading, setShadowbanRuleLoading] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -232,6 +235,40 @@ export default function AdminAccountsDashboard() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  // Fetch shadowban rule setting on mount
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fetch('/api/admin/settings')
+        .then(r => r.ok ? r.json() : null)
+        .then((json: { config?: { emailDotShadowban?: { enabled?: boolean } } } | null) => {
+          if (json?.config?.emailDotShadowban) {
+            setShadowbanRuleEnabled(json.config.emailDotShadowban.enabled === true);
+          }
+        })
+        .catch(() => {});
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function toggleShadowbanRule() {
+    setShadowbanRuleLoading(true);
+    const next = !shadowbanRuleEnabled;
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailDotShadowban: { enabled: next }, actor: 'admin' }),
+      });
+      if (res.ok) {
+        setShadowbanRuleEnabled(next);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setShadowbanRuleLoading(false);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -608,6 +645,41 @@ export default function AdminAccountsDashboard() {
               <Link href="/admin/forecast" className="btn-secondary text-xs py-1.5 px-3">Forecasts</Link>
             </div>
           </div>
+        </div>
+
+        {/* Auto-Shadowban Rule Toggle */}
+        <div className="mb-6 flex items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <Ban size={15} className="text-[var(--color-text-muted)]" />
+              <span className="text-sm font-semibold">Auto-Shadowban: Gmail Dot Rule</span>
+              {shadowbanRuleEnabled
+                ? <span className="badge-danger text-[10px] py-0.5 px-1.5">ACTIVE</span>
+                : <span className="badge-warning text-[10px] py-0.5 px-1.5">OFF</span>}
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] pl-[23px]">
+              When enabled, new Gmail accounts with 4+ dots in the username are automatically shadow-banned on signup.
+              Default is <strong>off</strong> on new installs.
+            </p>
+          </div>
+          <button
+            id="shadowban-rule-toggle"
+            type="button"
+            aria-pressed={shadowbanRuleEnabled}
+            disabled={shadowbanRuleLoading}
+            onClick={() => void toggleShadowbanRule()}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
+              shadowbanRuleEnabled
+                ? 'bg-red-500 border-red-500'
+                : 'bg-[var(--color-bg-primary)] border-[var(--color-border)]'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                shadowbanRuleEnabled ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">

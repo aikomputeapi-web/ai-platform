@@ -13,10 +13,6 @@ export default function DashboardOverview() {
     fetch('/api/keys').then(r => r.json()).then(d => setKeys(d.keys || []));
   }, []);
 
-  const isMonthlyPlan = !!user?.plan?.requestsPerMonth && user.plan.requestsPerMonth > 0;
-  const requestLimitLabel = isMonthlyPlan ? 'req/month' : 'req/day';
-  const requestLimitValue = isMonthlyPlan ? user?.plan?.requestsPerMonth : user?.plan?.requestsPerDay;
-
   const stats = [
     {
       label: 'Total Requests',
@@ -39,16 +35,18 @@ export default function DashboardOverview() {
     {
       label: 'Plan',
       value: user?.plan?.name || 'Free',
-      sub: `${requestLimitValue || (isMonthlyPlan ? 50 : 100)} ${requestLimitLabel}`,
+      sub: user?.plan?.priceCents === 0 
+        ? 'Sandbox' 
+        : `Active ($${(user?.plan?.priceCents / 100).toFixed(0)}/mo)`,
       icon: '📋',
     },
   ];
 
   return (
-    <div className="animate-fade-in">
+    <div className="font-mono">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-[var(--color-text-secondary)] text-sm mt-1">
+        <h1 className="text-2xl font-bold uppercase tracking-tight">[Dashboard]</h1>
+        <p className="text-[var(--color-text-secondary)] text-xs mt-1 font-medium">
           Welcome back{user?.name ? `, ${user.name}` : ''}
         </p>
       </div>
@@ -57,29 +55,29 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat, i) => (
           <div key={i} className="stat-card" style={{ animationDelay: `${i * 0.08}s` }}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[var(--color-text-secondary)] text-sm font-medium">{stat.label}</span>
-              <span className="text-lg">{stat.icon}</span>
+            <div className="flex items-center justify-between mb-3 text-[10px]">
+              <span className="text-[var(--color-text-secondary)] uppercase tracking-wider font-bold">{stat.label}</span>
+              <span className="text-sm">{stat.icon}</span>
             </div>
             <div className="stat-value">{stat.value}</div>
-            <div className="text-xs text-[var(--color-text-muted)] mt-1">{stat.sub}</div>
+            <div className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-bold mt-1">{stat.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Quick Start */}
-      <div className="glass-card p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">🚀 Quick Start</h2>
+      <div className="glass-card p-6 mb-6 rounded-[2px] border-[var(--color-border)]">
+        <h2 className="text-sm font-bold uppercase tracking-tight text-white mb-4">[Quick Start]</h2>
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-2">Base URL for all API calls:</p>
-            <code className="block bg-[var(--color-bg-primary)] rounded-lg px-4 py-3 text-sm font-mono text-[var(--color-accent)]">
+            <p className="text-[10px] text-[var(--color-text-secondary)] mb-2 uppercase tracking-wider font-bold">Base URL for all API calls:</p>
+            <code className="block bg-black border border-[var(--color-border)] rounded-[2px] px-4 py-3 text-xs font-mono text-white">
               {typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, '') : 'https://yourdomain.com'}/v1
             </code>
           </div>
           <div>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-2">Example request:</p>
-            <pre className="bg-[var(--color-bg-primary)] rounded-lg px-4 py-3 text-sm font-mono text-[var(--color-text-primary)] overflow-x-auto">
+            <p className="text-[10px] text-[var(--color-text-secondary)] mb-2 uppercase tracking-wider font-bold">Example request:</p>
+            <pre className="bg-black border border-[var(--color-border)] rounded-[2px] px-4 py-3 text-xs font-mono text-white/80 overflow-x-auto leading-relaxed">
 {`curl -X POST /v1/chat/completions \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
@@ -92,42 +90,21 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Rate Limits */}
-      <div className="glass-card p-6">
-        <h2 className="text-lg font-semibold mb-4">📊 Your Limits</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-[var(--color-bg-primary)] rounded-lg p-4">
-            <div className="text-xs text-[var(--color-text-muted)] mb-1">
-              {isMonthlyPlan ? 'Requests / Month' : 'Requests / Day'}
-            </div>
-            <div className="text-xl font-bold">
-              {usage?.summary?.totalRequests || 0}{' '}
-              <span className="text-sm font-normal text-[var(--color-text-muted)]">
-                / {requestLimitValue || (isMonthlyPlan ? 50 : 100)}
-              </span>
-            </div>
-            <div className="mt-2 h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    ((usage?.summary?.totalRequests || 0) /
-                      (requestLimitValue || (isMonthlyPlan ? 50 : 100))) *
-                      100
-                  )}%`,
-                  background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-                }}
-              />
-            </div>
+      {/* Service Status */}
+      <div className="glass-card p-6 rounded-[2px] border-[var(--color-border)]">
+        <h2 className="text-sm font-bold uppercase tracking-tight text-white mb-4">[Service Parameters]</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
+            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Quota Status</div>
+            <div className="text-xs font-bold text-white">[OK] Within Tier limits</div>
           </div>
-          <div className="bg-[var(--color-bg-primary)] rounded-lg p-4">
-            <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests / Minute</div>
-            <div className="text-xl font-bold">{user?.plan?.requestsPerMinute || 5} <span className="text-sm font-normal text-[var(--color-text-muted)]">rpm</span></div>
+          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
+            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Concurrency</div>
+            <div className="text-xs font-bold text-white">Tier Adaptive</div>
           </div>
-          <div className="bg-[var(--color-bg-primary)] rounded-lg p-4">
-            <div className="text-xs text-[var(--color-text-muted)] mb-1">Models</div>
-            <div className="text-xl font-bold">{user?.plan?.allowedModels === '*' ? 'All' : 'Limited'}</div>
+          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
+            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Model Access</div>
+            <div className="text-xs font-bold text-white">{user?.plan?.allowedModels === '*' ? 'Full Portfolio' : 'Standard'}</div>
           </div>
         </div>
       </div>

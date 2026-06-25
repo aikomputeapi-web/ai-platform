@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface DayData { date: string; requests: number; tokens: number; cost: number; totalUsers?: number; newUsers?: number }
 interface Projections {
@@ -9,40 +9,6 @@ interface Projections {
   growthRates: { requests: number; tokens: number; cost: number; users: number };
 }
 interface ForecastData { historical: DayData[]; forecast: DayData[]; projections: Projections }
-
-// Mini SVG chart component
-function SparkChart({ historical, forecast, dataKey, color, height = 120 }: { historical: DayData[]; forecast: DayData[]; dataKey: keyof DayData; color: string; height?: number }) {
-  const all = [...historical.slice(-30), ...forecast];
-  const values = all.map(d => (d[dataKey] as number) || 0);
-  const max = Math.max(...values, 1);
-  const w = 600;
-  const splitIdx = Math.min(historical.length, 30);
-
-  const toPoint = (v: number, i: number) => `${(i / (values.length - 1)) * w},${height - (v / max) * (height - 10)}`;
-  const histPoints = values.slice(0, splitIdx).map((v, i) => toPoint(v, i)).join(' ');
-  const forecastPoints = values.slice(splitIdx - 1).map((v, i) => toPoint(v, i + splitIdx - 1)).join(' ');
-
-  // Area fill
-  const histArea = `0,${height} ${histPoints} ${((splitIdx - 1) / (values.length - 1)) * w},${height}`;
-  const forecastStart = ((splitIdx - 1) / (values.length - 1)) * w;
-  const forecastArea = `${forecastStart},${height} ${forecastPoints} ${w},${height}`;
-
-  return (
-    <svg viewBox={`0 0 ${w} ${height}`} className="w-full" style={{ height }}>
-      {/* Historical area */}
-      <polygon points={histArea} fill={`${color}15`} />
-      <polyline points={histPoints} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Divider */}
-      <line x1={forecastStart} y1="0" x2={forecastStart} y2={height} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="4 4" />
-      {/* Forecast area */}
-      <polygon points={forecastArea} fill={`${color}08`} />
-      <polyline points={forecastPoints} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 3" opacity="0.7" />
-      {/* Labels */}
-      <text x="4" y="12" fill="var(--color-text-muted)" fontSize="10" fontFamily="monospace">Historical</text>
-      <text x={forecastStart + 4} y="12" fill={color} fontSize="10" fontFamily="monospace" opacity="0.7">Forecast →</text>
-    </svg>
-  );
-}
 
 export default function ForecastPage() {
   const [data, setData] = useState<ForecastData | null>(null);
@@ -161,24 +127,7 @@ export default function ForecastPage() {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        {[
-          { title: '📡 Requests Trend & Forecast', key: 'requests' as keyof DayData, color: '#ffffff' },
-          { title: '🔢 Token Usage Trend & Forecast', key: 'tokens' as keyof DayData, color: '#a1a1aa' },
-          { title: '💸 Cost Trend & Forecast', key: 'cost' as keyof DayData, color: '#71717a' },
-          { title: '👥 Total Users Trend & Forecast', key: 'totalUsers' as keyof DayData, color: '#d4d4d8' },
-        ].map((chart, i) => (
-          <div key={i} className="glass-card p-6 animate-fade-in" style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
-            <h3 className="text-sm font-semibold mb-4">{chart.title}</h3>
-            <SparkChart historical={data.historical} forecast={data.forecast} dataKey={chart.key} color={chart.color} height={140} />
-            <div className="flex items-center gap-4 mt-3 text-[10px] text-[var(--color-text-muted)]">
-              <span className="flex items-center gap-1"><span className="w-4 h-0.5 rounded" style={{ background: chart.color }}></span> Historical</span>
-              <span className="flex items-center gap-1"><span className="w-4 h-0.5 rounded" style={{ background: chart.color, opacity: 0.5, borderBottom: `1px dashed ${chart.color}` }}></span> Projected</span>
-            </div>
-          </div>
-        ))}
-      </div>
+
 
       {/* Forecast Table */}
       <div className="glass-card overflow-hidden animate-fade-in" style={{ animationDelay: '0.5s' }}>

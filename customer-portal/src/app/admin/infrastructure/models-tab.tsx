@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw, Layers3, BarChart3, Sparkles } from 'lucide-react';
+import { ArrowRight, RefreshCw, BarChart3, Sparkles } from 'lucide-react';
 import { MODELS, MODEL_CATALOGUE } from '@/lib/models';
 
 type ModelEntry = { key: string; label: string; value: string };

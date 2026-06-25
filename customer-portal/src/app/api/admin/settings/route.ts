@@ -9,6 +9,7 @@ const SETTINGS = {
   maintenance: 'platform_maintenance',
   support: 'support_contact',
   announcement: 'announcement_banner',
+  emailDotShadowban: 'email_dot_shadowban',
 } as const;
 
 type MaintenanceConfig = {
@@ -25,6 +26,11 @@ type SupportConfig = {
 type AnnouncementConfig = {
   enabled: boolean;
   message: string;
+  updatedAt: string | null;
+};
+
+type EmailDotShadowbanConfig = {
+  enabled: boolean;
   updatedAt: string | null;
 };
 
@@ -60,10 +66,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [maintenance, support, announcement] = await Promise.all([
+    const [maintenance, support, announcement, emailDotShadowban] = await Promise.all([
       readSetting(SETTINGS.maintenance),
       readSetting(SETTINGS.support),
       readSetting(SETTINGS.announcement),
+      readSetting(SETTINGS.emailDotShadowban),
     ]);
 
     const config = {
@@ -81,6 +88,11 @@ export async function GET(req: NextRequest) {
         message: typeof announcement.value.message === 'string' ? announcement.value.message : '',
         updatedAt: announcement.updatedAt,
       } satisfies AnnouncementConfig,
+      emailDotShadowban: {
+        // Defaults to false (off) when no row exists in DB
+        enabled: emailDotShadowban.value.enabled === true,
+        updatedAt: emailDotShadowban.updatedAt,
+      } satisfies EmailDotShadowbanConfig,
     };
 
     return NextResponse.json({ config });
@@ -135,6 +147,15 @@ export async function PATCH(req: NextRequest) {
       changes.announcement = { enabled, message };
     }
 
+    if (typeof body?.emailDotShadowban?.enabled === 'boolean') {
+      const enabled = body.emailDotShadowban.enabled === true;
+      tasks.push(writeSetting(SETTINGS.emailDotShadowban, {
+        enabled,
+        updatedAt: new Date().toISOString(),
+      }));
+      changes.emailDotShadowban = { enabled };
+    }
+
     if (tasks.length === 0) {
       return NextResponse.json({ error: 'No settings provided' }, { status: 400 });
     }
@@ -147,10 +168,11 @@ export async function PATCH(req: NextRequest) {
       metadata: { actor, changes } as Prisma.InputJsonValue,
     });
 
-    const [maintenance, support, announcement] = await Promise.all([
+    const [maintenance, support, announcement, emailDotShadowban] = await Promise.all([
       readSetting(SETTINGS.maintenance),
       readSetting(SETTINGS.support),
       readSetting(SETTINGS.announcement),
+      readSetting(SETTINGS.emailDotShadowban),
     ]);
 
     return NextResponse.json({
@@ -169,6 +191,10 @@ export async function PATCH(req: NextRequest) {
           enabled: announcement.value.enabled === true,
           message: typeof announcement.value.message === 'string' ? announcement.value.message : '',
           updatedAt: announcement.updatedAt,
+        },
+        emailDotShadowban: {
+          enabled: emailDotShadowban.value.enabled === true,
+          updatedAt: emailDotShadowban.updatedAt,
         },
       },
     });

@@ -12,6 +12,7 @@ backups/
 
 # ── OS / Editor ──
 .DS_Store
+**/.DS_Store
 Thumbs.db
 *.swp
 *.swo
@@ -26,6 +27,14 @@ node_modules/
 
 # ── Docker ──
 .docker/
+
+# ── Deploy state ──
+.last_deployed_commit
+.env.bak.*
+*.local
+
+# ── Temp files ──
+nginx/nginx.conf.tmp
 
 # ── Debug / scratch files (never commit these) ──
 debug-*.js

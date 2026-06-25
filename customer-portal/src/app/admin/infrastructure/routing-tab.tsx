@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw, Route, Shield, Waypoints, X } from 'lucide-react';
+import { RefreshCw, Shield, Waypoints, X } from 'lucide-react';
 
 type ProviderBreaker = {
   state?: string;

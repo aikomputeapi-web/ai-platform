@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CreditCard, Download, RefreshCw, Search, TrendingUp, X } from 'lucide-react';
+import { ArrowRight, Download, RefreshCw, Search, TrendingUp, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminPlansPage from './plans-tab';
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, ShieldAlert, Settings2, Sparkles } from 'lucide-react';
+import { Bell, ShieldAlert, Sparkles } from 'lucide-react';
 
 type SettingsData = {
   config: {

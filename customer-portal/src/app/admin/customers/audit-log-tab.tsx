@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
+import { RefreshCw, Search, X } from 'lucide-react';
 
 type Range = '7d' | '30d' | '90d' | 'all';
 type AuditActionFilter =

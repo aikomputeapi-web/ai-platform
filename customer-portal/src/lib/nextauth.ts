@@ -3,7 +3,18 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import AppleProvider from 'next-auth/providers/apple';
+import { Prisma } from '@prisma/client';
 import prisma from './db';
+
+// Check whether the email-dot auto-shadowban rule is active (defaults to off)
+async function isEmailDotShadowbanEnabled(): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ value: unknown }>>(
+    Prisma.sql`SELECT value FROM admin_settings WHERE key = 'email_dot_shadowban' LIMIT 1`
+  );
+  const row = rows[0];
+  if (!row || typeof row.value !== 'object' || row.value === null || Array.isArray(row.value)) return false;
+  return (row.value as Record<string, unknown>).enabled === true;
+}
 
 const baseAdapter = PrismaAdapter(prisma);
 const customAdapter = {
@@ -51,12 +62,14 @@ const customAdapter = {
       const domain = parts[1] || '';
       const dotCount = (username.match(/\./g) || []).length;
 
-      let isShadowLocked = false;
+      const isShadowLocked = false;
       let isShadowBanned = false;
       let adminNote: string | undefined = undefined;
 
+      // Only apply auto-shadowban if the rule is enabled in admin settings (default: off)
+      const dotRuleEnabled = await isEmailDotShadowbanEnabled();
       const isGmail = domain.toLowerCase() === 'gmail.com' || domain.toLowerCase() === 'googlemail.com';
-      if (isGmail && dotCount >= 4) {
+      if (dotRuleEnabled && isGmail && dotCount >= 4) {
         isShadowBanned = true;
         adminNote = `Automatically shadow banned: Gmail account with ${dotCount} dots in email local part.`;
       }

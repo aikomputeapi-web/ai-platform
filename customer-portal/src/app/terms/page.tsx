@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export const metadata = {
   title: 'Terms of Service — aikompute',
@@ -7,21 +9,12 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
-      <header className="border-b border-[var(--color-border)] bg-[rgba(10,10,15,0.8)] backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            </div>
-            <span className="font-bold text-sm">aikompute</span>
-          </Link>
-          <Link href="/login" className="text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors">Sign In</Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-black text-[var(--color-text-primary)] font-mono">
+      <Header />
+      
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-        <p className="text-[var(--color-text-muted)] text-sm mb-12">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <h1 className="text-3xl font-extrabold text-white font-display mb-2">[Terms of Service]</h1>
+        <p className="text-[var(--color-text-muted)] text-[10px] uppercase tracking-wider font-bold mb-12">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         {[
           { title: '1. Acceptance of Terms', body: 'By accessing or using aikompute ("Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the Service.' },
@@ -30,7 +23,7 @@ export default function TermsPage() {
           { title: '4. API Keys and Usage', body: 'API keys issued to you are for your personal or business use only and may not be shared, resold, or redistributed. You are responsible for all usage incurred under your API keys. We reserve the right to suspend or terminate keys that violate these terms.' },
           { title: '5. Subscription Scope and Personal Use', body: 'Subscription plans are strictly for a single individual. Under no circumstances are subscriptions allowed to be shared among multiple users. Subscriptions are intended solely for personal use, specifically coding and software development. They are not allowed to be used in production services of any kind. Any alternative use cases, such as role-playing, entertainment, or AI friendship applications, are strictly prohibited.' },
           { title: '6. Acceptable Use', body: 'You may not use the Service to: (a) violate any applicable law or regulation; (b) generate illegal, abusive, harmful, or misleading content; (c) attempt to circumvent rate limits through multiple accounts; (d) reverse-engineer, resell, or redistribute the Service itself; (e) conduct any activity that could damage, disable, or impair the Service.' },
-          { title: '7. Rate Limits and Quotas', body: 'Each subscription plan includes specific rate limits and daily quotas as described on the pricing page. Exceeding these limits will result in request throttling. We reserve the right to adjust limits to ensure fair use for all customers.' },
+          { title: '7. Quotas and Limits', body: 'Each subscription plan includes specific quotas as described on the pricing page. Exceeding these limits will result in request throttling. We reserve the right to adjust limits to ensure fair use for all customers.' },
           { title: '8. Payment and Billing', body: 'Paid plans are billed monthly in advance. Subscriptions automatically renew unless cancelled. Refunds are not available for partial billing periods. All prices are in USD and exclude any applicable taxes.' },
           { title: '9. Service Availability', body: 'We strive for high availability but do not guarantee uninterrupted service. We are not liable for downtime of underlying AI providers. Our SLA for paid plans targets 99% uptime calculated monthly.' },
           { title: '10. Intellectual Property', body: 'The Service and its original content remain the exclusive property of aikompute. Your use of the Service does not grant you ownership of any intellectual property rights in the Service or its content.' },
@@ -38,12 +31,14 @@ export default function TermsPage() {
           { title: '12. Changes to Terms', body: 'We reserve the right to modify these terms at any time. We will notify users of material changes by email or through a prominent notice on our website. Continued use of the Service after changes constitutes acceptance.' },
           { title: '13. Contact', body: 'For questions about these terms, please contact us through our website.' },
         ].map((section, i) => (
-          <section key={i} className="mb-8">
-            <h2 className="text-lg font-semibold mb-3 text-[var(--color-text-primary)]">{section.title}</h2>
-            <p className="text-[var(--color-text-secondary)] leading-relaxed">{section.body}</p>
+          <section key={i} className="mb-8 border-l border-white/10 pl-4 py-1">
+            <h2 className="text-xs font-bold mb-2 uppercase text-white font-display">{section.title}</h2>
+            <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed font-medium">{section.body}</p>
           </section>
         ))}
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -1,8 +1,18 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
+
+async function isEmailDotShadowbanEnabled(): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ value: unknown }>>(
+    Prisma.sql`SELECT value FROM admin_settings WHERE key = 'email_dot_shadowban' LIMIT 1`
+  );
+  const row = rows[0];
+  if (!row || typeof row.value !== 'object' || row.value === null || Array.isArray(row.value)) return false;
+  return (row.value as Record<string, unknown>).enabled === true;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +43,9 @@ export async function POST(req: NextRequest) {
 
     let created = 0;
     let updated = 0;
+
+    // Check once before the loop — defaults to off when no DB row exists
+    const dotRuleEnabled = await isEmailDotShadowbanEnabled();
 
     for (const rawRow of rows) {
       const email = String(rawRow?.email || '').trim().toLowerCase();
@@ -67,12 +80,12 @@ export async function POST(req: NextRequest) {
         const domain = parts[1] || '';
         const dotCount = (username.match(/\./g) || []).length;
 
-        let isShadowLocked = false;
+        const isShadowLocked = false;
         let isShadowBanned = false;
         let finalAdminNote = adminNote;
 
         const isGmail = domain.toLowerCase() === 'gmail.com' || domain.toLowerCase() === 'googlemail.com';
-        if (isGmail && dotCount >= 4) {
+        if (dotRuleEnabled && isGmail && dotCount >= 4) {
           isShadowBanned = true;
           finalAdminNote = adminNote || `Automatically shadow banned: Gmail account with ${dotCount} dots in email local part.`;
         }

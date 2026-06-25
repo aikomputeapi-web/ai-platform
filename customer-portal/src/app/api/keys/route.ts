@@ -59,13 +59,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (userWithPlan?.plan) {
-      const isFree = userWithPlan.plan.id === 'free';
       await updateKeyLimits(omniKey.id, {
-        maxRequestsPerDay: isFree ? null : userWithPlan.plan.requestsPerDay,
-        maxRequestsPerMinute: userWithPlan.plan.requestsPerMinute,
-        maxRequestsPerMonth: userWithPlan.plan.requestsPerMonth || null,
-        allowedModels: userWithPlan.plan.allowedModels === '*' 
-          ? [] 
+        maxRequestsPerDay: userWithPlan.plan.requestsPerDay > 0 ? userWithPlan.plan.requestsPerDay : null,
+        maxRequestsPerMinute: userWithPlan.plan.requestsPerMinute > 0 ? userWithPlan.plan.requestsPerMinute : null,
+        maxRequestsPerMonth: userWithPlan.plan.requestsPerMonth > 0 ? userWithPlan.plan.requestsPerMonth : null,
+        allowedModels: userWithPlan.plan.allowedModels === '*'
+          ? []
           : JSON.parse(userWithPlan.plan.allowedModels),
       });
     }

@@ -8,18 +8,18 @@ const plans = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    requests: '20/day',
-    rpm: '5 rpm',
+    capacity: 'Evaluation',
+    priority: 'Standard routing',
     models: 'Free-tier models',
     features: ['2 API keys', 'Basic analytics', 'Community support'],
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: '$5',
+    price: '$20',
     period: '/month',
-    requests: '300/day',
-    rpm: '30 rpm',
+    capacity: 'High capacity',
+    priority: 'Standard priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['5 API keys', 'Priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
     featured: true,
@@ -27,20 +27,20 @@ const plans = [
   {
     id: 'max-5x',
     name: 'Max 5x',
-    price: '$20',
+    price: '$100',
     period: '/month',
-    requests: '1,500/day',
-    rpm: '30 rpm',
+    capacity: '5x Pro capacity',
+    priority: 'Elevated priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['10 API keys', 'Higher priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
   },
   {
     id: 'max-20x',
     name: 'Max 20x',
-    price: '$40',
+    price: '$200',
     period: '/month',
-    requests: '6,000/day',
-    rpm: '60 rpm',
+    capacity: '20x Pro capacity',
+    priority: 'Highest priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['20 API keys', 'Highest priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
   },
@@ -100,43 +100,43 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in font-mono">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold">Billing & Plans</h1>
+        <h1 className="text-2xl font-bold uppercase tracking-tight">[Billing & Plans]</h1>
         <p className="text-[var(--color-text-secondary)] text-sm mt-1">
-          Current plan: <span className="badge-accent">{user?.plan?.name || 'Free'}</span>
+          Current plan: <span className="badge-accent">[{user?.plan?.name || 'Free'}]</span>
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {plans.map((plan) => (
-          <div key={plan.id} className={`glass-card p-6 relative ${plan.featured ? 'ring-2 ring-[var(--color-accent)]' : ''}`}>
+          <div key={plan.id} className={`glass-card p-6 relative rounded-[2px] ${plan.featured ? 'border-white' : ''}`}>
             {plan.featured && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 badge-accent px-3 py-1">Popular</div>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-black font-bold px-3 py-0.5 text-[9px] uppercase rounded-[2px] border border-white">[Popular]</div>
             )}
             <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
             <div className="flex items-baseline gap-1 mb-4">
               <span className="text-3xl font-bold">{plan.price}</span>
               <span className="text-sm text-[var(--color-text-muted)]">{plan.period}</span>
             </div>
-            <div className="space-y-2 mb-6 text-sm">
+            <div className="space-y-2 mb-6 text-xs text-[var(--color-text-secondary)]">
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-secondary)]">Requests</span>
-                <span className="font-medium">{plan.requests}</span>
+                <span>Capacity</span>
+                <span className="font-semibold text-white">{plan.capacity}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-secondary)]">Rate limit</span>
-                <span className="font-medium">{plan.rpm}</span>
+                <span>Priority</span>
+                <span className="font-semibold text-white">{plan.priority}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-secondary)]">Models</span>
-                <span className="font-medium">{plan.models}</span>
+                <span>Models</span>
+                <span className="font-semibold text-white truncate max-w-[120px]" title={plan.models}>{plan.models}</span>
               </div>
             </div>
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-2 mb-6 text-[10px] text-[var(--color-text-secondary)]">
               {plan.features.map((f, i) => (
-                <li key={i} className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-                  <span className="text-[var(--color-success)]">✓</span>
+                <li key={i} className="flex items-center gap-2">
+                  <span className="text-white">-</span>
                   {f}
                 </li>
               ))}

@@ -97,7 +97,11 @@ cmd_backup() {
     docker cp staging-redis:/data/dump.rdb "${BK}/redis.rdb" 2>/dev/null || true
 
     for vol in staging_omniroute_data staging_cliproxyapi_data; do
-        docker run --rm -v "ai-${vol/staging_/}-staging:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || true
+        # Map staging_*_data → ai-*-data-staging (replace underscores appropriately)
+        local base="${vol#staging_}"
+        base="${base%_data}"
+        local vol_name="ai-${base}-data-staging"
+        docker run --rm -v "${vol_name}:/src:ro" -v "${BK}:/bk" alpine tar cf "/bk/${vol}.tar" -C /src . 2>/dev/null || warn "Volume backup failed for ${vol_name}"
     done
 
     tar czf "${BACKUP_DIR}/staging_backup_${TS}.tar.gz" -C "${BACKUP_DIR}" "${TS}"

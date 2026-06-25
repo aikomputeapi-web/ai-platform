@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export const metadata = {
   title: 'Privacy Policy — aikompute',
@@ -7,21 +9,12 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
-      <header className="border-b border-[var(--color-border)] bg-[rgba(10,10,15,0.8)] backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            </div>
-            <span className="font-bold text-sm">aikompute</span>
-          </Link>
-          <Link href="/login" className="text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors">Sign In</Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-black text-[var(--color-text-primary)] font-mono">
+      <Header />
+      
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-[var(--color-text-muted)] text-sm mb-12">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <h1 className="text-3xl font-extrabold text-white font-display mb-2">[Privacy Policy]</h1>
+        <p className="text-[var(--color-text-muted)] text-[10px] uppercase tracking-wider font-bold mb-12">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         {[
           { title: '1. Information We Collect', body: 'We collect the information you provide directly, such as your name, email address, and payment details processed by Stripe. We do not store raw card data, and we do not store request content, model outputs, or other AI conversation data.' },
@@ -36,12 +29,14 @@ export default function PrivacyPage() {
           { title: '10. Changes', body: 'We will notify you of material changes to this Privacy Policy via email at least 7 days before they take effect. Continued use of the Service after the effective date constitutes acceptance.' },
           { title: '11. Contact Us', body: 'For privacy inquiries, data deletion requests, or to exercise your rights, please contact us through our website.' },
         ].map((section, i) => (
-          <section key={i} className="mb-8">
-            <h2 className="text-lg font-semibold mb-3 text-[var(--color-text-primary)]">{section.title}</h2>
-            <p className="text-[var(--color-text-secondary)] leading-relaxed">{section.body}</p>
+          <section key={i} className="mb-8 border-l border-white/10 pl-4 py-1">
+            <h2 className="text-xs font-bold mb-2 uppercase text-white font-display">{section.title}</h2>
+            <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed font-medium">{section.body}</p>
           </section>
         ))}
       </div>
+
+      <Footer />
     </div>
   );
 }

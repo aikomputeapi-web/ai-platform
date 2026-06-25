@@ -50,11 +50,10 @@ async function processWebhookEvent(event: any) {
         });
 
         for (const key of userKeys) {
-          const isFree = plan.id === 'free';
           await updateKeyLimits(key.omnirouteKeyId, {
-            maxRequestsPerDay: isFree ? null : plan.requestsPerDay,
-            maxRequestsPerMinute: plan.requestsPerMinute,
-            maxRequestsPerMonth: plan.requestsPerMonth || null,
+            maxRequestsPerDay: plan.requestsPerDay > 0 ? plan.requestsPerDay : null,
+            maxRequestsPerMinute: plan.requestsPerMinute > 0 ? plan.requestsPerMinute : null,
+            maxRequestsPerMonth: plan.requestsPerMonth > 0 ? plan.requestsPerMonth : null,
             allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
           });
         }

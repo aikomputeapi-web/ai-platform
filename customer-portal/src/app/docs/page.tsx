@@ -1,184 +1,92 @@
 import Link from 'next/link';
 import { MODELS } from '@/lib/models';
 
+const MODELS_TABLE = [
+  [MODELS.OPENAI_FLAGSHIP,  MODELS.OPENAI_FLAGSHIP_ID,  'OpenAI'],
+  [MODELS.ANTHROPIC_OPUS,   MODELS.ANTHROPIC_OPUS_ID,   'Anthropic'],
+  [MODELS.ANTHROPIC_SONNET, MODELS.ANTHROPIC_SONNET_ID, 'Anthropic'],
+  [MODELS.GOOGLE_PRO,       MODELS.GOOGLE_PRO_ID,       'Google'],
+  [MODELS.GOOGLE_FLASH,     MODELS.GOOGLE_FLASH_ID,     'Google'],
+  [MODELS.DEEPSEEK_V3,      MODELS.DEEPSEEK_V3_ID,      'DeepSeek'],
+];
+
 export default function Docs() {
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      {/* Header */}
-      <header className="border-b border-[var(--color-border)] bg-[rgba(10,10,15,0.8)] backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <span className="font-bold text-lg tracking-tight">aikompute</span>
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link href="/features" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Features</Link>
-            <Link href="/docs" className="text-sm font-medium text-white transition-colors border-b-2 border-indigo-500 py-5">Docs</Link>
-            <Link href="/login" className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-white transition-colors">Sign In</Link>
-            <Link href="/signup" className="btn-primary py-2 px-4 text-sm">Get Started</Link>
-          </nav>
+    <div className="min-h-screen bg-black font-mono flex flex-col">
+      <nav className="flex items-center justify-between max-w-3xl mx-auto w-full px-6 py-5 text-xs">
+        <Link href="/" className="text-white">◇ aikompute</Link>
+        <div className="flex items-center gap-5" style={{ color: 'var(--color-grey)' }}>
+          <Link href="/models" className="hover:text-white">Models</Link>
+          <Link href="/features" className="hover:text-white">Features</Link>
+          <span className="text-white">Docs</span>
+          <Link href="/login" className="hover:text-white">Sign in</Link>
+          <Link href="/signup" className="btn-outline">Register</Link>
         </div>
-      </header>
+      </nav>
 
-      {/* Docs Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row gap-12">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="sticky top-24">
-            <h3 className="font-bold text-lg mb-4 text-[var(--color-text-primary)]">Documentation</h3>
-            <ul className="space-y-3">
-              <li><a href="#getting-started" className="text-[var(--color-accent)] font-medium hover:underline">Getting Started</a></li>
-              <li><a href="#authentication" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Authentication</a></li>
-              <li><a href="#making-requests" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Making Requests</a></li>
-              <li><a href="#models" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Supported Models</a></li>
-              <li><a href="#rate-limits" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Rate Limits</a></li>
-              <li><Link href="/models" className="text-[var(--color-text-secondary)] hover:text-white transition-colors">Full Model Browser</Link></li>
-            </ul>
-          </div>
-        </aside>
+      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pb-20">
+        <section className="py-14">
+          <h1 className="text-4xl font-light tracking-tight text-white">Docs</h1>
+        </section>
 
-        {/* Main Content */}
-        <div className="flex-1 max-w-3xl animate-fade-in">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">API Documentation</h1>
-          <p className="text-xl text-[var(--color-text-secondary)] mb-12">
-            Learn how to integrate aikompute into your application. Our API is highly compatible with the OpenAI SDK format.
+        <section className="pb-10">
+          <div className="text-xs uppercase tracking-wider pb-3" style={{ color: 'var(--color-grey-dim)', borderBottom: '1px solid var(--color-border)' }}>Getting Started</div>
+          <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--color-grey)' }}>
+            Swap your baseURL to <code className="text-white">https://api.yourdomain.com/v1</code> and pass your API key in the Authorization header.
           </p>
+          <div className="card p-4 mt-4 font-mono text-xs" style={{ background: '#000' }}>
+            Authorization: Bearer YOUR_API_KEY
+          </div>
+        </section>
 
-          <section id="getting-started" className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Getting Started</h2>
-            <p className="text-[var(--color-text-secondary)] mb-6 leading-relaxed">
-              To begin using our unified AI API, you first need to create an account and generate an API key. We provide a drop-in replacement for OpenAI, meaning you don't need to learn a new SDK.
-            </p>
-            
-            <div className="glass-card p-6 mb-8 relative">
-               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none"></div>
-               <h4 className="font-bold mb-3 text-white">1. Sign Up for an Account</h4>
-               <p className="text-[var(--color-text-secondary)] mb-4">Go to our signup page and create your free account. No credit card is required to start testing.</p>
-               <Link href="/signup" className="btn-secondary inline-block px-4 py-2 text-sm">Create Account</Link>
-            </div>
+        <section className="pb-10">
+          <div className="text-xs uppercase tracking-wider pb-3" style={{ color: 'var(--color-grey-dim)', borderBottom: '1px solid var(--color-border)' }}>Example</div>
+          <div className="card p-4 mt-4 font-mono text-xs leading-relaxed" style={{ background: '#000', color: 'var(--color-grey)' }}>
+            <span className="text-white">const</span> client = <span className="text-white">new</span> OpenAI({`{`}<br />
+            &nbsp;&nbsp;apiKey: 'YOUR_API_KEY',<br />
+            &nbsp;&nbsp;baseURL: 'https://api.yourdomain.com/v1'<br />
+            {`}`});<br /><br />
+            <span className="text-white">const</span> res = <span className="text-white">await</span> client.chat.completions.create({`{`}<br />
+            &nbsp;&nbsp;model: 'claude-3-5-sonnet',<br />
+            &nbsp;&nbsp;messages: [{`{`} role: 'user', content: 'hi' {`}`}]<br />
+            {`}`});
+          </div>
+        </section>
 
-            <div className="glass-card p-6 mb-8 relative">
-               <h4 className="font-bold mb-3 text-white">2. Generate an API Key</h4>
-               <p className="text-[var(--color-text-secondary)] mb-4">Once logged in, navigate to the Dashboard &gt; API Keys and create a new key. Keep this secret!</p>
-               {/* Embed generated dashboard image */}
-               <img src="/images/dashboard_demo_1776911661794.png" alt="Dashboard API Key Generation" className="w-full rounded-lg border border-[var(--color-border)] shadow-2xl" />
-            </div>
-          </section>
-
-          <section id="authentication" className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Authentication</h2>
-            <p className="text-[var(--color-text-secondary)] mb-4 leading-relaxed">
-              Authenticate your API requests by providing your API key in the `Authorization` header. If you are using the OpenAI SDK, it will handle this automatically.
-            </p>
-            <div className="bg-[#0f0f13] border border-[var(--color-border)] rounded-xl p-4 overflow-x-auto">
-              <pre className="text-sm font-mono text-gray-300">
-                Authorization: Bearer <span className="text-green-400">YOUR_API_KEY</span>
-              </pre>
-            </div>
-          </section>
-
-          <section id="making-requests" className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Making Requests</h2>
-            <p className="text-[var(--color-text-secondary)] mb-6 leading-relaxed">
-              Since we map directly to the standard chat completions format, it is effortless to start making calls. Just change the base URL to our endpoint.
-            </p>
-            
-            <img src="/images/api_code_demo_1776911689294.png" alt="API Request Code Editor" className="w-full rounded-lg border border-[var(--color-border)] shadow-2xl mb-6" />
-
-            <div className="bg-[#0f0f13] border border-[var(--color-border)] rounded-xl p-4 overflow-x-auto">
-              <pre className="text-sm font-mono text-gray-300">
-                <span className="text-purple-400">import</span> OpenAI <span className="text-purple-400">from</span> <span className="text-green-400">'openai'</span>;<br/><br/>
-                <span className="text-purple-400">const</span> client = <span className="text-purple-400">new</span> OpenAI(&#123;<br/>
-                &nbsp;&nbsp;apiKey: <span className="text-green-400">'YOUR_API_KEY'</span>,<br/>
-                &nbsp;&nbsp;baseURL: <span className="text-green-400">'https://api.yourdomain.com/v1'</span><br/>
-                &#125;);<br/><br/>
-                <span className="text-purple-400">const</span> response = <span className="text-purple-400">await</span> client.chat.completions.create(&#123;<br/>
-                &nbsp;&nbsp;model: <span className="text-green-400">'claude-3-5-sonnet'</span>,<br/>
-                &nbsp;&nbsp;messages: [&#123; role: <span className="text-green-400">'user'</span>, content: <span className="text-green-400">'Hello world'</span> &#125;]<br/>
-                &#125;);
-              </pre>
-            </div>
-          </section>
-
-          <section id="models" className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Supported Models</h2>
-            <p className="text-[var(--color-text-secondary)] mb-6 leading-relaxed">
-              Our unified API routes your requests to the best available backend provider. We support all major models seamlessly.
-            </p>
-            <div className="glass-card overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
-                    <th className="p-4 font-semibold text-white">Model Name</th>
-                    <th className="p-4 font-semibold text-white">API ID</th>
-                    <th className="p-4 font-semibold text-white">Provider</th>
-                    <th className="p-4 font-semibold text-white">Best For</th>
+        <section className="pb-10">
+          <div className="text-xs uppercase tracking-wider pb-3" style={{ color: 'var(--color-grey-dim)', borderBottom: '1px solid var(--color-border)' }}>Models</div>
+          <div className="card mt-4" style={{ background: '#000' }}>
+            <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-grey-dim)' }}>
+                  <th className="p-3 font-normal text-left">Model</th>
+                  <th className="p-3 font-normal text-left">API ID</th>
+                  <th className="p-3 font-normal text-left">Provider</th>
+                </tr>
+              </thead>
+              <tbody>
+                {MODELS_TABLE.map(([name, id, provider], i) => (
+                  <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.02)', color: 'var(--color-grey)' }}>
+                    <td className="p-3 text-white">{name}</td>
+                    <td className="p-3 font-mono">{id}</td>
+                    <td className="p-3">{provider}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-secondary)]">
-                  {[
-                    [MODELS.OPENAI_FLAGSHIP,  MODELS.OPENAI_FLAGSHIP_ID,  'OpenAI',    'Top intelligence, complex reasoning'],
-                    [MODELS.ANTHROPIC_OPUS,   MODELS.ANTHROPIC_OPUS_ID,   'Anthropic', 'Best coding, safe outputs'],
-                    [MODELS.ANTHROPIC_SONNET, MODELS.ANTHROPIC_SONNET_ID, 'Anthropic', 'Balanced speed and intelligence'],
-                    [MODELS.GOOGLE_PRO,       MODELS.GOOGLE_PRO_ID,       'Google',    'Long-context, multimodal tasks'],
-                    [MODELS.GOOGLE_FLASH,     MODELS.GOOGLE_FLASH_ID,     'Google',    'High-speed, low-cost production use'],
-                    [MODELS.DEEPSEEK_V3,      MODELS.DEEPSEEK_V3_ID,      'DeepSeek',  'Open-weights at ultra-low cost'],
-                    [MODELS.GROK_FLAGSHIP,    MODELS.GROK_FLAGSHIP_ID,    'xAI',       'Massive context window, reasoning'],
-                    [MODELS.META_MAVERICK,    MODELS.META_MAVERICK_ID,    'Meta',      'Open-source, self-hostable'],
-                  ].map(([name, id, provider, useCase], i) => (
-                    <tr key={i} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-                      <td className="p-4 font-medium text-white">{name}</td>
-                      <td className="p-4"><code className="text-green-400 text-xs bg-green-400/10 px-2 py-0.5 rounded">{id}</code></td>
-                      <td className="p-4">{provider}</td>
-                      <td className="p-4 text-sm">{useCase}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-sm text-[var(--color-text-muted)] mt-3">
-              See the full list on the <Link href="/models" className="text-indigo-400 hover:underline">Models page</Link> — including speed, cost, and benchmark rankings from Artificial Analysis.
-            </p>
-          </section>
-
-          <section id="rate-limits" className="mb-16">
-            <h2 className="text-2xl font-bold mb-6 border-b border-[var(--color-border)] pb-2">Rate Limits</h2>
-            <p className="text-[var(--color-text-secondary)] mb-4 leading-relaxed">
-              Rate limits depend on your current subscription plan. If you exceed your rate limits, the API will respond with a <code className="text-red-400 bg-red-400/10 px-1 rounded">429 Too Many Requests</code> status code.
-            </p>
-            <ul className="space-y-3 text-[var(--color-text-secondary)] mb-6">
-              <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
-                <strong>Free Tier:</strong> 5 requests per minute, 50 requests per month (total across any model).
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                <strong>Pro Tier:</strong> 30 requests per minute, 300 requests per day (6,300/month cap).
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                <strong>Max 5x Tier:</strong> 30 requests per minute, 1,500 requests per day (31,500/month cap).
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-pink-500"></span>
-                <strong>Max 20x Tier:</strong> 60 requests per minute, 6,000 requests per day (126,000/month cap).
-              </li>
-
-            </ul>
-            <p className="text-[var(--color-text-secondary)] leading-relaxed">
-              You can track your current usage and remaining quota in the dashboard. Need higher limits? Contact our support team for an Enterprise plan.
-            </p>
-          </section>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-12 text-center text-[var(--color-text-muted)]">
-        <p className="text-sm">© {new Date().getFullYear()} aikompute. All rights reserved.</p>
+      <footer className="max-w-3xl mx-auto w-full px-6 py-6 border-t text-[10px]" style={{ borderColor: 'var(--color-border)', color: 'var(--color-grey-dim)' }}>
+        <div className="flex justify-between">
+          <span>© 2026</span>
+          <div className="flex gap-5">
+            <Link href="/docs" className="hover:text-white">Docs</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
