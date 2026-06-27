@@ -19,7 +19,7 @@ const plans = [
   {
     id: 'pro',
     name: 'Pro',
-    priceCents: 2000,
+    priceCents: 500,
     requestsPerDay: 0,
     requestsPerMinute: 0,
     requestsPerMonth: 0,
@@ -32,7 +32,7 @@ const plans = [
   {
     id: 'max-5x',
     name: 'Max 5x',
-    priceCents: 10000,
+    priceCents: 2000,
     requestsPerDay: 0,
     requestsPerMinute: 0,
     requestsPerMonth: 0,
@@ -45,7 +45,7 @@ const plans = [
   {
     id: 'max-20x',
     name: 'Max 20x',
-    priceCents: 20000,
+    priceCents: 4000,
     requestsPerDay: 0,
     requestsPerMinute: 0,
     requestsPerMonth: 0,

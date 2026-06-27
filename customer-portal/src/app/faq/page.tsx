@@ -25,7 +25,7 @@ const FAQS = [
   },
   {
     q: 'How does pricing work?',
-    a: 'We offer subscription plans (Free, Pro $20/mo, Max 5x $100/mo, Max 20x $200/mo) with monthly request caps. Usage is billed at cost per million tokens.',
+    a: "We offer subscription plans (Free, Pro $5/mo, Max 5x $20/mo, Max 20x $40/mo). Usage limits align with Anthropic's subscription tier limits (and 5x or 20x of that respectively). Usage is billed at cost per million tokens.",
   },
   {
     q: 'What counts as a request?',

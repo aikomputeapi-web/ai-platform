@@ -82,9 +82,9 @@ export default function MinimalistPreview() {
         <h2 className="font-display text-2xl font-light text-white/80">Pricing</h2>
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5">
           {[
-            ['Pro', '$15', ['High capacity usage', 'Sonnet & Llama', 'Standard routing']],
-            ['Max 5x', '$75', ['5x Pro capacity', 'All flagship models', 'High priority']],
-            ['Max 20x', '$150', ['20x Pro capacity', 'All flagship models', 'Highest priority']],
+            ['Pro', '$5', ["Anthropic's Pro limits", 'Sonnet & Llama', 'Standard routing']],
+            ['Max 5x', '$20', ['5x Pro capacity', 'All flagship models', 'High priority']],
+            ['Max 20x', '$40', ['20x Pro capacity', 'All flagship models', 'Highest priority']],
           ].map(([name, price, feats]: any) => (
             <div key={name} className="bg-black p-8">
               <div className="font-display text-xs uppercase tracking-[0.18em] text-white/40">{name}</div>

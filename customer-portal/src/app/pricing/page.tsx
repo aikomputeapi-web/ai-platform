@@ -15,17 +15,17 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    price: '$20',
+    price: '$5',
     period: '/month',
     desc: 'For individual developers shipping with AI.',
-    features: ['High capacity', '5 API keys', 'Claude + GPT + Gemini', 'Priority routing', 'Webhooks', 'Email support'],
+    features: ['Anthropic Pro limits', '5 API keys', 'Claude + GPT + Gemini', 'Priority routing', 'Webhooks', 'Email support'],
     cta: 'Subscribe',
     href: '/signup',
     highlight: true,
   },
   {
     name: 'Max 5x',
-    price: '$100',
+    price: '$20',
     period: '/month',
     desc: '5x the capacity for power users.',
     features: ['5x Pro capacity', '10 API keys', 'All flagship models', 'Elevated priority', 'Webhooks + logs', 'Priority support'],
@@ -35,7 +35,7 @@ const PLANS = [
   },
   {
     name: 'Max 20x',
-    price: '$200',
+    price: '$40',
     period: '/month',
     desc: 'Maximum throughput for teams.',
     features: ['20x Pro capacity', '20 API keys', 'All flagship models', 'Highest priority', 'SLA guarantee', 'Dedicated support'],
@@ -46,7 +46,7 @@ const PLANS = [
 ];
 
 const COMPARISON = [
-  { feature: 'Monthly requests', free: '50', pro: '10,000', max5x: '50,000', max20x: '200,000' },
+  { feature: 'Monthly requests', free: '50', pro: 'Anthropic Pro', max5x: '5x Pro', max20x: '20x Pro' },
   { feature: 'Concurrent requests', free: '1', pro: '5', max5x: '25', max20x: '100' },
   { feature: 'API keys', free: '2', pro: '5', max5x: '10', max20x: '20' },
   { feature: 'Model access', free: 'Free-tier', pro: 'All models', max5x: 'All models', max20x: 'All models' },

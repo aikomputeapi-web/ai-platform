@@ -10,9 +10,9 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { name: 'Pro', price: '$15', desc: 'Full model access, standard routing, community support.', highlight: false },
-  { name: 'Max 5×', price: '$75', desc: 'Higher throughput, priority routing, email support.', highlight: true },
-  { name: 'Max 20×', price: '$150', desc: 'Maximum capacity, dedicated routing, SLA guarantee.', highlight: false },
+  { name: 'Pro', price: '$5', desc: "Usage limits match Anthropic's Pro subscription tier. Full model access, standard routing, community support.", highlight: false },
+  { name: 'Max 5×', price: '$20', desc: "Usage limits are 5x of Anthropic's subscription tier limits. Higher throughput, priority routing, email support.", highlight: true },
+  { name: 'Max 20×', price: '$40', desc: "Usage limits are 20x of Anthropic's subscription tier limits. Maximum capacity, dedicated routing, SLA guarantee.", highlight: false },
 ];
 
 export default function Home() {
