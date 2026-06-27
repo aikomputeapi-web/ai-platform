@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 type ProviderBreaker = {
   state?: string;
@@ -41,10 +41,10 @@ type OperationsData = {
   };
 };
 
-const CB_STYLES: Record<string, { tone: string; label: string }> = {
-  CLOSED: { tone: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label: 'Healthy' },
-  HALF_OPEN: { tone: 'bg-amber-500/10 text-amber-400 border-amber-500/20', label: 'Recovering' },
-  OPEN: { tone: 'bg-red-500/10 text-red-400 border-red-500/20', label: 'Down' },
+const CB_STYLES: Record<string, { tone: string; label: string; badge: string }> = {
+  CLOSED: { tone: 'border-color: var(--accent); background: var(--accent-dim); color: var(--accent);', label: 'Healthy', badge: 'badge-success' },
+  HALF_OPEN: { tone: 'border-color: #f59e0b; background: rgba(245, 158, 11, 0.05); color: #f59e0b;', label: 'Recovering', badge: 'badge-warning' },
+  OPEN: { tone: 'border-color: #ef4444; background: rgba(239, 68, 68, 0.05); color: #ef4444;', label: 'Down', badge: 'badge-danger' },
 };
 
 function formatUptime(seconds?: number) {
@@ -132,16 +132,12 @@ export default function AdminOperationsPage() {
 
   if (error && !data && !loading) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="glass-card p-8 w-full max-w-lg text-center animate-fade-in">
-          <div className="w-12 h-12 rounded-2xl bg-[rgba(239,68,68,0.12)] text-[#f87171] mx-auto mb-4 flex items-center justify-center">
-            <X size={20} />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Operations failed to load</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-5">{error}</p>
-          <button type="button" onClick={() => void fetchData()} className="btn-primary inline-flex items-center gap-2">
-            <RefreshCw size={14} />
-            Retry
+      <div className="flex-center justify-center" style={{ minHeight: '400px' }}>
+        <div className="text-center mono" style={{ border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '24px' }}>
+          <h2 className="font-700 mb-8" style={{ fontSize: '16px' }}>Operations failed to load</h2>
+          <p className="text-12 text-muted mb-16">{error}</p>
+          <button type="button" onClick={() => void fetchData()} className="btn-border" style={{ padding: '6px 12px' }}>
+            Retry Operations
           </button>
         </div>
       </div>
@@ -150,11 +146,8 @@ export default function AdminOperationsPage() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading operations…</p>
-        </div>
+      <div className="flex-center justify-center" style={{ minHeight: '400px' }}>
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -167,315 +160,285 @@ export default function AdminOperationsPage() {
   const statusHealthy = String(health.status || '').toLowerCase() === 'healthy';
 
   return (
-    <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(20,184,166,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(20,184,166,0.18), transparent 35%)' }} />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(20,184,166,0.12)] text-[rgb(45,212,191)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(20,184,166,0.2)]">
-                Operations
-              </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                Live platform health, routing, and failover signals.
-              </h1>
-              <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                This panel pulls OmniRoute&apos;s health payload and provider metrics into the customer portal so the owner can spot breakers, queue pressure, and system drift without jumping systems.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <button onClick={() => void fetchData()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                <RefreshCw size={14} />
-                Refresh
-              </button>
-              <button onClick={() => void resetCircuitBreakers()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2 text-red-300" disabled={actionLoading}>
-                <ShieldCheck size={14} />
-                Reset Breakers
-              </button>
-
-            </div>
-          </div>
+    <div>
+      {/* Header */}
+      <div className="dash-page-header flex items-end flex-wrap gap-20 justify-between">
+        <div>
+          <h1 className="dash-page-title">Live Platform Telemetry</h1>
+          <p className="dash-page-sub">
+            Realtime OmniRoute status logs, circuit breaker conditions, memory limits, and provider failover signals.
+          </p>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'System', value: statusHealthy ? 'Healthy' : 'Degraded', sub: health.status || 'unknown', color: statusHealthy ? '#10b981' : '#f59e0b' },
-            { label: 'Providers', value: String(providerSummary.configuredCount ?? breakerEntries.length), sub: `${providerSummary.activeCount ?? 0} active`, color: '#ffffff' },
-            { label: 'Sessions', value: String(sessions.activeCount ?? 0), sub: `${sessions.stickyBoundCount ?? 0} sticky-bound`, color: '#a1a1aa' },
-            { label: 'Alerts', value: String((quota.alerting || 0) + unhealthyBreakers.length + degradedFeatures.length), sub: `${quota.exhausted || 0} exhausted quota`, color: '#ef4444' },
-          ].map((card) => (
-            <div key={card.label} className="stat-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                <span className="text-base" style={{ color: card.color }}>●</span>
-              </div>
-              <div className="stat-value text-2xl">{card.value}</div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
-            </div>
-          ))}
+        <div className="flex gap-8">
+          <button
+            onClick={() => void fetchData()}
+            className="btn-border mono inline-flex items-center gap-6"
+            style={{ padding: '6px 12px', fontSize: '11px' }}
+          >
+            <RefreshCw size={12} />
+            Refresh
+          </button>
+          <button
+            onClick={() => void resetCircuitBreakers()}
+            className="btn-border mono"
+            style={{ padding: '6px 12px', fontSize: '11px', color: '#ef4444', borderColor: '#ef4444' }}
+            disabled={actionLoading}
+          >
+            Reset Breakers
+          </button>
         </div>
+      </div>
 
-        <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 mb-8">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">System Snapshot</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Uptime, runtime size, and breaker state at a glance.</p>
-              </div>
-              <span className={statusHealthy ? 'badge-success' : 'badge-warning'}>{statusHealthy ? 'operational' : 'attention required'}</span>
+      {/* Metrics */}
+      <div className="dash-stats-grid mb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        {[
+          { label: 'System status', value: statusHealthy ? 'Healthy' : 'Degraded', sub: health.status || 'unknown', color: statusHealthy ? 'var(--accent)' : '#f59e0b' },
+          { label: 'Configured Providers', value: String(providerSummary.configuredCount ?? breakerEntries.length), sub: `${providerSummary.activeCount ?? 0} active in loop`, color: 'var(--text)' },
+          { label: 'Active Sessions', value: String(sessions.activeCount ?? 0), sub: `${sessions.stickyBoundCount ?? 0} sticky bound`, color: 'var(--muted)' },
+          { label: 'Alert Signals', value: String((quota.alerting || 0) + unhealthyBreakers.length + degradedFeatures.length), sub: `${quota.exhausted || 0} exhausted quota`, color: '#ef4444' },
+        ].map((card) => (
+          <div key={card.label} className="dash-stat">
+            <div className="dash-stat-label">
+              <span>{card.label}</span>
+              <span style={{ color: card.color }}>●</span>
             </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Uptime</div>
-                <div className="text-2xl font-semibold">{formatUptime(system.uptime)}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">v{system.version || 'unknown'} · Node {system.nodeVersion || 'unknown'}</div>
-              </div>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Memory RSS</div>
-                <div className="text-2xl font-semibold">{formatBytes(system.memoryUsage?.rss)}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">Heap {formatBytes(system.memoryUsage?.heapUsed)} / {formatBytes(system.memoryUsage?.heapTotal)}</div>
-              </div>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Breaker Mix</div>
-                <div className="text-2xl font-semibold">{breakerEntries.length}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">{unhealthyBreakers.length} unhealthy · {healthyBreakers.length} healthy</div>
-              </div>
-            </div>
+            <div className="dash-stat-value">{card.value}</div>
+            <div className="dash-stat-sub">{card.sub}</div>
           </div>
+        ))}
+      </div>
 
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">Queue Pressure</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Requests waiting or running inside routing.</p>
+      {/* Grid Layout for details */}
+      <div className="dash-grid-2 mb-24">
+        <div className="dash-card mb-0">
+          <div className="dash-card-title flex-between">
+            <span>Runtime Engine Health</span>
+            <span className={`badge ${statusHealthy ? 'badge-success' : 'badge-warning'}`}>
+              {statusHealthy ? 'operational' : 'attention required'}
+            </span>
+          </div>
+          <div className="dash-params-grid">
+            <div className="dash-param">
+              <div className="dash-param-label">Uptime</div>
+              <div className="dash-param-value">{formatUptime(system.uptime)}</div>
+              <div className="mono text-muted mt-4" style={{ fontSize: '9px' }}>
+                v{system.version || '—'} · Node {system.nodeVersion || '—'}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Active Sessions</div>
-                <div className="text-2xl font-semibold">{sessions.activeCount ?? 0}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">{Object.keys(sessions.byApiKey || {}).length} keys with activity</div>
+            <div className="dash-param">
+              <div className="dash-param-label">RSS size</div>
+              <div className="dash-param-value">{formatBytes(system.memoryUsage?.rss)}</div>
+              <div className="mono text-muted mt-4" style={{ fontSize: '9px' }}>
+                Heap: {formatBytes(system.memoryUsage?.heapUsed)}
               </div>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Inflight</div>
-                <div className="text-2xl font-semibold">{health.inflightRequests ?? 0}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">current requests in flight</div>
-              </div>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Quota Alerts</div>
-                <div className="text-2xl font-semibold">{quota.alerting ?? 0}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">{quota.backoff ?? 0} backoff states</div>
-              </div>
-              <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Rate Limiters</div>
-                <div className="text-2xl font-semibold">{Object.keys(health.rateLimitStatus || {}).length}</div>
-                <div className="text-xs text-[var(--color-text-muted)] mt-1">active limiters tracked</div>
+            </div>
+            <div className="dash-param">
+              <div className="dash-param-label">Breakers Registry</div>
+              <div className="dash-param-value">{breakerEntries.length}</div>
+              <div className="mono text-muted mt-4" style={{ fontSize: '9px' }}>
+                {unhealthyBreakers.length} flagged down
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid xl:grid-cols-2 gap-6 mb-8">
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Provider Breakers</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Circuit breaker status from OmniRoute health.</p>
-              </div>
-              <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-                {breakerEntries.length.toLocaleString()} providers
-              </span>
+        <div className="dash-card mb-0">
+          <div className="dash-card-title">Routing Load Pressure</div>
+          <div className="dash-params-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div className="dash-param">
+              <div className="dash-param-label">In-flight Requests</div>
+              <div className="dash-param-value">{health.inflightRequests ?? 0}</div>
             </div>
-            <div className="p-6 space-y-4">
-              {breakerEntries.length > 0 ? (
-                <>
-                  {unhealthyBreakers.length > 0 && (
-                    <div className="space-y-2">
-                      {unhealthyBreakers.map(([provider, breaker]) => {
-                        const style = CB_STYLES[breaker.state || 'OPEN'] || CB_STYLES.OPEN;
-                        return (
-                          <div key={provider} className={`rounded-xl p-4 border ${style.tone}`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="font-semibold truncate">{provider}</div>
-                                <div className="text-xs mt-1 opacity-80">
-                                  {breaker.failures || 0} failures · retry {breaker.retryAfterMs ? `${Math.round((breaker.retryAfterMs || 0) / 1000)}s` : '—'}
-                                </div>
-                              </div>
-                              <span className="badge-warning">{style.label}</span>
-                            </div>
-                            <div className="text-xs text-[var(--color-text-muted)] mt-2">
-                              Last failure: {formatRelativeTime(breaker.lastFailure)}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {healthyBreakers.length > 0 && (
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Operational</div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {healthyBreakers.map(([provider]) => (
-                          <div key={provider} className="rounded-lg px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 text-sm">
-                            {provider}
-                          </div>
-                        ))}
+            <div className="dash-param">
+              <div className="dash-param-label">Active Limiters</div>
+              <div className="dash-param-value">{Object.keys(health.rateLimitStatus || {}).length}</div>
+            </div>
+            <div className="dash-param">
+              <div className="dash-param-label">Quota Alerting</div>
+              <div className="dash-param-value">{quota.alerting ?? 0}</div>
+            </div>
+            <div className="dash-param">
+              <div className="dash-param-label">Backoff holds</div>
+              <div className="dash-param-value">{quota.backoff ?? 0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid: Breaker States & Provider performance */}
+      <div className="dash-grid-2 mb-24">
+        <div className="dash-card mb-0">
+          <div className="dash-card-title flex-between">
+            <span>Circuit Breakers</span>
+            <span className="badge badge-accent">{breakerEntries.length} providers</span>
+          </div>
+
+          <div className="flex flex-col gap-16">
+            {unhealthyBreakers.length > 0 && (
+              <div className="flex flex-col gap-8">
+                <span className="mono text-10 text-muted uppercase">Breaker Hold Alert</span>
+                {unhealthyBreakers.map(([provider, breaker]) => {
+                  const style = CB_STYLES[breaker.state || 'OPEN'] || CB_STYLES.OPEN;
+                  return (
+                    <div key={provider} style={{ border: '1px solid', padding: '12px', ...style.tone as any }}>
+                      <div className="flex-between">
+                        <strong className="mono">{provider}</strong>
+                        <span className={`badge ${style.badge}`}>{style.label}</span>
+                      </div>
+                      <div className="mt-6" style={{ fontSize: '11px' }}>
+                        {breaker.failures || 0} consecutive failures · retry window: {breaker.retryAfterMs ? `${Math.round((breaker.retryAfterMs || 0) / 1000)}s` : '—'}
+                      </div>
+                      <div className="mt-4" style={{ fontSize: '10px', opacity: 0.8 }}>
+                        Last logged down: {formatRelativeTime(breaker.lastFailure)} ago
                       </div>
                     </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-[var(--color-text-muted)]">No breaker data available yet.</p>
-              )}
+                  );
+                })}
+              </div>
+            )}
+
+            <div>
+              <span className="block mono text-10 text-muted uppercase mb-8">Operational Providers</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
+                {healthyBreakers.length > 0 ? healthyBreakers.map(([provider]) => (
+                  <div key={provider} className="border-default bg-surface text-11 font-600" style={{ padding: '8px 12px' }}>
+                    {provider}
+                  </div>
+                )) : (
+                  <div className="text-muted text-11 mono">No operational providers active.</div>
+                )}
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Provider Metrics</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Request volume, success rate, and latency.</p>
-              </div>
-              <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-                top {providerRows.length.toLocaleString()}
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <th className="px-6 py-3 font-semibold">Provider</th>
-                    <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                    <th className="px-4 py-3 font-semibold text-right">Success</th>
-                    <th className="px-4 py-3 font-semibold text-right">Rate</th>
-                    <th className="px-4 py-3 font-semibold text-right">Latency</th>
+        <div className="dash-card mb-0 p-0 overflow-hidden">
+          <div className="dash-card-title flex-between" style={{ padding: '24px 24px 0 24px' }}>
+            <span>Provider Performance telemetry</span>
+            <span className="badge badge-accent">hottest 8</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th style={{ paddingLeft: '24px' }}>Provider Name</th>
+                  <th className="text-right">Total requests</th>
+                  <th className="text-right">Successes</th>
+                  <th className="text-right">Success Rate</th>
+                  <th className="text-right" style={{ paddingRight: '24px' }}>Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {providerRows.length > 0 ? providerRows.map(([provider, metric]) => {
+                  const rate = metric.successRate || 0;
+                  const rateClass = rate >= 95 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger';
+                  return (
+                    <tr key={provider}>
+                      <td className="font-600" style={{ paddingLeft: '24px' }}>{provider}</td>
+                      <td className="text-right mono">{(metric.totalRequests || 0).toLocaleString()}</td>
+                      <td className="text-right mono">{(metric.totalSuccesses || 0).toLocaleString()}</td>
+                      <td className="text-right">
+                        <span className={`badge ${rateClass}`} style={{ fontSize: '9px' }}>{rate}%</span>
+                      </td>
+                      <td className="text-right text-muted mono" style={{ paddingRight: '24px' }}>{metric.avgLatencyMs || 0} ms</td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={5} className="text-center text-muted" style={{ padding: '24px' }}>No provider statistics.</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {providerRows.length > 0 ? providerRows.map(([provider, metric]) => (
-                    <tr key={provider} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                      <td className="px-6 py-4 font-medium">{provider}</td>
-                      <td className="px-4 py-4 text-right">{(metric.totalRequests || 0).toLocaleString()}</td>
-                      <td className="px-4 py-4 text-right">{(metric.totalSuccesses || 0).toLocaleString()}</td>
-                      <td className="px-4 py-4 text-right">
-                        <span className={(metric.successRate || 0) >= 95 ? 'badge-success' : (metric.successRate || 0) >= 80 ? 'badge-warning' : 'badge-danger'}>
-                          {metric.successRate || 0}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-right text-[var(--color-text-muted)]">{metric.avgLatencyMs || 0} ms</td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-[var(--color-text-muted)]">
-                        No provider metrics available yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <div className="glass-card p-6 mb-8">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Alert Center</h2>
-              <p className="text-sm text-[var(--color-text-muted)]">Degradation, lockouts, and quota pressure in one place.</p>
+      {/* Degradation / Alert Center */}
+      <div className="dash-card mb-24">
+        <div className="dash-card-title flex-between">
+          <span>System Alerts Summary</span>
+          <span className={`badge ${degradation?.isDegraded ? 'badge-warning' : 'badge-success'}`}>
+            {degradation?.isDegraded ? 'active alerts' : 'clear'}
+          </span>
+        </div>
+
+        <div className="dash-grid-3">
+          <div className="border-default p-16 bg-surface">
+            <div className="mono text-10 text-muted uppercase mb-8">Degradation level totals</div>
+            <div className="mono text-11" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="border-bottom" style={{ paddingBottom: '4px' }}>Full: <strong className="text-accent">{degradation?.summary?.full ?? 0}</strong></div>
+              <div className="border-bottom" style={{ paddingBottom: '4px' }}>Reduced: <strong style={{ color: '#f59e0b' }}>{degradation?.summary?.reduced ?? 0}</strong></div>
+              <div className="border-bottom" style={{ paddingBottom: '4px' }}>Minimal: <strong style={{ color: '#f97316' }}>{degradation?.summary?.minimal ?? 0}</strong></div>
+              <div>Default: <strong style={{ color: '#ef4444' }}>{degradation?.summary?.default ?? 0}</strong></div>
             </div>
-            <span className={degradation?.isDegraded ? 'badge-warning' : 'badge-success'}>
-              {degradation?.isDegraded ? 'active alerts' : 'clear'}
-            </span>
           </div>
-          <div className="grid lg:grid-cols-3 gap-4">
-            <div className="rounded-xl p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-              <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Degradation Summary</div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'full', value: degradation?.summary?.full ?? 0, tone: '#10b981' },
-                  { label: 'reduced', value: degradation?.summary?.reduced ?? 0, tone: '#f59e0b' },
-                  { label: 'minimal', value: degradation?.summary?.minimal ?? 0, tone: '#f97316' },
-                  { label: 'default', value: degradation?.summary?.default ?? 0, tone: '#ef4444' },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                    <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">{item.label}</div>
-                    <div className="text-xl font-semibold mt-1" style={{ color: item.tone }}>{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="rounded-xl p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-              <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Degraded Features</div>
-              {degradedFeatures.length > 0 ? (
-                <div className="space-y-3">
-                  {degradedFeatures.slice(0, 6).map((entry) => (
-                    <div key={entry.feature} className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium text-sm truncate">{entry.feature}</div>
-                        <span className="badge-warning uppercase">{entry.level}</span>
-                      </div>
-                      <div className="text-xs text-[var(--color-text-muted)] mt-1">{entry.capability}</div>
-                      {entry.reason && <div className="text-xs text-[var(--color-text-secondary)] mt-2">{entry.reason}</div>}
-                    </div>
-                  ))}
+          <div className="border-default p-16 bg-surface">
+            <div className="mono text-10 text-muted uppercase mb-8">Degraded Features queue</div>
+            <div className="flex flex-col gap-6">
+              {degradedFeatures.length > 0 ? degradedFeatures.slice(0, 3).map((entry) => (
+                <div key={entry.feature} className="border-default bg-bg p-8 text-11">
+                  <div className="flex-between">
+                    <span className="font-600">{entry.feature}</span>
+                    <span className="badge badge-warning" style={{ fontSize: '8px' }}>{entry.level}</span>
+                  </div>
+                  <div className="text-muted mt-4" style={{ fontSize: '9px' }}>{entry.capability}</div>
                 </div>
-              ) : (
-                <p className="text-sm text-[var(--color-text-muted)]">No degraded features currently tracked.</p>
+              )) : (
+                <div className="text-muted text-11 mono">No features degraded.</div>
               )}
             </div>
+          </div>
 
-            <div className="rounded-xl p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-              <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Routing Notes</div>
-              <div className="space-y-3">
-                <div className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                  <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Lockouts</div>
-                  <div className="text-xl font-semibold mt-1">{Object.keys(health.lockouts || {}).length}</div>
-                </div>
-                <div className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                  <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Rate limiters</div>
-                  <div className="text-xl font-semibold mt-1">{Object.keys(health.rateLimitStatus || {}).length}</div>
-                </div>
-                <div className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                  <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Quota monitors</div>
-                  <div className="text-xl font-semibold mt-1">{quota.active ?? 0}</div>
-                </div>
+          <div className="border-default p-16 bg-surface">
+            <div className="mono text-10 text-muted uppercase mb-8">Active Limit rules</div>
+            <div className="flex flex-col gap-4 text-12">
+              <div className="flex-between border-bottom" style={{ paddingBottom: '4px' }}>
+                <span className="text-muted">Active Lockouts</span>
+                <span className="font-600 mono">{Object.keys(health.lockouts || {}).length}</span>
+              </div>
+              <div className="flex-between border-bottom" style={{ paddingBottom: '4px' }}>
+                <span className="text-muted">Rate Limit states</span>
+                <span className="font-600 mono">{Object.keys(health.rateLimitStatus || {}).length}</span>
+              </div>
+              <div className="flex-between">
+                <span className="text-muted">Quota Monitors active</span>
+                <span className="font-600 mono">{quota.active ?? 0}</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Session Pressure</h2>
-              <p className="text-sm text-[var(--color-text-muted)]">Currently active sessions and the hottest keys.</p>
-            </div>
-            <span className="badge-accent inline-flex items-center gap-2">
-              <Activity size={14} />
-              live routing
-            </span>
-          </div>
-          {Array.isArray(sessions.top) && sessions.top.length > 0 ? (
-            <div className="grid lg:grid-cols-2 gap-4">
-              {sessions.top.slice(0, 6).map((session) => (
-                <div key={session.sessionId} className="rounded-xl p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="font-mono text-xs text-[var(--color-text-secondary)] truncate">{session.sessionId}</div>
-                    <span className="badge-success">{session.requestCount || 0} reqs</span>
-                  </div>
-                  <div className="text-xs text-[var(--color-text-muted)]">
-                    {session.connectionId ? `Conn ${session.connectionId.slice(0, 8)} · ` : ''}
-                    idle {Math.round((session.idleMs || 0) / 1000)}s · age {Math.round((session.ageMs || 0) / 1000)}s
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--color-text-muted)]">No active sessions are being tracked right now.</p>
-          )}
+      {/* Session pressure details */}
+      <div className="dash-card">
+        <div className="dash-card-title flex-between">
+          <span>Active Session Telemetry</span>
+          <span className="badge badge-accent">Live routing signals</span>
         </div>
+        {Array.isArray(sessions.top) && sessions.top.length > 0 ? (
+          <div className="dash-grid-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            {sessions.top.slice(0, 6).map((session) => (
+              <div key={session.sessionId} className="border-default p-12 bg-surface">
+                <div className="flex-between mb-8">
+                  <span className="mono text-10 text-muted truncate" style={{ maxWidth: '120px' }}>
+                    {session.sessionId}
+                  </span>
+                  <span className="badge badge-success" style={{ fontSize: '8px' }}>{session.requestCount || 0} reqs</span>
+                </div>
+                <div className="text-11 text-bright">
+                  {session.connectionId ? `Connection: ${session.connectionId.slice(0, 8)}` : 'no-conn-id'}
+                </div>
+                <div className="mono text-10 text-muted mt-4">
+                  Idle: {Math.round((session.idleMs || 0) / 1000)}s · age: {Math.round((session.ageMs || 0) / 1000)}s
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-muted text-12 mono">No active route connections currently tracked.</div>
+        )}
       </div>
     </div>
   );

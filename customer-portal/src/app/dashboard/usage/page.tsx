@@ -7,19 +7,69 @@ export default function UsagePage() {
   useEffect(() => { fetch(`/api/usage?range=${range}`).then(r => r.json()).then(setUsage); }, [range]);
   const ranges = ['1d','7d','30d','90d'];
 
+  const stats = [
+    { l: 'Requests', v: usage?.summary?.totalRequests || 0 },
+    { l: 'Prompt Tokens', v: usage?.summary?.promptTokens ? `${(usage.summary.promptTokens / 1000).toFixed(1)}K` : '0' },
+    { l: 'Completion Tokens', v: usage?.summary?.completionTokens ? `${(usage.summary.completionTokens / 1000).toFixed(1)}K` : '0' },
+    { l: 'Est. Cost', v: `$${usage?.summary?.totalCost?.toFixed(4) || '0.00'}` },
+  ];
+
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
-        <div><h1 className="text-2xl font-bold">Usage</h1><p className="text-[var(--color-text-secondary)] text-sm mt-1">Track your API consumption</p></div>
-        <div className="flex gap-1 bg-[var(--color-bg-secondary)] rounded-lg p-1 border border-[var(--color-border)]">
-          {ranges.map(r => (<button key={r} onClick={() => setRange(r)} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${range === r ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-secondary)]'}`}>{r}</button>))}
+    <div>
+      <div className="dash-page-header flex-between">
+        <div>
+          <h1 className="dash-page-title">Usage</h1>
+          <p className="dash-page-sub">Track your API consumption</p>
+        </div>
+        <div className="dash-tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
+          {ranges.map(r => (
+            <button key={r} onClick={() => setRange(r)} className={`dash-tab ${range === r ? 'active' : ''}`} style={{ padding: '8px 16px' }}>
+              {r}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[{l:'Requests',v:usage?.summary?.totalRequests||0},{l:'Prompt Tokens',v:usage?.summary?.promptTokens?`${(usage.summary.promptTokens/1000).toFixed(1)}K`:'0'},{l:'Completion Tokens',v:usage?.summary?.completionTokens?`${(usage.summary.completionTokens/1000).toFixed(1)}K`:'0'},{l:'Est. Cost',v:`$${usage?.summary?.totalCost?.toFixed(4)||'0.00'}`}].map((s,i)=>(<div key={i} className="stat-card"><div className="text-xs text-[var(--color-text-muted)] mb-1">{s.l}</div><div className="stat-value">{s.v}</div></div>))}
+
+      <div className="dash-stats-grid">
+        {stats.map((s, i) => (
+          <div key={i} className="dash-stat">
+            <div className="dash-stat-label">{s.l}</div>
+            <div className="dash-stat-value">{s.v}</div>
+          </div>
+        ))}
       </div>
-      {usage?.byModel?.length > 0 && (<div className="glass-card p-6"><h2 className="text-lg font-semibold mb-4">Models Used</h2><div className="space-y-3">{usage.byModel.slice(0,10).map((m:any,i:number)=>(<div key={i} className="flex items-center justify-between"><span className="text-sm font-medium">{m.model}</span><div className="text-right"><div className="text-sm">{m.requests} req</div><div className="text-xs text-[var(--color-text-muted)]">{(m.totalTokens/1000).toFixed(1)}K tok</div></div></div>))}</div></div>)}
-      {(!usage?.summary?.totalRequests) && (<div className="glass-card p-12 text-center"><div className="text-4xl mb-4">📈</div><h3 className="font-semibold mb-2">No usage data yet</h3><p className="text-sm text-[var(--color-text-secondary)]">Start making API requests to see analytics.</p></div>)}
+
+      {usage?.byModel?.length > 0 && (
+        <div className="dash-card">
+          <div className="dash-card-title">Models Used</div>
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th className="text-right">Requests</th>
+                <th className="text-right">Tokens</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usage.byModel.slice(0, 10).map((m: any, i: number) => (
+                <tr key={i}>
+                  <td className="font-600">{m.model}</td>
+                  <td className="text-right mono text-12">{m.requests}</td>
+                  <td className="text-right mono text-12 text-muted">{(m.totalTokens / 1000).toFixed(1)}K</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {(!usage?.summary?.totalRequests) && (
+        <div className="dash-card text-center" style={{ padding: '48px' }}>
+          <div className="text-40 mb-16">📈</div>
+          <div className="font-700 mb-8 text-15">No usage data yet</div>
+          <p className="text-13 text-muted">Start making API requests to see analytics.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Download, RefreshCw, Search, TrendingUp, X } from 'lucide-react';
+import { RefreshCw, Search, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminPlansPage from './plans-tab';
 
@@ -253,354 +253,389 @@ function AdminBillingPageContent() {
   const s = data?.summary;
 
   return (
-    <div className="min-h-screen text-[var(--color-text-primary)]">
-      <div className="max-w-[1480px] mx-auto py-2">
-        {/* Tab Switcher */}
-        <div className="flex border-b border-[var(--color-border)] mb-8 select-none overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'border-white text-white'
-                    : 'border-transparent text-[var(--color-text-secondary)] hover:text-white hover:border-[var(--color-border)]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+    <div>
+      {/* Tab Switcher */}
+      <div className="dash-tabs">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`dash-tab ${isActive ? 'active' : ''}`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        {activeTab === 'ledger' && (
-          loading || !data || !s ? (
-            <div className="min-h-[400px] flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 animate-fade-in">
-                <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-[var(--color-text-muted)]">Loading billing data…</p>
+      {error && (
+        <div className="error-box">
+          Error: {error}
+        </div>
+      )}
+
+      {activeTab === 'ledger' && (
+        loading || !data || !s ? (
+          <div className="loading-box">
+            <div className="auth-spinner" />
+          </div>
+        ) : (
+          <div>
+            <div className="dash-page-header flex flex-wrap items-end justify-between gap-20">
+              <div>
+                <h1 className="dash-page-title">Revenue Ledger</h1>
+                <p className="dash-page-sub">
+                  Track recurring subscriptions, manual billing credits, past due risks, and invoices.
+                </p>
+              </div>
+              <div className="flex gap-8 flex-wrap">
+                {RANGE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      setRange(option);
+                      void fetchData(option);
+                    }}
+                    className="btn-border text-11 mono"
+                    style={{
+                      padding: '6px 12px',
+                      background: range === option ? 'var(--accent)' : 'transparent',
+                      color: range === option ? 'var(--bg)' : 'var(--text)',
+                      borderColor: range === option ? 'var(--accent)' : 'var(--border-bright)'
+                    }}
+                  >
+                    {option.toUpperCase()}
+                  </button>
+                ))}
+                <button
+                  onClick={() => void fetchData(range)}
+                  className="btn-border text-11 mono"
+                  style={{
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    borderColor: 'var(--border-bright)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <RefreshCw size={12} />
+                  Refresh
+                </button>
+                <button
+                  onClick={downloadCsv}
+                  className="btn-border text-11 mono"
+                  style={{
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    borderColor: 'var(--border-bright)'
+                  }}
+                >
+                  Export CSV
+                </button>
               </div>
             </div>
-          ) : (
-            <div className="animate-fade-in">
-              <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
-                <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 45%)' }} />
-                <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-3xl">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
-                      Billing Operations
-                    </div>
-                    <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                      Track revenue, subscriptions, invoices, and payment risk from one place.
-                    </h1>
-                    <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                      This page gives the owner a live view into revenue, monthly recurring revenue, payment failures, and invoice history.
-                    </p>
+
+            {/* Stat cards grid */}
+            <div className="dash-stats-grid mb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              {[
+                { label: 'MRR', value: fmt(s.mrrCents), sub: `${s.activeCustomers} active clients`, color: 'var(--accent)' },
+                { label: 'Revenue', value: fmt(s.totalRevenueCents), sub: `${money(s.monthlyPayments)} payments`, color: 'var(--text)' },
+                { label: 'Monthly Rev', value: fmt(s.monthlyRevenueCents), sub: `range: ${data.range.toUpperCase()}`, color: 'var(--text)' },
+                { label: 'Customers', value: money(s.totalCustomers), sub: `${s.pastDueCustomers} past due`, color: 'var(--muted)' },
+                { label: 'Completed', value: money(s.completedPayments), sub: 'successful txns', color: 'var(--accent)' },
+                { label: 'Failed', value: money(s.failedPayments), sub: 'payment failures', color: 'var(--muted)' },
+                { label: 'Pending', value: money(s.pendingPayments), sub: 'open invoices', color: 'var(--muted)' },
+                { label: 'Credits', value: fmt(adjustmentSummary.creditCents), sub: `${s.adjustmentCount} adjustments`, color: 'var(--muted)' },
+              ].map((card) => (
+                <div key={card.label} className="dash-stat">
+                  <div className="dash-stat-label">
+                    <span>{card.label}</span>
+                    <span style={{ color: card.color }}>●</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {RANGE_OPTIONS.map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => setRange(option)}
-                        className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                          range === option
-                            ? 'bg-white text-black border-white'
-                            : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                        }`}
-                      >
-                        {option.toUpperCase()}
-                      </button>
-                    ))}
-                    <button onClick={() => void fetchData(range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                      <RefreshCw size={14} />
-                      Refresh
-                    </button>
-                    <button onClick={downloadCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                      <Download size={14} />
-                      Export CSV
-                    </button>
+                  <div className="dash-stat-value" style={{ fontSize: '18px' }}>{card.value}</div>
+                  <div className="dash-stat-sub">{card.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Main Ledger Area */}
+            <div className="dash-grid-2 mb-24">
+              <div className="dash-card" style={{ marginBottom: 0, overflowX: 'auto' }}>
+                <div className="dash-card-title flex-between flex-wrap gap-12">
+                  <span>Invoice Ledger</span>
+                  <div className="flex-center gap-8">
+                    <Search size={14} className="text-muted" />
+                    <input
+                      type="text"
+                      className="input-field text-11 mono"
+                      style={{
+                        padding: '6px 12px',
+                        width: '200px'
+                      }}
+                      placeholder="Filter ledger..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-                {[
-                  { label: 'MRR', value: fmt(s.mrrCents), sub: `${s.activeCustomers} active customers`, color: '#ffffff' },
-                  { label: 'Revenue', value: fmt(s.totalRevenueCents), sub: `${money(s.monthlyPayments)} payments`, color: '#ffffff' },
-                  { label: 'Monthly Rev', value: fmt(s.monthlyRevenueCents), sub: `range ${data.range.toUpperCase()}`, color: '#ffffff' },
-                  { label: 'Customers', value: money(s.totalCustomers), sub: `${s.pastDueCustomers} past due`, color: '#a1a1aa' },
-                  { label: 'Completed', value: money(s.completedPayments), sub: 'successful payments', color: '#10b981' },
-                  { label: 'Failed', value: money(s.failedPayments), sub: 'payment failures', color: '#ef4444' },
-                  { label: 'Pending', value: money(s.pendingPayments), sub: 'pending invoices', color: '#f59e0b' },
-                  { label: 'Txn', value: money(s.monthlyPayments), sub: 'in current window', color: '#a1a1aa' },
-                  { label: 'Credits', value: fmt(adjustmentSummary.creditCents), sub: `${s.adjustmentCount} adjustments`, color: '#ffffff' },
-                  { label: 'Refunds', value: fmt(adjustmentSummary.refundCents), sub: 'manual billing changes', color: '#ffffff' },
-                ].map((card, index) => (
-                  <div key={card.label} className="stat-card" style={{ animationDelay: `${index * 0.04}s` }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                      <span className="text-base" style={{ color: card.color }}>●</span>
-                    </div>
-                    <div className="stat-value text-2xl">{card.value}</div>
-                    <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid xl:grid-cols-[1.25fr_0.75fr] gap-6 mb-8">
-                <div className="glass-card overflow-hidden">
-                  <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold">Invoice Ledger</h2>
-                      <p className="text-sm text-[var(--color-text-muted)]">Recent invoice-equivalent payments and subscription activity.</p>
-                    </div>
-                    <div className="relative">
-                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                      <input
-                        type="text"
-                        className="input-field text-sm py-2 pl-9 w-full sm:w-80"
-                        placeholder="Search customer, invoice, plan, or status..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                          <th className="px-6 py-3 font-semibold">Invoice</th>
-                          <th className="px-4 py-3 font-semibold">Customer</th>
-                          <th className="px-4 py-3 font-semibold">Plan</th>
-                          <th className="px-4 py-3 font-semibold text-right">Amount</th>
-                          <th className="px-4 py-3 font-semibold text-center">Status</th>
-                          <th className="px-4 py-3 font-semibold">Date</th>
-                          <th className="px-4 py-3 font-semibold"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredInvoices.map((invoice) => (
-                          <tr key={invoice.id} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="font-mono font-medium">{invoice.invoiceId}</div>
-                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[220px]">{invoice.stripePaymentId || 'No Stripe ref'}</div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="font-medium">{invoice.customerName || invoice.customerEmail}</div>
-                              <div className="text-xs text-[var(--color-text-muted)]">{invoice.customerEmail}</div>
-                            </td>
-                            <td className="px-4 py-4">{invoice.planName}</td>
-                            <td className="px-4 py-4 text-right font-mono">{fmt(invoice.amountCents)}</td>
-                            <td className="px-4 py-4 text-center"><span className={statusBadge(invoice.status)}>{invoice.status}</span></td>
-                            <td className="px-4 py-4 text-[var(--color-text-muted)]">{timeAgo(invoice.createdAt, now)}</td>
-                            <td className="px-4 py-4 text-right">
-                              <button
-                                className="btn-secondary text-xs py-1.5 px-3"
-                                onClick={() => setSelectedInvoice(invoice)}
-                              >
-                                Details
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="glass-card p-6">
-                    <div className="flex items-center justify-between gap-3 mb-4">
-                      <h2 className="text-base font-semibold">Plan Mix</h2>
-                      <TrendingUp size={15} className="text-[var(--color-text-muted)]" />
-                    </div>
-                    <div className="space-y-3">
-                      {data.plans.map((plan) => {
-                        const share = s.totalCustomers > 0 ? (plan.userCount / s.totalCustomers) * 100 : 0;
-                        return (
-                          <div key={plan.id}>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="font-medium">{plan.name}</span>
-                              <span className="text-[var(--color-text-muted)]">{plan.userCount} users</span>
-                            </div>
-                            <div className="h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-[var(--color-success)]" style={{ width: `${Math.max(share, 4)}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6">
-                    <h2 className="text-base font-semibold mb-4">Past Due Accounts</h2>
-                    <div className="space-y-3">
-                      {data.failedPayments.length > 0 ? data.failedPayments.map((payment) => (
-                        <div key={payment.id} className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">{payment.customerName || payment.customerEmail}</div>
-                              <div className="text-xs text-[var(--color-text-muted)]">{payment.customerEmail}</div>
-                            </div>
-                            <span className="badge-danger">{payment.status}</span>
-                          </div>
-                          <div className="mt-2 text-sm text-[var(--color-text-secondary)] flex items-center justify-between gap-3">
-                            <span>{fmt(payment.amountCents)}</span>
-                            <span className="text-xs text-[var(--color-text-muted)]">{timeAgo(payment.createdAt, now)}</span>
-                          </div>
-                        </div>
-                      )) : (
-                        <p className="text-sm text-[var(--color-text-muted)]">No payment failures in this window.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6">
-                    <h2 className="text-base font-semibold mb-4">Quick Actions</h2>
-                    <div className="grid gap-3">
-                      <button onClick={() => handleTabChange('plans')} className="btn-secondary inline-flex items-center justify-between">
-                        <span>Review pricing</span>
-                        <ArrowRight size={15} />
-                      </button>
-                      <button onClick={() => window.location.reload()} className="btn-secondary inline-flex items-center justify-between">
-                        <span>Refresh ledger</span>
-                        <Download size={15} />
-                      </button>
-                      <Link href="/admin/customers?tab=accounts" className="btn-secondary inline-flex items-center justify-between">
-                        <span>Open accounts</span>
-                        <ArrowRight size={15} />
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6">
-                    <h2 className="text-base font-semibold mb-4">Recent Adjustments</h2>
-                    <div className="space-y-3">
-                      {data.adjustments.length > 0 ? data.adjustments.slice(0, 5).map((adjustment) => (
-                        <div key={adjustment.id} className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">{adjustment.customerName || adjustment.customerEmail}</div>
-                              <div className="text-xs text-[var(--color-text-muted)] capitalize">{adjustment.type} · {adjustment.reason}</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-mono text-sm">{fmt(adjustment.amountCents)}</div>
-                              <div className="text-xs text-[var(--color-text-muted)]">{timeAgo(adjustment.createdAt, now)}</div>
-                            </div>
-                          </div>
-                        </div>
-                      )) : (
-                        <p className="text-sm text-[var(--color-text-muted)]">No manual credits or refunds yet.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card overflow-hidden">
-                <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Customer Billing Snapshot</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">Current customer plan assignments and billing risk.</p>
-                  </div>
-                  <span className="badge-accent">{data.customerBilling.length}</span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                        <th className="px-6 py-3 font-semibold">Customer</th>
-                        <th className="px-4 py-3 font-semibold">Plan</th>
-                        <th className="px-4 py-3 font-semibold text-right">Paid</th>
-                        <th className="px-4 py-3 font-semibold text-center">Risk</th>
-                        <th className="px-4 py-3 font-semibold">Last Payment</th>
-                        <th className="px-4 py-3 font-semibold"></th>
+                <table className="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Invoice ID</th>
+                      <th>Customer</th>
+                      <th>Plan</th>
+                      <th className="text-right">Amount</th>
+                      <th className="text-center">Status</th>
+                      <th>Date</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvoices.map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td className="mono">
+                          <div className="font-600">{invoice.invoiceId}</div>
+                          <div className="text-muted" style={{ fontSize: '9px', marginTop: '2px' }}>{invoice.stripePaymentId || 'no-stripe-ref'}</div>
+                        </td>
+                        <td>
+                          <div className="font-600">{invoice.customerName || '—'}</div>
+                          <div className="text-muted" style={{ fontSize: '10px' }}>{invoice.customerEmail}</div>
+                        </td>
+                        <td className="text-12">{invoice.planName}</td>
+                        <td className="text-right mono font-600">
+                          {fmt(invoice.amountCents)}
+                        </td>
+                        <td className="text-center">
+                          <span className={`badge ${statusBadge(invoice.status)}`}>
+                            {invoice.status}
+                          </span>
+                        </td>
+                        <td className="footnote">
+                          {timeAgo(invoice.createdAt, now)}
+                        </td>
+                        <td className="text-right">
+                          <button
+                            className="btn-border mono"
+                            style={{ padding: '4px 10px', fontSize: '10px' }}
+                            onClick={() => setSelectedInvoice(invoice)}
+                          >
+                            Details
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {data.customerBilling.map((customer) => (
-                        <tr key={customer.id} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="font-medium">{customer.name || customer.email}</div>
-                            <div className="text-xs text-[var(--color-text-muted)]">{customer.email}</div>
-                          </td>
-                          <td className="px-4 py-4"><span className={`badge-${customer.plan.priceCents === 0 ? 'warning' : 'accent'}`}>{customer.plan.name}</span></td>
-                          <td className="px-4 py-4 text-right font-mono">{fmt(customer.totalPaidCents)}</td>
-                          <td className="px-4 py-4 text-center">
-                            {customer.hasFailedPayment ? <span className="badge-danger">past due</span> : <span className="badge-success">healthy</span>}
-                          </td>
-                          <td className="px-4 py-4 text-[var(--color-text-muted)]">{customer.lastPaymentAt ? timeAgo(customer.lastPaymentAt, now) : 'No payments yet'}</td>
-                          <td className="px-4 py-4 text-right">
-                            <Link href="/admin/customers?tab=accounts" className="btn-secondary text-xs py-1.5 px-3">View account</Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
-              {selectedInvoice && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-                  <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-[var(--color-bg-primary)] border-l border-[var(--color-border)] shadow-2xl overflow-y-auto">
-                    <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(14px)' }}>
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-white border border-[var(--color-border)]">
-                            Invoice Detail
+              <div className="dash-stack" style={{ gap: '24px' }}>
+                {/* Plan Distribution */}
+                <div className="dash-card" style={{ marginBottom: 0 }}>
+                  <div className="dash-card-title">Pricing plan shares</div>
+                  <div className="dash-stack" style={{ gap: '12px' }}>
+                    {data.plans.map((plan) => {
+                      const share = s.totalCustomers > 0 ? (plan.userCount / s.totalCustomers) * 100 : 0;
+                      return (
+                        <div key={plan.id} className="card" style={{ padding: '12px' }}>
+                          <div className="flex-between" style={{ marginBottom: '6px' }}>
+                            <span className="font-600">{plan.name}</span>
+                            <span className="footnote">{plan.userCount} users</span>
                           </div>
-                          <h3 className="text-2xl font-bold">{selectedInvoice.invoiceId}</h3>
-                          <p className="text-sm text-[var(--color-text-muted)] mt-1">{selectedInvoice.customerName || selectedInvoice.customerEmail}</p>
+                          <div style={{ height: '4px', background: 'var(--border-bright)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', background: 'var(--accent)', width: `${Math.max(share, 4)}%` }} />
+                          </div>
                         </div>
-                        <button
-                          onClick={() => setSelectedInvoice(null)}
-                          className="btn-secondary inline-flex items-center gap-2 text-sm px-3 py-2"
-                        >
-                          <X size={16} />
-                          Close
-                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Past Due Accounts */}
+                <div className="dash-card" style={{ marginBottom: 0 }}>
+                  <div className="dash-card-title">Past Due Risks</div>
+                  <div className="dash-stack" style={{ gap: '10px' }}>
+                    {data.failedPayments.length > 0 ? data.failedPayments.map((payment) => (
+                      <div key={payment.id} style={{ border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '12px' }}>
+                        <div className="flex-start justify-between" style={{ gap: '8px' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="font-600 text-12" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{payment.customerName || payment.customerEmail}</div>
+                            <div className="text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>{payment.customerEmail}</div>
+                          </div>
+                          <span className="badge badge-danger" style={{ fontSize: '8px' }}>{payment.status}</span>
+                        </div>
+                        <div className="flex-between text-11 mono" style={{ marginTop: '8px' }}>
+                          <span className="font-700">{fmt(payment.amountCents)}</span>
+                          <span className="text-muted">{timeAgo(payment.createdAt, now)}</span>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="footnote">No active payment failures.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent manual adjustments */}
+                <div className="dash-card" style={{ marginBottom: 0 }}>
+                  <div className="dash-card-title">Manual adjustments</div>
+                  <div className="dash-stack" style={{ gap: '8px' }}>
+                    {data.adjustments.length > 0 ? data.adjustments.slice(0, 4).map((adjustment) => (
+                      <div key={adjustment.id} className="card text-11" style={{ padding: '10px' }}>
+                        <div className="flex-start justify-between" style={{ gap: '8px' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="font-600" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{adjustment.customerName || adjustment.customerEmail}</div>
+                            <div className="text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>{adjustment.type} · {adjustment.reason}</div>
+                          </div>
+                          <div className="text-right mono">
+                            <div className="font-700">{fmt(adjustment.amountCents)}</div>
+                            <div className="text-muted" style={{ fontSize: '9px', marginTop: '2px' }}>{timeAgo(adjustment.createdAt, now)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="footnote">No adjustments documented.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Billing Snapshot */}
+            <div className="dash-card">
+              <div className="dash-card-title flex-between">
+                <span>Customer billing profile snapshot</span>
+                <span className="badge badge-accent">{data.customerBilling.length} clients</span>
+              </div>
+              <div className="overflow-hidden" style={{ overflowX: 'auto' }}>
+                <table className="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Plan</th>
+                      <th className="text-right">Total Paid</th>
+                      <th className="text-center">Billing Risk</th>
+                      <th>Last Payment Date</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.customerBilling.map((customer) => (
+                      <tr key={customer.id}>
+                        <td>
+                          <div className="font-600">{customer.name || '—'}</div>
+                          <div className="text-muted" style={{ fontSize: '10px' }}>{customer.email}</div>
+                        </td>
+                        <td>
+                          <span className={`badge ${customer.plan.priceCents === 0 ? 'badge-warning' : 'badge-accent'}`}>
+                            {customer.plan.name}
+                          </span>
+                        </td>
+                        <td className="text-right mono font-600">
+                          {fmt(customer.totalPaidCents)}
+                        </td>
+                        <td className="text-center">
+                          <span className={`badge ${customer.hasFailedPayment ? 'badge-danger' : 'badge-success'}`}>
+                            {customer.hasFailedPayment ? 'past due' : 'healthy'}
+                          </span>
+                        </td>
+                        <td className="footnote">
+                          {customer.lastPaymentAt ? timeAgo(customer.lastPaymentAt, now) : 'No payments yet'}
+                        </td>
+                        <td className="text-right">
+                          <Link
+                            href="/admin/customers?tab=accounts"
+                            className="btn-border mono"
+                            style={{ textDecoration: 'none', padding: '4px 10px', fontSize: '10px' }}
+                          >
+                            View Account
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Slide-out Invoice Detail Drawer */}
+            {selectedInvoice && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
+                <div
+                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }}
+                  onClick={() => setSelectedInvoice(null)}
+                />
+                <div
+                  className="dash-stack"
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: '540px',
+                    height: '100%',
+                    background: 'var(--bg)',
+                    borderLeft: '1px solid var(--border-bright)',
+                    overflowY: 'auto',
+                    padding: '24px',
+                    zIndex: 60
+                  }}
+                >
+                  <div className="flex-start justify-between" style={{ borderBottom: '1px solid var(--border-bright)', paddingBottom: '16px', marginBottom: '24px' }}>
+                    <div>
+                      <div className="badge badge-accent mb-8">Invoice Detail</div>
+                      <h3 className="font-700 mono" style={{ fontSize: '20px' }}>{selectedInvoice.invoiceId}</h3>
+                      <p className="text-12 text-muted" style={{ marginTop: '4px' }}>{selectedInvoice.customerName || selectedInvoice.customerEmail}</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedInvoice(null)}
+                      className="btn-border mono text-11"
+                      style={{ padding: '6px 12px' }}
+                    >
+                      Close ✕
+                    </button>
+                  </div>
+
+                  <div className="dash-stack" style={{ gap: '20px' }}>
+                    <div className="dash-stats-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 0 }}>
+                      <div className="dash-stat">
+                        <div className="dash-stat-label">Amount</div>
+                        <div className="dash-stat-value">{fmt(selectedInvoice.amountCents)}</div>
+                      </div>
+                      <div className="dash-stat">
+                        <div className="dash-stat-label">Status</div>
+                        <div className="dash-stat-value" style={{ textTransform: 'capitalize' }}>{selectedInvoice.status}</div>
                       </div>
                     </div>
 
-                    <div className="p-6 space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="stat-card">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-1">Amount</div>
-                          <div className="stat-value text-2xl">{fmt(selectedInvoice.amountCents)}</div>
+                    <div className="dash-card" style={{ marginBottom: 0 }}>
+                      <div className="dash-card-title">Customer Snapshot</div>
+                      <div className="dash-stack text-12" style={{ gap: '8px' }}>
+                        <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                          <span className="text-muted">Email</span>
+                          <span className="font-600">{selectedInvoice.customerEmail}</span>
                         </div>
-                        <div className="stat-card">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-1">Status</div>
-                          <div className="stat-value text-2xl capitalize">{selectedInvoice.status}</div>
+                        <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                          <span className="text-muted">Plan ID</span>
+                          <span className="font-600">{selectedInvoice.planName}</span>
                         </div>
-                      </div>
-
-                      <div className="glass-card p-5">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Customer Snapshot</h4>
-                        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Email</div>
-                            <div className="font-semibold break-all">{selectedInvoice.customerEmail}</div>
-                          </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Plan</div>
-                            <div className="font-semibold">{selectedInvoice.planName}</div>
-                          </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Stripe Payment</div>
-                            <div className="font-semibold break-all">{selectedInvoice.stripePaymentId || '—'}</div>
-                          </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Last Payment</div>
-                            <div className="font-semibold">{selectedCustomer?.lastPaymentAt ? new Date(selectedCustomer.lastPaymentAt).toLocaleDateString() : '—'}</div>
-                          </div>
+                        <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                          <span className="text-muted">Stripe Charge ID</span>
+                          <span className="font-600 mono" style={{ fontSize: '10px' }}>{selectedInvoice.stripePaymentId || '—'}</span>
+                        </div>
+                        <div className="flex-between">
+                          <span className="text-muted">Verified Last Payment</span>
+                          <span className="font-600">{selectedCustomer?.lastPaymentAt ? new Date(selectedCustomer.lastPaymentAt).toLocaleDateString() : '—'}</span>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="glass-card p-5">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Manual Adjustment</h4>
-                        <div className="grid sm:grid-cols-[1fr_1.5fr] gap-3">
+                    <div className="dash-card" style={{ marginBottom: 0 }}>
+                      <div className="dash-card-title">Submit Manual Adjustments</div>
+                      <div className="dash-stack" style={{ gap: '12px' }}>
+                        <div>
+                          <label className="block mono text-muted" style={{ fontSize: '10px', marginBottom: '4px' }}>ADJUSTMENT VALUE (USD)</label>
                           <input
                             className="input-field"
                             type="number"
@@ -610,40 +645,45 @@ function AdminBillingPageContent() {
                             onChange={(e) => setAdjustmentAmount(e.target.value)}
                             placeholder="Amount in USD"
                           />
+                        </div>
+                        <div>
+                          <label className="block mono text-muted" style={{ fontSize: '10px', marginBottom: '4px' }}>EXPLANATION</label>
                           <input
                             className="input-field"
                             value={adjustmentReason}
                             onChange={(e) => setAdjustmentReason(e.target.value)}
-                            placeholder="Reason for credit or refund"
+                            placeholder="Reason for manual accounting ledger entry..."
                           />
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-3">
+                        <div className="flex gap-8" style={{ marginTop: '8px' }}>
                           <button
-                            className="btn-primary px-4 py-2 inline-flex items-center gap-2"
+                            className="btn-border mono text-11"
+                            style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--bg)', borderColor: 'var(--accent)' }}
                             onClick={() => void submitAdjustment('credit')}
                             disabled={actionLoading === 'credit'}
                           >
-                            {actionLoading === 'credit' ? 'Saving...' : 'Create Credit'}
+                            {actionLoading === 'credit' ? 'Saving...' : 'Apply Credit'}
                           </button>
                           <button
-                            className="btn-secondary px-4 py-2 inline-flex items-center gap-2"
+                            className="btn-border mono text-11"
+                            style={{ padding: '8px 16px' }}
                             onClick={() => void submitAdjustment('refund')}
                             disabled={actionLoading === 'refund'}
                           >
-                            {actionLoading === 'refund' ? 'Saving...' : 'Create Refund'}
+                            {actionLoading === 'refund' ? 'Saving...' : 'Apply Refund'}
                           </button>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )
-        )}
+              </div>
+            )}
+          </div>
+        )
+      )}
 
-        {activeTab === 'plans' && <AdminPlansPage />}
-      </div>
+      {activeTab === 'plans' && <AdminPlansPage />}
     </div>
   );
 }
@@ -651,11 +691,8 @@ function AdminBillingPageContent() {
 export default function AdminBillingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading Billing Console…</p>
-        </div>
+      <div className="flex-center" style={{ minHeight: 'calc(100vh - 80px)', justifyContent: 'center' }}>
+        <div className="auth-spinner" />
       </div>
     }>
       <AdminBillingPageContent />

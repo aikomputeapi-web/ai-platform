@@ -20,41 +20,44 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'radial-gradient(ellipse at top, #1a1a3e 0%, #0a0a0f 60%)' }}>
-      <div className="w-full max-w-md animate-fade-in">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-            </svg>
-          </Link>
-          <h1 className="text-2xl font-bold">Reset your password</h1>
-          <p className="text-[var(--color-text-secondary)] text-sm mt-1">
-            {sent ? "Email sent! Check your inbox." : "Enter your email and we'll send a reset link."}
-          </p>
+    <div className="auth-centered">
+      <nav className="auth-nav">
+        <Link href="/" className="nav-brand">AI<span>KOMPUTE</span></Link>
+        <div className="auth-nav-right">
+          Remember it?&nbsp;
+          <Link href="/login">Sign in →</Link>
         </div>
+      </nav>
 
+      <div className="auth-centered-body">
         {sent ? (
-          <div className="glass-card p-8 text-center">
-            <div className="text-5xl mb-4">📬</div>
-            <p className="text-[var(--color-text-secondary)] mb-6">
-              If an account exists for <strong className="text-[var(--color-text-primary)]">{email}</strong>, you&apos;ll receive a reset link within a minute.
+          <div className="auth-card text-center">
+            <div className="auth-card-icon">📬</div>
+            <h2>Check Your Email</h2>
+            <p>
+              If an account exists for <strong className="text-bright">{email}</strong>, you&apos;ll receive a reset link within a minute.
             </p>
-            <Link href="/login" className="btn-primary w-full">Back to Sign In</Link>
+            <Link href="/login" className="auth-submit block text-center">
+              Back to Sign In
+            </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="glass-card p-8 space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-secondary)]">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field" placeholder="you@example.com" required />
-            </div>
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? 'Sending…' : 'Send Reset Link'}
-            </button>
-            <p className="text-center text-sm text-[var(--color-text-secondary)]">
-              Remember it? <Link href="/login" className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium">Sign in</Link>
+          <div className="auth-card">
+            <h2>Reset Password</h2>
+            <p>Enter your email and we&apos;ll send a reset link.</p>
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div>
+                <label className="auth-label">Email Address</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field" placeholder="developer@domain.com" required />
+              </div>
+              <button type="submit" className="auth-submit" disabled={loading}>
+                {loading ? 'Sending...' : 'Send Reset Link →'}
+              </button>
+            </form>
+            <p className="auth-bottom-text">
+              Remember it? <Link href="/login">Sign in</Link>
             </p>
-          </form>
+          </div>
         )}
       </div>
     </div>

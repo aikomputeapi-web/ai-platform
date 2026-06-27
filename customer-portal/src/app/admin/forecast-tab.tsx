@@ -19,7 +19,7 @@ export default function ForecastPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/forecast');
-      if (!res.ok) { setError('Failed'); return; }
+      if (!res.ok) { setError('Failed to load forecast'); return; }
       setData(await res.json());
       setError('');
     } catch { setError('Network error'); }
@@ -33,11 +33,8 @@ export default function ForecastPage() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Generating forecasts…</p>
-        </div>
+      <div className="loading-box">
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -45,51 +42,52 @@ export default function ForecastPage() {
   const p = data.projections;
   const gr = p.growthRates;
 
-  const GrowthBadge = ({ value }: { value: number }) => (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${value > 0 ? 'bg-green-500/10 text-green-400' : value < 0 ? 'bg-red-500/10 text-red-400' : 'bg-gray-500/10 text-gray-400'}`}>
-      {value > 0 ? '↑' : value < 0 ? '↓' : '→'} {Math.abs(value)}%
-    </span>
-  );
+  const GrowthBadge = ({ value }: { value: number }) => {
+    const badgeClass = value > 0 ? 'badge-success' : value < 0 ? 'badge-danger' : '';
+    return (
+      <span className={`badge ${badgeClass}`} style={{ fontSize: '9px' }}>
+        {value > 0 ? '↑' : value < 0 ? '↓' : '→'} {Math.abs(value)}%
+      </span>
+    );
+  };
 
   return (
-    <div className="max-w-[1480px] mx-auto px-6 py-8" style={{ color: 'var(--color-text-primary)' }}>
+    <div>
       {/* Header */}
-      <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 45%)' }} />
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
-            Forecast Engine
-          </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-            Predicted usage for the next 30 days.
-          </h1>
-          <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-            Based on your last 30-90 days of historical data using a combination of linear regression and exponential smoothing.
-          </p>
-        </div>
+      <div className="dash-page-header">
+        <h1 className="dash-page-title">Growth & Demand Forecast</h1>
+        <p className="dash-page-sub">
+          Predictive platform volume for the next 30 days based on linear regression and exponential smoothing.
+        </p>
       </div>
 
-      {/* Projection vs Actual Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {error && (
+        <div className="error-box">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Projection vs Actual Cards Grid */}
+      <div className="dash-stats-grid mb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {[
-          { label: 'Requests', last: fmt(p.last30Days.requests), next: fmt(p.next30Days.requests), growth: gr.requests, color: '#ffffff' },
-          { label: 'Tokens', last: fmtTokens(p.last30Days.tokens), next: fmtTokens(p.next30Days.tokens), growth: gr.tokens, color: '#a1a1aa' },
-          { label: 'API Cost', last: `$${p.last30Days.cost.toFixed(2)}`, next: `$${p.next30Days.cost.toFixed(2)}`, growth: gr.cost, color: '#71717a' },
-          { label: 'New Users', last: fmt(p.last30Days.newUsers), next: fmt(p.next30Days.newUsers), growth: gr.users, color: '#d4d4d8' },
+          { label: 'Requests', last: fmt(p.last30Days.requests), next: fmt(p.next30Days.requests), growth: gr.requests, color: 'var(--accent)' },
+          { label: 'Tokens', last: fmtTokens(p.last30Days.tokens), next: fmtTokens(p.next30Days.tokens), growth: gr.tokens, color: 'var(--muted)' },
+          { label: 'API Cost', last: `$${p.last30Days.cost.toFixed(2)}`, next: `$${p.next30Days.cost.toFixed(2)}`, growth: gr.cost, color: 'var(--accent)' },
+          { label: 'New Users', last: fmt(p.last30Days.newUsers), next: fmt(p.next30Days.newUsers), growth: gr.users, color: 'var(--muted)' },
         ].map((card, i) => (
-          <div key={i} className="stat-card" style={{ animationDelay: `${i * 0.06}s` }}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-[var(--color-text-muted)] font-semibold uppercase">{card.label}</span>
+          <div key={i} className="dash-stat" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div className="dash-stat-label mb-12">
+              <span>{card.label}</span>
               <GrowthBadge value={card.growth} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <div>
-                <div className="text-[10px] text-[var(--color-text-muted)] mb-0.5">Last 30d</div>
-                <div className="text-lg font-bold text-[var(--color-text-secondary)]">{card.last}</div>
+                <div className="mono text-muted" style={{ fontSize: '9px' }}>Last 30d</div>
+                <div className="font-600 text-14 text-bright" style={{ marginTop: '2px' }}>{card.last}</div>
               </div>
-              <div>
-                <div className="text-[10px] font-semibold mb-0.5" style={{ color: card.color }}>Next 30d ▸</div>
-                <div className="stat-value text-lg">{card.next}</div>
+              <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px' }}>
+                <div className="mono font-600" style={{ fontSize: '9px', color: card.color }}>Next 30d ▸</div>
+                <div className="font-700 text-accent text-14" style={{ marginTop: '2px' }}>{card.next}</div>
               </div>
             </div>
           </div>
@@ -97,64 +95,75 @@ export default function ForecastPage() {
       </div>
 
       {/* Capacity Planning */}
-      <div className="glass-card p-6 mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-        <h2 className="text-base font-semibold mb-4 flex items-center gap-2">⚙️ Capacity & Supply Planning</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-            <div className="text-xs text-[var(--color-text-muted)] mb-2 uppercase font-semibold">Projected Daily Peak</div>
-            <div className="stat-value text-2xl mb-1">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests))))}</div>
-            <div className="text-xs text-[var(--color-text-muted)]">requests/day (peak forecast day)</div>
-            <div className="mt-3 text-xs text-[var(--color-text-secondary)]">
-              Recommended headroom: <span className="font-mono text-white">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests)) * 1.5))}</span> req/day
+      <div className="dash-card mb-24">
+        <div className="dash-card-title">Capacity & Supply Planning</div>
+        <div className="dash-grid-3">
+          <div className="card" style={{ padding: '16px' }}>
+            <div className="mono text-muted uppercase mb-8" style={{ fontSize: '10px', letterSpacing: '0.04em' }}>
+              Projected Daily Peak
+            </div>
+            <div className="font-700 mono text-accent" style={{ fontSize: '22px', marginBottom: '4px' }}>
+              {fmt(Math.round(Math.max(...data.forecast.map(d => d.requests))))}
+            </div>
+            <div className="text-11 text-muted">requests / day peak forecast</div>
+            <div className="mt-12 text-11 text-bright" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              Headroom recommendation: <strong className="text-accent mono">{fmt(Math.round(Math.max(...data.forecast.map(d => d.requests)) * 1.5))}</strong> / day
             </div>
           </div>
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-            <div className="text-xs text-[var(--color-text-muted)] mb-2 uppercase font-semibold">Token Budget (30d)</div>
-            <div className="stat-value text-2xl mb-1">{fmtTokens(p.next30Days.tokens)}</div>
-            <div className="text-xs text-[var(--color-text-muted)]">tokens projected consumption</div>
-            <div className="mt-3 text-xs text-[var(--color-text-secondary)]">
-              Estimated provider cost: <span className="font-mono text-white">${p.next30Days.cost.toFixed(2)}</span>
+
+          <div className="card" style={{ padding: '16px' }}>
+            <div className="mono text-muted uppercase mb-8" style={{ fontSize: '10px', letterSpacing: '0.04em' }}>
+              Token Budget (30d)
+            </div>
+            <div className="font-700 mono text-bright" style={{ fontSize: '22px', marginBottom: '4px' }}>
+              {fmtTokens(p.next30Days.tokens)}
+            </div>
+            <div className="text-11 text-muted">tokens projected volume</div>
+            <div className="mt-12 text-11 text-bright" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              Estimated provider cost: <strong className="mono">${p.next30Days.cost.toFixed(2)}</strong>
             </div>
           </div>
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-            <div className="text-xs text-[var(--color-text-muted)] mb-2 uppercase font-semibold">User Growth</div>
-            <div className="stat-value text-2xl mb-1">{fmt(p.next30Days.projectedTotalUsers)}</div>
-            <div className="text-xs text-[var(--color-text-muted)]">projected total users in 30 days</div>
-            <div className="mt-3 text-xs text-[var(--color-text-secondary)]">
-              +{fmt(p.next30Days.newUsers)} new signups expected <GrowthBadge value={gr.users} />
+
+          <div className="card" style={{ padding: '16px' }}>
+            <div className="mono text-muted uppercase mb-8" style={{ fontSize: '10px', letterSpacing: '0.04em' }}>
+              User Growth
+            </div>
+            <div className="font-700 mono text-bright" style={{ fontSize: '22px', marginBottom: '4px' }}>
+              {fmt(p.next30Days.projectedTotalUsers)}
+            </div>
+            <div className="text-11 text-muted">projected user count in 30 days</div>
+            <div className="mt-12 text-11 text-bright flex-between" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              <span>+{fmt(p.next30Days.newUsers)} expected signups</span>
+              <GrowthBadge value={gr.users} />
             </div>
           </div>
         </div>
       </div>
 
-
-
       {/* Forecast Table */}
-      <div className="glass-card overflow-hidden animate-fade-in" style={{ animationDelay: '0.5s' }}>
-        <div className="p-6 border-b border-[var(--color-border)]">
-          <h2 className="text-base font-semibold">📅 Daily Forecast Breakdown (Next 30 Days)</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      <div className="dash-card p-0 overflow-hidden">
+        <div className="dash-card-title" style={{ padding: '24px 24px 0 24px' }}>Daily Forecast Breakdown (Next 30 Days)</div>
+        <div className="overflow-hidden" style={{ overflowX: 'auto' }}>
+          <table className="dash-table">
             <thead>
-              <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                <th className="px-4 py-3 font-semibold text-right">Tokens</th>
-                <th className="px-4 py-3 font-semibold text-right">Est. Cost</th>
-                <th className="px-4 py-3 font-semibold text-right">New Users</th>
-                <th className="px-4 py-3 font-semibold text-right">Total Users</th>
+              <tr>
+                <th style={{ paddingLeft: '24px' }}>Date</th>
+                <th className="text-right">Requests</th>
+                <th className="text-right">Tokens</th>
+                <th className="text-right">Est. Cost</th>
+                <th className="text-right">New Users</th>
+                <th className="text-right" style={{ paddingRight: '24px' }}>Total Users</th>
               </tr>
             </thead>
             <tbody>
               {data.forecast.map((d, i) => (
-                <tr key={i} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                  <td className="px-6 py-3 font-mono text-[var(--color-text-muted)]">{d.date}</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmt(Math.round(d.requests))}</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmtTokens(Math.round(d.tokens))}</td>
-                  <td className="px-4 py-3 text-right font-mono text-[var(--color-text-secondary)]">${d.cost.toFixed(4)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-[var(--color-success)]">+{d.newUsers}</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmt(d.totalUsers || 0)}</td>
+                <tr key={i}>
+                  <td className="mono text-muted" style={{ paddingLeft: '24px' }}>{d.date}</td>
+                  <td className="text-right mono">{fmt(Math.round(d.requests))}</td>
+                  <td className="text-right mono">{fmtTokens(Math.round(d.tokens))}</td>
+                  <td className="text-right mono">${d.cost.toFixed(4)}</td>
+                  <td className="text-right mono text-accent">+{d.newUsers}</td>
+                  <td className="text-right mono" style={{ paddingRight: '24px' }}>{fmt(d.totalUsers || 0)}</td>
                 </tr>
               ))}
             </tbody>
@@ -163,9 +172,13 @@ export default function ForecastPage() {
       </div>
 
       {/* Methodology Note */}
-      <div className="mt-8 glass-card p-6 opacity-70 text-sm text-[var(--color-text-muted)]">
-        <h3 className="font-semibold mb-2 text-[var(--color-text-secondary)]">📐 Methodology</h3>
-        <p>Forecasts are generated using a combination of <strong>linear regression</strong> for trend estimation and <strong>exponential smoothing</strong> (α=0.3) for noise reduction. Projections use the most recent 30 days as baseline and extrapolate forward. Capacity recommendations include a 1.5x safety headroom. All values are estimates and should be validated against actual provider billing.</p>
+      <div className="card mt-24 text-12" style={{ padding: '20px', lineHeight: 1.6 }}>
+        <strong className="block mono text-muted uppercase mb-8" style={{ fontSize: '10px' }}>
+          Methodology & Telemetry Source
+        </strong>
+        <p className="text-muted">
+          Forecasts are generated using a combination of <strong>linear regression</strong> for trend estimation and <strong>exponential smoothing</strong> (α=0.3) for noise reduction. Projections use the most recent 30 days as a baseline and extrapolate forward. Capacity recommendations include a 1.5x safety headroom. All values are estimates and should be validated against actual provider billing.
+        </p>
       </div>
     </div>
   );

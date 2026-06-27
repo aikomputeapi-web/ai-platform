@@ -43,41 +43,41 @@ export default function DashboardOverview() {
   ];
 
   return (
-    <div className="font-mono">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold uppercase tracking-tight">[Dashboard]</h1>
-        <p className="text-[var(--color-text-secondary)] text-xs mt-1 font-medium">
+    <div>
+      <div className="dash-page-header">
+        <h1 className="dash-page-title">Dashboard</h1>
+        <p className="dash-page-sub">
           Welcome back{user?.name ? `, ${user.name}` : ''}
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="dash-stats-grid">
         {stats.map((stat, i) => (
-          <div key={i} className="stat-card" style={{ animationDelay: `${i * 0.08}s` }}>
-            <div className="flex items-center justify-between mb-3 text-[10px]">
-              <span className="text-[var(--color-text-secondary)] uppercase tracking-wider font-bold">{stat.label}</span>
-              <span className="text-sm">{stat.icon}</span>
+          <div key={i} className="dash-stat">
+            <div className="dash-stat-label">
+              <span>{stat.label}</span>
+              <span className="dash-sidebar-nav-icon">{stat.icon}</span>
             </div>
-            <div className="stat-value">{stat.value}</div>
-            <div className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-bold mt-1">{stat.sub}</div>
+            <div className="dash-stat-value">{stat.value}</div>
+            <div className="dash-stat-sub">{stat.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Quick Start */}
-      <div className="glass-card p-6 mb-6 rounded-[2px] border-[var(--color-border)]">
-        <h2 className="text-sm font-bold uppercase tracking-tight text-white mb-4">[Quick Start]</h2>
-        <div className="space-y-4">
+      <div className="dash-card">
+        <div className="dash-card-title">Quick Start</div>
+        <div className="dash-stack">
           <div>
-            <p className="text-[10px] text-[var(--color-text-secondary)] mb-2 uppercase tracking-wider font-bold">Base URL for all API calls:</p>
-            <code className="block bg-black border border-[var(--color-border)] rounded-[2px] px-4 py-3 text-xs font-mono text-white">
+            <div className="auth-label">Base URL for all API calls:</div>
+            <div className="dash-code">
               {typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, '') : 'https://yourdomain.com'}/v1
-            </code>
+            </div>
           </div>
           <div>
-            <p className="text-[10px] text-[var(--color-text-secondary)] mb-2 uppercase tracking-wider font-bold">Example request:</p>
-            <pre className="bg-black border border-[var(--color-border)] rounded-[2px] px-4 py-3 text-xs font-mono text-white/80 overflow-x-auto leading-relaxed">
+            <div className="auth-label">Example request:</div>
+            <pre className="dash-code dash-code-wrap">
 {`curl -X POST /v1/chat/completions \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
@@ -91,20 +91,20 @@ export default function DashboardOverview() {
       </div>
 
       {/* Service Status */}
-      <div className="glass-card p-6 rounded-[2px] border-[var(--color-border)]">
-        <h2 className="text-sm font-bold uppercase tracking-tight text-white mb-4">[Service Parameters]</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
-          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
-            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Quota Status</div>
-            <div className="text-xs font-bold text-white">[OK] Within Tier limits</div>
+      <div className="dash-card">
+        <div className="dash-card-title">Service Parameters</div>
+        <div className="dash-params-grid">
+          <div className="dash-param">
+            <div className="dash-param-label">Quota Status</div>
+            <div className="dash-param-value">[OK] Within Tier limits</div>
           </div>
-          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
-            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Concurrency</div>
-            <div className="text-xs font-bold text-white">Tier Adaptive</div>
+          <div className="dash-param">
+            <div className="dash-param-label">Concurrency</div>
+            <div className="dash-param-value">Tier Adaptive</div>
           </div>
-          <div className="bg-black border border-[var(--color-border)] rounded-[2px] p-4">
-            <div className="text-[9px] text-[var(--color-text-muted)] mb-1 uppercase tracking-wider font-bold">Model Access</div>
-            <div className="text-xs font-bold text-white">{user?.plan?.allowedModels === '*' ? 'Full Portfolio' : 'Standard'}</div>
+          <div className="dash-param">
+            <div className="dash-param-label">Model Access</div>
+            <div className="dash-param-value">{user?.plan?.allowedModels === '*' ? 'Full Portfolio' : 'Standard'}</div>
           </div>
         </div>
       </div>

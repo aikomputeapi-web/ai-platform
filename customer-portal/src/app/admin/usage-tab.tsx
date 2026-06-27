@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw, Users } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 type TrendPoint = {
   date: string;
@@ -71,11 +71,11 @@ function TrendSparkline({
   const area = `0,${height} ${coords.join(' ')} ${width},${height}`;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
+    <svg viewBox={`0 0 ${width} ${height}`} className="block" style={{ width: '100%', height: 'auto' }}>
       <defs>
         <linearGradient id={`usage-gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
       <polygon points={area} fill={`url(#usage-gradient-${color.replace('#', '')})`} />
@@ -83,7 +83,7 @@ function TrendSparkline({
         points={coords.join(' ')}
         fill="none"
         stroke={color}
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -155,11 +155,8 @@ export default function UsageAdminPage() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading usage…</p>
-        </div>
+      <div className="loading-box">
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -167,233 +164,206 @@ export default function UsageAdminPage() {
   const summary = data.summary;
 
   return (
-    <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 45%)' }} />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
-                Platform Usage
-              </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                See requests, tokens, and spend across the whole platform.
-              </h1>
-              <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                This page is the owner-facing usage surface for customer demand, model mix, plan distribution, and concentration risk.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => {
-                    setRange(option);
-                    void fetchData(option);
-                  }}
-                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                    range === option
-                      ? 'bg-white text-black border-white'
-                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                  }`}
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))}
-              <button
-                onClick={() => void fetchData()}
-                className="px-3 py-1.5 rounded text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
-              >
-                <RefreshCw size={14} />
-                Refresh
-              </button>
-            </div>
-          </div>
+    <div>
+      <div className="dash-page-header flex flex-wrap items-end justify-between gap-20">
+        <div>
+          <h1 className="dash-page-title">Platform Usage Analytics</h1>
+          <p className="dash-page-sub">
+            See requests, tokens, and spend across the whole platform.
+          </p>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Requests', value: formatCompact(summary.totalRequests), sub: `${data.range.toUpperCase()} window`, color: '#ffffff' },
-            { label: 'Tokens', value: formatCompact(summary.totalTokens), sub: 'prompt + completion', color: '#a1a1aa' },
-            { label: 'Estimated Cost', value: formatMoney(summary.totalCost), sub: 'provider spend signal', color: '#71717a' },
-            { label: 'Top 5 Share', value: `${Math.round(topFiveShare * 100)}%`, sub: 'request concentration', color: '#d4d4d8' },
-          ].map((card) => (
-            <div key={card.label} className="stat-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                <span className="text-base" style={{ color: card.color }}>●</span>
-              </div>
-              <div className="stat-value text-2xl">{card.value}</div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
-            </div>
+        <div className="flex gap-8">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                setRange(option);
+                void fetchData(option);
+              }}
+              className="btn-border text-11 mono"
+              style={{
+                padding: '6px 12px',
+                background: range === option ? 'var(--accent)' : 'transparent',
+                color: range === option ? 'var(--bg)' : 'var(--text)',
+                borderColor: range === option ? 'var(--accent)' : 'var(--border-bright)'
+              }}
+            >
+              {option.toUpperCase()}
+            </button>
           ))}
+          <button
+            onClick={() => void fetchData()}
+            className="btn-border text-11 mono"
+            style={{
+              padding: '6px 12px',
+              background: 'transparent',
+              color: 'var(--text)',
+              borderColor: 'var(--border-bright)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={12} />
+            Refresh
+          </button>
         </div>
+      </div>
 
-        <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6 mb-8">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">Request Trend</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Two-week request and token movement.</p>
-              </div>
-              <span className="badge-accent">LIVE</span>
-            </div>
-            {recentTrend.length > 0 ? (
-              <>
-                <TrendSparkline points={trendRequests} color="#ffffff" height={150} />
-                <div className="grid sm:grid-cols-3 gap-3 mt-5">
-                  <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">14-day requests</div>
-                    <div className="text-lg font-semibold">{fmt(recentTrend.reduce((sum, day) => sum + day.requests, 0))}</div>
-                    <div className="text-xs text-[var(--color-text-muted)] mt-1">combined platform usage</div>
-                  </div>
-                  <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">14-day tokens</div>
-                    <div className="text-lg font-semibold">{fmt(recentTrend.reduce((sum, day) => sum + day.tokens, 0))}</div>
-                    <div className="text-xs text-[var(--color-text-muted)] mt-1">prompt + completion</div>
-                  </div>
-                  <div className="rounded-xl p-4" style={{ background: 'var(--color-bg-primary)' }}>
-                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">14-day cost</div>
-                    <div className="text-lg font-semibold">{formatMoney(recentTrend.reduce((sum, day) => sum + day.cost, 0))}</div>
-                    <div className="text-xs text-[var(--color-text-muted)] mt-1">estimated provider spend</div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-[var(--color-text-muted)]">No usage trend data is available yet.</p>
-            )}
-          </div>
-
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">Plan Mix</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Customer counts and revenue distribution by tier.</p>
-              </div>
-              <Users size={16} className="text-[var(--color-accent)]" />
-            </div>
-            <div className="space-y-3">
-              {planBreakdown.map((plan, index) => (
-                <div key={plan.id} className="rounded-xl p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="font-semibold">{plan.name}</div>
-                    <span className="badge-accent text-[10px]">#{index + 1}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                      <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Users</div>
-                      <div className="text-lg font-semibold mt-1">{fmt(plan.userCount)}</div>
-                    </div>
-                    <div className="rounded-lg p-3 bg-[var(--color-bg-primary)]">
-                      <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Price</div>
-                      <div className="text-lg font-semibold mt-1">{fmtUSD(plan.priceCents)}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {error && (
+        <div className="error-box">
+          Error: {error}
         </div>
+      )}
 
-        <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 mb-8">
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Top Accounts</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">Highest usage customers in the selected range.</p>
-              </div>
-              <Link href="/admin/customers" className="text-sm text-[var(--color-accent)] hover:underline inline-flex items-center gap-1">
-                Full account table <ArrowRight size={14} />
-              </Link>
+      {/* Stats Cards */}
+      <div className="dash-stats-grid mb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        {[
+          { label: 'Requests', value: formatCompact(summary.totalRequests), sub: `${data.range.toUpperCase()} window`, color: 'var(--text)' },
+          { label: 'Tokens', value: formatCompact(summary.totalTokens), sub: 'prompt + completion', color: 'var(--muted)' },
+          { label: 'Estimated Cost', value: formatMoney(summary.totalCost), sub: 'provider spend signal', color: 'var(--accent)' },
+          { label: 'Top 5 Share', value: `${Math.round(topFiveShare * 100)}%`, sub: 'request concentration', color: 'var(--accent)' },
+        ].map((card) => (
+          <div key={card.label} className="dash-stat">
+            <div className="dash-stat-label">
+              <span>{card.label}</span>
+              <span style={{ color: card.color }}>●</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <th className="px-6 py-3 font-semibold">User</th>
-                    <th className="px-4 py-3 font-semibold">Plan</th>
-                    <th className="px-4 py-3 font-semibold text-right">Requests</th>
-                    <th className="px-4 py-3 font-semibold text-right">Tokens</th>
-                    <th className="px-4 py-3 font-semibold text-right">Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topUsers.length > 0 ? topUsers.map((user) => (
-                    <tr key={user.id} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="min-w-0">
-                          <div className="font-medium truncate max-w-[240px]">{user.name || '—'}</div>
-                          <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[240px]">{user.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`badge-${user.plan.id === 'free' ? 'warning' : user.plan.id === 'pro' ? 'accent' : 'success'}`}>{user.plan.name}</span>
-                      </td>
-                      <td className="px-4 py-4 text-right font-mono">{formatCount(user.usage.totalRequests)}</td>
-                      <td className="px-4 py-4 text-right font-mono">{formatCount(user.usage.totalTokens)}</td>
-                      <td className="px-4 py-4 text-right font-mono">{formatMoney(user.usage.totalCost)}</td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-[var(--color-text-muted)]">No usage data available yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <div className="dash-stat-value">{card.value}</div>
+            <div className="dash-stat-sub">{card.sub}</div>
           </div>
+        ))}
+      </div>
 
-          <div className="space-y-6">
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Top Models</h2>
-                  <p className="text-sm text-[var(--color-text-muted)]">Request share across the current model mix.</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {topModels.map((model, index) => (
-                  <div key={model.model} className="rounded-lg px-3 py-2" style={{ background: index === 0 ? 'var(--color-accent-subtle)' : 'var(--color-bg-primary)' }}>
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <div className="text-sm font-medium truncate">{model.model}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">{fmt(model.requests)} reqs</div>
-                    </div>
-                    <div className="h-2 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.max(4, (model.requests / Math.max(topModels[0]?.requests || 1, 1)) * 100)}%`,
-                          background: '#ffffff',
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Token Trend</h2>
-              <p className="text-sm text-[var(--color-text-muted)]">A second signal for usage intensity over the same time range.</p>
-            </div>
-            <span className="badge-accent">LIVE ANALYTICS</span>
+      {/* Grid: Request Trend & Plan Mix */}
+      <div className="dash-grid-2 mb-24">
+        <div className="dash-card" style={{ marginBottom: 0 }}>
+          <div className="dash-card-title flex-between">
+            <span>Request Trend</span>
+            <span className="badge badge-accent">LIVE</span>
           </div>
           {recentTrend.length > 0 ? (
-            <TrendSparkline points={trendTokens} color="#a1a1aa" height={150} />
+            <div>
+              <div className="mb-16" style={{ border: '1px solid var(--border)', padding: '16px', background: 'var(--bg)' }}>
+                <TrendSparkline points={trendRequests} color="var(--accent)" height={150} />
+              </div>
+              <div className="dash-params-grid">
+                <div className="dash-param">
+                  <div className="dash-param-label">14d requests</div>
+                  <div className="dash-param-value">{fmt(recentTrend.reduce((sum, day) => sum + day.requests, 0))}</div>
+                </div>
+                <div className="dash-param">
+                  <div className="dash-param-label">14d tokens</div>
+                  <div className="dash-param-value">{fmt(recentTrend.reduce((sum, day) => sum + day.tokens, 0))}</div>
+                </div>
+                <div className="dash-param">
+                  <div className="dash-param-label">14d cost</div>
+                  <div className="dash-param-value">{formatMoney(recentTrend.reduce((sum, day) => sum + day.cost, 0))}</div>
+                </div>
+              </div>
+            </div>
           ) : (
-            <p className="text-sm text-[var(--color-text-muted)]">No token trend data is available yet.</p>
+            <p className="text-12 mono text-muted">No usage trend data is available yet.</p>
           )}
         </div>
+
+        <div className="dash-card" style={{ marginBottom: 0 }}>
+          <div className="dash-card-title">Plan Mix</div>
+          <div className="dash-stack" style={{ gap: '10px' }}>
+            {planBreakdown.map((plan) => (
+              <div key={plan.id} className="card" style={{ padding: '12px' }}>
+                <div className="flex-between mb-8">
+                  <span className="font-600 text-13">{plan.name}</span>
+                  <span className="badge badge-accent">{fmt(plan.userCount)} users</span>
+                </div>
+                <div className="footnote">
+                  Price: {fmtUSD(plan.priceCents)} / month
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Grid: Top Accounts & Top Models */}
+      <div className="dash-grid-2 mb-24">
+        <div className="dash-card" style={{ marginBottom: 0, overflowX: 'auto' }}>
+          <div className="dash-card-title flex-between">
+            <span>Top Accounts (Selected Range)</span>
+            <Link href="/admin/customers" className="dash-logout" style={{ textDecoration: 'none' }}>Full Table →</Link>
+          </div>
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Plan</th>
+                <th className="text-right">Requests</th>
+                <th className="text-right">Tokens</th>
+                <th className="text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topUsers.length > 0 ? topUsers.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="font-600 text-12" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{user.name || '—'}</div>
+                      <div className="text-muted" style={{ fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{user.email}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${user.plan.id === 'free' ? 'badge-warning' : user.plan.id === 'pro' ? 'badge-accent' : 'badge-success'}`}>{user.plan.name}</span>
+                  </td>
+                  <td className="text-right mono">{formatCount(user.usage.totalRequests)}</td>
+                  <td className="text-right mono">{formatCount(user.usage.totalTokens)}</td>
+                  <td className="text-right mono font-600">{formatMoney(user.usage.totalCost)}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted" style={{ padding: '24px' }}>No usage data available.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="dash-card" style={{ marginBottom: 0 }}>
+          <div className="dash-card-title">Top Models by Request Volume</div>
+          <div className="dash-stack" style={{ gap: '8px' }}>
+            {topModels.map((model, index) => (
+              <div key={model.model} className="card" style={{ padding: '10px 12px' }}>
+                <div className="flex-between" style={{ marginBottom: '6px' }}>
+                  <span className="font-600 mono text-11">{model.model}</span>
+                  <span className="footnote">{fmt(model.requests)} reqs</span>
+                </div>
+                <div style={{ height: '4px', background: 'var(--border-bright)', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      background: 'var(--accent)',
+                      width: `${Math.max(4, (model.requests / Math.max(topModels[0]?.requests || 1, 1)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Token Trend */}
+      <div className="dash-card">
+        <div className="dash-card-title flex-between">
+          <span>Token Trend (14d)</span>
+          <span className="badge badge-accent">Live telemetry</span>
+        </div>
+        {recentTrend.length > 0 ? (
+          <div style={{ border: '1px solid var(--border)', padding: '16px', background: 'var(--bg)' }}>
+            <TrendSparkline points={trendTokens} color="var(--muted)" height={120} />
+          </div>
+        ) : (
+          <p className="text-12 mono text-muted">No token trend data is available yet.</p>
+        )}
       </div>
     </div>
   );

@@ -7,26 +7,27 @@ export const revalidate = 3600;
 
 export const metadata = {
   title: 'Models — aikompute',
+  description: 'All Anthropic and OpenAI models, plus all the top open source models are included.',
 };
 
 async function MetricsTable() {
   const metrics = await getModelMetrics();
 
   return (
-    <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+    <table className="dash-table">
       <thead>
-        <tr className="text-[10px] text-left uppercase tracking-wider" style={{ color: 'var(--color-grey-dim)', borderBottom: '1px solid var(--color-border)' }}>
-          <th className="px-4 py-3 font-normal">Model</th>
-          <th className="px-4 py-3 font-normal text-right">t/s</th>
-          <th className="px-4 py-3 font-normal text-right">$/1M</th>
+        <tr>
+          <th style={{ textAlign: 'left', fontWeight: 400 }}>Model</th>
+          <th style={{ textAlign: 'right', fontWeight: 400 }}>Tokens/s</th>
+          <th style={{ textAlign: 'right', fontWeight: 400 }}>$/1M</th>
         </tr>
       </thead>
       <tbody>
         {metrics.map((m) => (
-          <tr key={m.id} style={{ borderTop: '1px solid rgba(255,255,255,0.02)' }}>
-            <td className="px-4 py-3 text-white">{m.name}</td>
-            <td className="px-4 py-3 text-right" style={{ color: 'var(--color-grey)' }}>{m.outputSpeed ?? '—'}</td>
-            <td className="px-4 py-3 text-right" style={{ color: 'var(--color-grey)' }}>${m.blendedPrice ?? '—'}</td>
+          <tr key={m.id}>
+            <td style={{ padding: '12px 16px', fontSize: '14px' }}>{m.name}</td>
+            <td className="mono text-muted text-13" style={{ padding: '12px 16px', textAlign: 'right' }}>{m.outputSpeed ?? '—'}</td>
+            <td className="mono text-muted text-13" style={{ padding: '12px 16px', textAlign: 'right' }}>${m.blendedPrice ?? '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -36,55 +37,97 @@ async function MetricsTable() {
 
 export default function ModelsPage() {
   return (
-    <div className="min-h-screen bg-black font-mono flex flex-col">
-      <nav className="flex items-center justify-between max-w-3xl mx-auto w-full px-6 py-5 text-xs">
-        <Link href="/" className="text-white">◇ aikompute</Link>
-        <div className="flex items-center gap-5" style={{ color: 'var(--color-grey)' }}>
-          <span className="text-white">Models</span>
-          <Link href="/docs" className="hover:text-white">Docs</Link>
-          <Link href="/login" className="hover:text-white">Sign in</Link>
-          <Link href="/signup" className="btn-outline">Register</Link>
+    <div className="page-shell">
+
+      {/* NAV */}
+      <nav className="site-nav">
+        <Link href="/" className="nav-brand">
+          AIKO<span>MPUTE</span>
+        </Link>
+        <div className="nav-links">
+          {[
+            { href: '/models', label: 'MODELS', active: true },
+            { href: '/features', label: 'FEATURES' },
+            { href: '/pricing', label: 'PRICING' },
+            { href: '/docs', label: 'DOCS' },
+          ].map(({ href, label, active }) => (
+            <Link key={href} href={href} style={{ color: active ? 'var(--accent)' : undefined }}>
+              {label}
+            </Link>
+          ))}
+        </div>
+        <div className="nav-right">
+          <Link href="/login" className="nav-signin">SIGN IN</Link>
+          <Link href="/signup" className="nav-cta">START FREE →</Link>
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6">
-        <section className="py-14">
-          <h1 className="text-4xl font-light tracking-tight text-white">Models</h1>
-          <p className="mt-2 text-xs" style={{ color: 'var(--color-grey-dim)' }}>{MODEL_CATALOGUE.length} available</p>
-        </section>
+      {/* Page header */}
+      <div className="page-hero-sm">
+        <div className="eyebrow-accent">● LIVE CATALOGUE</div>
+        <h1 className="heading-page">
+          {MODEL_CATALOGUE.length}+<br />
+          <span style={{ WebkitTextStroke: '1.5px var(--text)', color: 'transparent' }}>MODELS</span>
+        </h1>
+        <p className="text-muted text-15 text-max-480">
+          Every frontier model available via a single OpenAI-compatible endpoint.
+          Live performance metrics updated hourly.
+        </p>
+      </div>
 
-        <section className="pb-14">
-          <div className="card">
-            <Suspense fallback={<div className="p-8 text-xs text-grey">Loading...</div>}>
-              <MetricsTable />
-            </Suspense>
+      {/* Metrics table */}
+      <div className="border-bottom">
+        <div className="section-label-bar">Live Performance Benchmarks</div>
+        <div style={{ padding: '0 48px' }}>
+          <Suspense fallback={
+            <div className="p-12 text-muted mono text-12">
+              Loading metrics...
+            </div>
+          }>
+            <MetricsTable />
+          </Suspense>
+        </div>
+      </div>
+
+      {/* Model grid */}
+      <div className="feature-grid" style={{ borderBottom: '1px solid var(--border-bright)' }}>
+        {MODEL_CATALOGUE.map((m) => (
+          <div key={m.key} className="model-card" style={{
+            padding: '28px 24px',
+            borderRight: '1px solid var(--border)',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <div className="mono text-9 text-accent mb-8 uppercase" style={{ letterSpacing: '0.12em' }}>{m.provider}</div>
+            <div className="text-14 font-600 text-bright mb-8">{m.name}</div>
+            <code className="mono text-10 text-muted break-all">{m.id}</code>
           </div>
-        </section>
+        ))}
+      </div>
 
-        {/* Model grid */}
-        <section className="pb-20">
-          <div className="grid sm:grid-cols-3 gap-px" style={{ background: 'var(--color-border)' }}>
-            {MODEL_CATALOGUE.map((m) => (
-              <div key={m.key} className="card p-5" style={{ background: '#000' }}>
-                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-grey-dim)' }}>{m.provider}</div>
-                <div className="mt-2 text-sm text-white">{m.name}</div>
-                <code className="mt-3 block text-[10px]" style={{ color: 'var(--color-grey)' }}>{m.id}</code>
-              </div>
+      {/* Footer */}
+      <footer className="site-footer">
+        <div className="footer-col" style={{ padding: '40px 32px' }}>
+          <div className="footer-brand" style={{ fontSize: '16px' }}>
+            AIKO<span>MPUTE</span>
+          </div>
+           <p className="footer-tagline">All Anthropic & OpenAI models, plus top open source.</p>
+        </div>
+        {[
+          { title: 'Product', links: [{ href: '/models', label: 'Models' }, { href: '/features', label: 'Features' }, { href: '/pricing', label: 'Pricing' }] },
+          { title: 'Developers', links: [{ href: '/docs', label: 'API Ref' }, { href: '/quickstart', label: 'Quickstart' }, { href: '/guides', label: 'Guides' }] },
+          { title: 'Company', links: [{ href: '/faq', label: 'FAQ' }, { href: '/support', label: 'Support' }, { href: '/privacy', label: 'Privacy' }, { href: '/terms', label: 'Terms' }] },
+        ].map(({ title, links }) => (
+          <div key={title} className="footer-col" style={{ padding: '40px 32px' }}>
+            <h5>{title}</h5>
+            {links.map(({ href, label }) => (
+              <Link key={label} href={href} className="footer-link" style={{ marginBottom: '10px' }}>{label}</Link>
             ))}
           </div>
-        </section>
-      </main>
-
-      <footer className="max-w-3xl mx-auto w-full px-6 py-6 border-t text-[10px]" style={{ borderColor: 'var(--color-border)', color: 'var(--color-grey-dim)' }}>
-        <div className="flex justify-between">
-          <span>© 2026</span>
-          <div className="flex gap-5">
-            <Link href="/docs" className="hover:text-white">Docs</Link>
-            <Link href="/terms" className="hover:text-white">Terms</Link>
-            <Link href="/privacy" className="hover:text-white">Privacy</Link>
-          </div>
-        </div>
+        ))}
       </footer>
+      <div className="footer-bottom">
+        <span>© 2026 AIKOMPUTE INC.</span><span>ALL ANTHROPIC & OPENAI. PLUS TOP OPEN SOURCE.</span>
+      </div>
     </div>
   );
 }

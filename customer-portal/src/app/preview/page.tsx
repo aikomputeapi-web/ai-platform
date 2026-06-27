@@ -24,7 +24,7 @@ export default function MinimalistPreview() {
           <span className="text-white/30">Every model.</span>
         </h1>
         <p className="mt-8 max-w-md text-sm leading-relaxed text-white/40">
-          An OpenAI-compatible endpoint for 100+ frontier models. Failover, routing, and latency checks included.
+           We provide all Anthropic and OpenAI models, plus all the top open source models are included. Failover, routing, and latency checks included.
         </p>
         <div className="mt-10 flex items-center gap-6">
           <Link

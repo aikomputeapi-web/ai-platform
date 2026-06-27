@@ -4,43 +4,26 @@ import Link from 'next/link';
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    capacity: 'Evaluation',
-    priority: 'Standard routing',
-    models: 'Free-tier models',
+    id: 'free', name: 'Free', price: '$0', period: 'forever',
+    capacity: 'Evaluation', priority: 'Standard routing', models: 'Free-tier models',
     features: ['2 API keys', 'Basic analytics', 'Community support'],
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: '$20',
-    period: '/month',
-    capacity: 'High capacity',
-    priority: 'Standard priority',
+    id: 'pro', name: 'Pro', price: '$20', period: '/month',
+    capacity: 'High capacity', priority: 'Standard priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['5 API keys', 'Priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
     featured: true,
   },
   {
-    id: 'max-5x',
-    name: 'Max 5x',
-    price: '$100',
-    period: '/month',
-    capacity: '5x Pro capacity',
-    priority: 'Elevated priority',
+    id: 'max-5x', name: 'Max 5x', price: '$100', period: '/month',
+    capacity: '5x Pro capacity', priority: 'Elevated priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['10 API keys', 'Higher priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
   },
   {
-    id: 'max-20x',
-    name: 'Max 20x',
-    price: '$200',
-    period: '/month',
-    capacity: '20x Pro capacity',
-    priority: 'Highest priority',
+    id: 'max-20x', name: 'Max 20x', price: '$200', period: '/month',
+    capacity: '20x Pro capacity', priority: 'Highest priority',
     models: 'Claude 4.7 Opus, Claude 4.6 Sonnet, GPT-5.5',
     features: ['20 API keys', 'Highest priority routing', 'Anthropic + OpenAI models', 'Webhooks'],
   },
@@ -82,9 +65,7 @@ export default function BillingPage() {
   async function handleCancelSubscription() {
     setCanceling(true);
     try {
-      const res = await fetch('/api/billing/subscription', {
-        method: 'DELETE',
-      });
+      const res = await fetch('/api/billing/subscription', { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         alert('Subscription canceled successfully. You have been downgraded to the Free plan.');
@@ -100,61 +81,52 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="animate-fade-in font-mono">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold uppercase tracking-tight">[Billing & Plans]</h1>
-        <p className="text-[var(--color-text-secondary)] text-sm mt-1">
-          Current plan: <span className="badge-accent">[{user?.plan?.name || 'Free'}]</span>
+    <div>
+      <div className="dash-page-header">
+        <h1 className="dash-page-title">Billing &amp; Plans</h1>
+        <p className="dash-page-sub">
+          Current plan: <span className="dash-plan-badge">{user?.plan?.name || 'Free'}</span>
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+      <div className="billing-grid">
         {plans.map((plan) => (
-          <div key={plan.id} className={`glass-card p-6 relative rounded-[2px] ${plan.featured ? 'border-white' : ''}`}>
+          <div key={plan.id} className="billing-plan-card">
             {plan.featured && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-black font-bold px-3 py-0.5 text-[9px] uppercase rounded-[2px] border border-white">[Popular]</div>
+              <div className="billing-plan-badge">Popular</div>
             )}
-            <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
-            <div className="flex items-baseline gap-1 mb-4">
-              <span className="text-3xl font-bold">{plan.price}</span>
-              <span className="text-sm text-[var(--color-text-muted)]">{plan.period}</span>
+            <div className="billing-plan-name">{plan.name}</div>
+            <div className="billing-plan-price">
+              <span className="billing-plan-amount">{plan.price}</span>
+              <span className="billing-plan-period">{plan.period}</span>
             </div>
-            <div className="space-y-2 mb-6 text-xs text-[var(--color-text-secondary)]">
-              <div className="flex justify-between">
-                <span>Capacity</span>
-                <span className="font-semibold text-white">{plan.capacity}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Priority</span>
-                <span className="font-semibold text-white">{plan.priority}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Models</span>
-                <span className="font-semibold text-white truncate max-w-[120px]" title={plan.models}>{plan.models}</span>
-              </div>
-            </div>
-            <ul className="space-y-2 mb-6 text-[10px] text-[var(--color-text-secondary)]">
-              {plan.features.map((f, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-white">-</span>
-                  {f}
-                </li>
+
+            <div className="billing-plan-details">
+              {[
+                ['Capacity', plan.capacity],
+                ['Priority', plan.priority],
+              ].map(([label, val]) => (
+                <div key={label} className="billing-plan-detail-row">
+                  <span>{label}</span>
+                  <span className="billing-plan-detail-val">{val}</span>
+                </div>
               ))}
-            </ul>
+            </div>
+
+            <div className="billing-plan-features">
+              {plan.features.map((f, i) => (
+                <div key={i} className="billing-plan-feature">
+                  <span className="billing-plan-feature-dot">●</span>{f}
+                </div>
+              ))}
+            </div>
+
             {user?.plan?.id === plan.id ? (
-              <button className="btn-secondary w-full" disabled>
-                Current Plan
-              </button>
+              <button className="btn-border billing-plan-btn" disabled>Current Plan</button>
             ) : plan.id === 'free' ? (
-              <button className="btn-secondary w-full" disabled>
-                Default
-              </button>
+              <button className="btn-border billing-plan-btn" disabled>Default</button>
             ) : (
-              <button
-                onClick={() => handleUpgrade(plan.id)}
-                className="btn-primary w-full"
-                disabled={loading === plan.id}
-              >
+              <button onClick={() => handleUpgrade(plan.id)} className="btn-accent billing-plan-btn" disabled={loading === plan.id}>
                 {loading === plan.id ? 'Loading...' : 'Upgrade'}
               </button>
             )}
@@ -163,21 +135,15 @@ export default function BillingPage() {
       </div>
 
       {user?.stripeCustomerId && (
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-2">Manage Subscription</h3>
-          <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+        <div className="dash-card">
+          <div className="dash-card-title">Manage Subscription</div>
+          <p className="text-13 text-muted mb-16">
             Update payment method, view invoices, or cancel your subscription.
           </p>
-          <div className="flex gap-3 flex-wrap">
-            <button onClick={handleManage} className="btn-secondary">
-              Open Billing Portal
-            </button>
+          <div className="flex gap-12" style={{ flexWrap: 'wrap' }}>
+            <button onClick={handleManage} className="btn-border lh-1">Open Billing Portal</button>
             {user?.stripeSubscriptionId && user?.plan?.id !== 'free' && (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="btn-danger"
-                disabled={canceling}
-              >
+              <button onClick={() => setShowCancelConfirm(true)} disabled={canceling} className="btn-danger">
                 {canceling ? 'Canceling...' : 'Cancel Subscription'}
               </button>
             )}
@@ -186,25 +152,15 @@ export default function BillingPage() {
       )}
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="glass-card p-6 max-w-md mx-4">
-            <h3 className="font-semibold text-lg mb-2">Cancel Subscription?</h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-              Are you sure you want to cancel your subscription? You will be downgraded to the Free plan and may lose access to premium features.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                className="btn-secondary"
-                disabled={canceling}
-              >
+        <div className="modal-overlay">
+          <div className="auth-card">
+            <h2>Cancel Subscription?</h2>
+            <p>Are you sure you want to cancel your subscription? You will be downgraded to the Free plan and may lose access to premium features.</p>
+            <div className="flex gap-12" style={{ justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowCancelConfirm(false)} className="btn-border" disabled={canceling}>
                 Keep Subscription
               </button>
-              <button
-                onClick={handleCancelSubscription}
-                className="btn-danger"
-                disabled={canceling}
-              >
+              <button onClick={handleCancelSubscription} disabled={canceling} className="btn-danger">
                 {canceling ? 'Canceling...' : 'Yes, Cancel'}
               </button>
             </div>
@@ -212,10 +168,8 @@ export default function BillingPage() {
         </div>
       )}
 
-      <div className="mt-6 text-sm text-[var(--color-text-muted)]">
-        <Link href="/" className="underline underline-offset-4 hover:text-[var(--color-text-secondary)]">
-          Back to home
-        </Link>
+      <div className="mt-24 text-13 text-muted">
+        <Link href="/" className="text-muted" style={{ textDecoration: 'underline' }}>Back to home</Link>
       </div>
     </div>
   );

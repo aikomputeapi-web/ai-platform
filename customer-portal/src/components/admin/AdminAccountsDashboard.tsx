@@ -218,7 +218,6 @@ export default function AdminAccountsDashboard() {
   const [now] = useState(() => Date.now());
   const bulkSelectRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
-  // Shadowban rule toggle state
   const [shadowbanRuleEnabled, setShadowbanRuleEnabled] = useState(false);
   const [shadowbanRuleLoading, setShadowbanRuleLoading] = useState(false);
 
@@ -236,7 +235,6 @@ export default function AdminAccountsDashboard() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Fetch shadowban rule setting on mount
   useEffect(() => {
     const timer = window.setTimeout(() => {
       fetch('/api/admin/settings')
@@ -314,8 +312,6 @@ export default function AdminAccountsDashboard() {
       setDetailLoading(false);
     }
   }, [range]);
-
-
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -574,16 +570,12 @@ export default function AdminAccountsDashboard() {
 
   if (error && !data && !loading) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center px-6" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="glass-card p-8 w-full max-w-lg text-center animate-fade-in">
-          <div className="w-12 h-12 rounded-2xl bg-[rgba(239,68,68,0.12)] text-[#f87171] mx-auto mb-4 flex items-center justify-center">
-            <X size={20} />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Accounts failed to load</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-5">{error}</p>
-          <button type="button" onClick={() => void fetchOverview(range)} className="btn-primary inline-flex items-center gap-2">
-            <RefreshCw size={14} />
-            Retry
+      <div style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '24px', textAlign: 'center', fontFamily: 'Space Mono, monospace' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>Accounts failed to load</h2>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>{error}</p>
+          <button type="button" onClick={() => void fetchOverview(range)} className="btn-border" style={{ padding: '6px 12px' }}>
+            Retry Operations
           </button>
         </div>
       </div>
@@ -592,11 +584,8 @@ export default function AdminAccountsDashboard() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading accounts…</p>
-        </div>
+      <div style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -606,546 +595,573 @@ export default function AdminAccountsDashboard() {
   const openUserShell = selectedUser || (selectedUserId ? data.users.find((user) => user.id === selectedUserId) || null : null);
 
   return (
-    <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      <div className="max-w-[1480px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[rgba(99,102,241,0.18)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(99,102,241,0.22), transparent 38%)' }} />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[rgba(99,102,241,0.2)]">
-                Universal Account Command Center
-              </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                Manage users, keys, plans, and account risk from one place.
-              </h1>
-              <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                This is the owner-facing console for the customer panel. It blends account management, support actions, usage visibility, and operational signals so the site manager can run the platform without leaving the dashboard.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setRange(option)}
-                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                    range === option
-                      ? 'bg-white text-black border-white'
-                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                  }`}
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))}
-              <button onClick={() => void fetchOverview(range)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                <RefreshCw size={14} />
-                Refresh
-              </button>
-              <Link href="/admin/plans" className="btn-secondary text-xs py-1.5 px-3">Plans</Link>
-              <Link href="/admin/audit-log" className="btn-secondary text-xs py-1.5 px-3">Activity</Link>
-              <Link href="/admin/forecast" className="btn-secondary text-xs py-1.5 px-3">Forecasts</Link>
-            </div>
-          </div>
+    <div>
+      {/* Header */}
+      <div className="dash-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
+        <div>
+          <h1 className="dash-page-title">Accounts Management</h1>
+          <p className="dash-page-sub">
+            Review user details, plan limits, API keys, lock controls, and system logs.
+          </p>
         </div>
-
-        {/* Auto-Shadowban Rule Toggle */}
-        <div className="mb-6 flex items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <Ban size={15} className="text-[var(--color-text-muted)]" />
-              <span className="text-sm font-semibold">Auto-Shadowban: Gmail Dot Rule</span>
-              {shadowbanRuleEnabled
-                ? <span className="badge-danger text-[10px] py-0.5 px-1.5">ACTIVE</span>
-                : <span className="badge-warning text-[10px] py-0.5 px-1.5">OFF</span>}
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)] pl-[23px]">
-              When enabled, new Gmail accounts with 4+ dots in the username are automatically shadow-banned on signup.
-              Default is <strong>off</strong> on new installs.
-            </p>
-          </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              key={option}
+              onClick={() => setRange(option)}
+              className="btn-border"
+              style={{
+                padding: '6px 12px',
+                fontSize: '11px',
+                fontFamily: 'Space Mono, monospace',
+                background: range === option ? 'var(--accent)' : 'transparent',
+                color: range === option ? 'var(--bg)' : 'var(--text)',
+                borderColor: range === option ? 'var(--accent)' : 'var(--border-bright)'
+              }}
+            >
+              {option.toUpperCase()}
+            </button>
+          ))}
           <button
-            id="shadowban-rule-toggle"
-            type="button"
-            aria-pressed={shadowbanRuleEnabled}
-            disabled={shadowbanRuleLoading}
-            onClick={() => void toggleShadowbanRule()}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
-              shadowbanRuleEnabled
-                ? 'bg-red-500 border-red-500'
-                : 'bg-[var(--color-bg-primary)] border-[var(--color-border)]'
-            }`}
+            onClick={() => void fetchOverview(range)}
+            className="btn-border"
+            style={{
+              padding: '6px 12px',
+              fontSize: '11px',
+              fontFamily: 'Space Mono, monospace',
+              background: 'transparent',
+              color: 'var(--text)',
+              borderColor: 'var(--border-bright)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                shadowbanRuleEnabled ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
+            <RefreshCw size={12} />
+            Refresh
           </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-          {[
-            { label: 'Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: '#ffffff' },
-            { label: 'Revenue', value: fmtUSD(summary.totalRevenueCents), sub: `${fmt(totalPayingAccounts)} paying`, color: '#10b981' },
-            {
-              label: 'Requests',
-              value: fmtTokens(summary.totalRequests),
-              sub:
-                typeof summary.matchedRequests === 'number'
-                  ? `${fmt(summary.matchedRequests)} matched · ${fmt(summary.unmatchedRequests || 0)} unmatched`
-                  : `range ${data.range.toUpperCase()}`,
-              color: '#a1a1aa',
-            },
-            {
-              label: 'Tokens',
-              value: fmtTokens(summary.totalTokens),
-              sub:
-                typeof summary.matchedTokens === 'number'
-                  ? `${fmtTokens(summary.matchedTokens)} matched · ${fmtTokens(summary.unmatchedTokens || 0)} unmatched`
-                  : `$${summary.totalCost.toFixed(2)} est. cost`,
-              color: '#71717a',
-            },
-            { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: '#52525b' },
-            { label: 'Locked', value: fmt(totalLockedUsers), sub: 'accounts on hold', color: '#ef4444' },
-            { label: 'Notes', value: fmt(noteCount), sub: 'accounts with staff notes', color: '#d4d4d8' },
-            { label: 'Flags', value: fmt(totalLockedUsers + noteCount), sub: 'focus list signals', color: '#f59e0b' },
-          ].map((card, index) => (
-            <div key={card.label} className="stat-card" style={{ animationDelay: `${index * 0.04}s` }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                <span className="text-base" style={{ color: card.color }}>●</span>
-              </div>
-              <div className="stat-value text-2xl">{card.value}</div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
-            </div>
-          ))}
+      {/* Auto-Shadowban Rule Toggle */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', border: '1px solid var(--border-bright)', padding: '16px', background: 'var(--surface)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-accent">Anti-Spam Filter</span>
+            <strong style={{ fontSize: '13px' }}>Auto-Shadowban: Gmail Dot Rule</strong>
+            <span className={`badge ${shadowbanRuleEnabled ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '8px' }}>
+              {shadowbanRuleEnabled ? 'ACTIVE' : 'DISABLED'}
+            </span>
+          </div>
+          <p style={{ fontSize: '11px', color: 'var(--muted)', margin: 0 }}>
+            Gmail registrations with 4+ dots in the username are automatically shadow-banned on registration.
+          </p>
         </div>
+        <button
+          id="shadowban-rule-toggle"
+          type="button"
+          disabled={shadowbanRuleLoading}
+          onClick={() => void toggleShadowbanRule()}
+          className="btn-border"
+          style={{
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontFamily: 'Space Mono, monospace',
+            background: shadowbanRuleEnabled ? 'var(--accent)' : 'transparent',
+            color: shadowbanRuleEnabled ? 'var(--bg)' : 'var(--text)',
+            borderColor: shadowbanRuleEnabled ? 'var(--accent)' : 'var(--border-bright)'
+          }}
+        >
+          {shadowbanRuleEnabled ? 'Disable filter' : 'Enable filter'}
+        </button>
+      </div>
 
-        {typeof summary.unmatchedRequests === 'number' && summary.unmatchedRequests > 0 && (
-          <div className="mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <span className="font-semibold">Analytics gap detected.</span>{' '}
-              {fmt(summary.unmatchedRequests)} requests and {fmtTokens(summary.unmatchedTokens || 0)} tokens are not yet tied to portal accounts.
+      {/* Stats Cards */}
+      <div className="dash-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: '24px' }}>
+        {[
+          { label: 'Total Users', value: fmt(summary.totalUsers), sub: `${fmt(summary.verifiedUsers)} verified`, color: 'var(--text)' },
+          { label: 'Paid Accounts', value: fmtUSD(summary.totalRevenueCents), sub: `${fmt(totalPayingAccounts)} paying`, color: 'var(--accent)' },
+          {
+            label: 'Total Requests',
+            value: fmtTokens(summary.totalRequests),
+            sub:
+              typeof summary.matchedRequests === 'number'
+                ? `${fmt(summary.matchedRequests)} matched reqs`
+                : `range: ${data.range.toUpperCase()}`,
+            color: 'var(--text)',
+          },
+          {
+            label: 'Total Tokens',
+            value: fmtTokens(summary.totalTokens),
+            sub: `$${summary.totalCost.toFixed(2)} est. cost`,
+            color: 'var(--muted)',
+          },
+          { label: 'API Keys', value: fmt(summary.totalApiKeys), sub: `${fmt(summary.activeApiKeys)} active`, color: 'var(--muted)' },
+          { label: 'Locked Users', value: fmt(totalLockedUsers), sub: 'held accounts', color: 'var(--accent)' },
+          { label: 'Note Flags', value: fmt(noteCount), sub: 'annotated accounts', color: 'var(--muted)' },
+          { label: 'Total Coverage', value: typeof summary.coveragePct === 'number' ? `${summary.coveragePct}%` : 'n/a', sub: 'analytics coverage', color: 'var(--accent)' },
+        ].map((card) => (
+          <div key={card.label} className="dash-stat">
+            <div className="dash-stat-label">
+              <span>{card.label}</span>
+              <span style={{ color: card.color }}>●</span>
             </div>
-            <div className="text-xs uppercase tracking-wider text-amber-200/80">
-              Coverage {typeof summary.coveragePct === 'number' ? `${summary.coveragePct}%` : 'n/a'}
+            <div className="dash-stat-value">{card.value}</div>
+            <div className="dash-stat-sub">{card.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {typeof summary.unmatchedRequests === 'number' && summary.unmatchedRequests > 0 && (
+        <div style={{
+          border: '1px solid #f59e0b',
+          background: 'rgba(245, 158, 11, 0.05)',
+          padding: '16px',
+          marginBottom: '24px',
+          fontSize: '12px',
+          fontFamily: 'Space Mono, monospace',
+          color: '#f59e0b',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <strong>ANALYTICS GAP:</strong> {fmt(summary.unmatchedRequests)} requests & {fmtTokens(summary.unmatchedTokens || 0)} tokens are not linked to accounts.
+          </div>
+          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Coverage: {summary.coveragePct}%
+          </div>
+        </div>
+      )}
+
+      {/* Main Command Split Layout */}
+      <div className="dash-grid-2" style={{ marginBottom: '24px' }}>
+        <div className="dash-card" style={{ marginBottom: 0, overflowX: 'auto' }}>
+          <div className="dash-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-bright)', paddingBottom: '16px', marginBottom: '20px' }}>
+            <span>Platform Customer Directory</span>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--muted)' }} />
+                <input
+                  type="text"
+                  className="input-field"
+                  style={{ padding: '6px 12px 6px 30px', fontSize: '11px', width: '200px', fontFamily: 'Space Mono, monospace' }}
+                  placeholder="Filter accounts..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="input-field"
+                style={{ padding: '6px 12px', fontSize: '11px', width: '130px', fontFamily: 'Space Mono, monospace', appearance: 'auto', background: 'var(--bg)' }}
+              >
+                <option value="recent">Newest First</option>
+                <option value="requests">Most Requests</option>
+                <option value="tokens">Most Tokens</option>
+                <option value="paid">Highest Paid</option>
+                <option value="status">Status Priority</option>
+              </select>
             </div>
           </div>
-        )}
 
-        <div className="grid xl:grid-cols-[1.35fr_0.65fr] gap-6 mb-8 w-full max-w-full">
-          <div className="glass-card overflow-hidden min-w-0 w-full">
-            <div className="p-6 border-b border-[var(--color-border)] flex flex-col gap-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Customer Accounts</h2>
-                  <p className="text-sm text-[var(--color-text-muted)]">Search, sort, and open detailed actions for any account.</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                    <input
-                      type="text"
-                      className="input-field text-sm py-2 pl-9 w-full sm:w-80"
-                      placeholder="Search email, name, plan, or note..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="input-field text-sm py-2 w-full sm:w-44"
-                    style={{ appearance: 'auto' }}
-                  >
-                    <option value="recent">Newest First</option>
-                    <option value="requests">Most Requests</option>
-                    <option value="tokens">Most Tokens</option>
-                    <option value="paid">Highest Paid</option>
-                    <option value="status">Status Priority</option>
-                  </select>
-                </div>
-              </div>
+          {/* Scopes filters & action shortcuts */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setScope(item)}
+                  className="btn-border"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '10px',
+                    fontFamily: 'Space Mono, monospace',
+                    background: scope === item ? 'var(--accent)' : 'transparent',
+                    color: scope === item ? 'var(--bg)' : 'var(--text)',
+                    borderColor: scope === item ? 'var(--accent)' : 'var(--border-bright)'
+                  }}
+                >
+                  {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
+                </button>
+              ))}
+              <button type="button" onClick={saveCurrentView} className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }}>
+                Save view
+              </button>
+            </div>
 
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {(['all', 'locked', 'unverified', 'keyless', 'notes', 'highUsage'] as Scope[]).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setScope(item)}
-                      className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                        scope === item
-                          ? 'bg-white text-black border-white'
-                          : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                      }`}
-                    >
-                      {item === 'all' ? 'All' : item === 'highUsage' ? 'High Usage' : item.charAt(0).toUpperCase() + item.slice(1)}
-                    </button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button type="button" onClick={exportFilteredCsv} className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }}>
+                Export CSV
+              </button>
+              <button type="button" onClick={() => importInputRef.current?.click()} className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }}>
+                Import CSV
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void importCsvFile(file);
+                  }
+                  e.currentTarget.value = '';
+                }}
+              />
+            </div>
+          </div>
+
+          {importStatus && (
+            <div style={{ padding: '8px 12px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '11px', fontFamily: 'Space Mono, monospace', marginBottom: '16px' }}>
+              Import status: {importStatus}
+            </div>
+          )}
+
+          {/* Saved view chips */}
+          {savedViews.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', borderTop: '1px dashed var(--border)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '9px', fontFamily: 'Space Mono, monospace', color: 'var(--muted)', uppercase: 'true' } as any}>Saved Views:</span>
+              {savedViews.map((view) => (
+                <button
+                  key={view.name}
+                  type="button"
+                  onClick={() => applySavedView(view)}
+                  className="badge badge-accent"
+                  style={{ cursor: 'pointer', border: '1px solid var(--accent)', padding: '2px 8px', fontSize: '10px' }}
+                >
+                  {view.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Bulk actions options bar */}
+          {selectedIds.length > 0 && (
+            <div style={{ border: '1px solid var(--border-bright)', background: 'var(--surface)', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600 }}>{selectedIds.length} accounts selected</span>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <select
+                  className="input-field"
+                  value={bulkPlanDraft}
+                  onChange={(e) => setBulkPlanDraft(e.target.value)}
+                  style={{ padding: '4px 10px', fontSize: '11px', width: '110px', fontFamily: 'Space Mono, monospace', appearance: 'auto', background: 'var(--bg)' }}
+                >
+                  {summary.planBreakdown.map((plan) => (
+                    <option key={plan.id} value={plan.id}>{plan.name}</option>
                   ))}
-                  <button type="button" onClick={saveCurrentView} className="btn-secondary text-xs py-1.5 px-3">Save view</button>
-                </div>
+                </select>
+                <button className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }} onClick={() => void submitBulkAction('lock')}>Lock</button>
+                <button className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }} onClick={() => void submitBulkAction('unlock')}>Unlock</button>
+                <button className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }} onClick={() => void submitBulkAction('revokeKeys')}>Revoke Keys</button>
+                <button className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace', background: 'var(--accent)', color: 'var(--bg)', borderColor: 'var(--accent)' }} onClick={() => void submitBulkAction('plan', { planId: bulkPlanDraft })}>Apply Plan</button>
+                <button className="btn-border" style={{ padding: '4px 10px', fontSize: '10px', fontFamily: 'Space Mono, monospace' }} onClick={() => setSelectedIds([])}>Clear</button>
+              </div>
+            </div>
+          )}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {savedViews.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 mr-2">
-                      <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mr-1">Saved</span>
-                      {savedViews.map((view) => (
-                        <button
-                          key={view.name}
-                          type="button"
-                          onClick={() => applySavedView(view)}
-                          className="px-3 py-1 rounded-full text-[11px] font-medium"
-                          style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}
-                        >
-                          {view.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <button type="button" onClick={exportFilteredCsv} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                    <Download size={14} />
-                    Export CSV
-                  </button>
-                  <button type="button" onClick={() => importInputRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                    <Download size={14} />
-                    Import CSV
-                  </button>
+          {/* Directory table */}
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40px', paddingLeft: '16px' }}>
                   <input
-                    ref={importInputRef}
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        void importCsvFile(file);
-                      }
-                      e.currentTarget.value = '';
-                    }}
+                    ref={bulkSelectRef}
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={(e) => setSelectedIds(e.target.checked ? filteredUsers.map((user) => user.id) : [])}
+                    style={{ cursor: 'pointer' }}
                   />
-                </div>
-              </div>
-            </div>
-            {importStatus && (
-              <div className="px-6 pb-4 text-xs text-[var(--color-text-muted)]">{importStatus}</div>
-            )}
-
-            {selectedIds.length > 0 && (
-              <div className="px-6 py-4 border-b border-[var(--color-border)]" style={{ background: 'var(--color-bg-secondary)' }}>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="text-sm text-[var(--color-text-secondary)]">
-                    <span className="font-semibold text-white">{selectedIds.length}</span> accounts selected
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <select
-                      className="input-field text-sm py-2 w-40"
-                      value={bulkPlanDraft}
-                      onChange={(e) => setBulkPlanDraft(e.target.value)}
-                      style={{ appearance: 'auto' }}
-                    >
-                      {summary.planBreakdown.map((plan) => (
-                        <option key={plan.id} value={plan.id}>{plan.name}</option>
-                      ))}
-                    </select>
-                    <button className="btn-secondary text-xs py-2 px-4" onClick={() => void submitBulkAction('lock')}>Lock</button>
-                    <button className="btn-secondary text-xs py-2 px-4" onClick={() => void submitBulkAction('unlock')}>Unlock</button>
-                    <button className="btn-secondary text-xs py-2 px-4" onClick={() => void submitBulkAction('revokeKeys')}>Revoke Keys</button>
-                    <button className="btn-primary text-xs py-2 px-4" onClick={() => void submitBulkAction('plan', { planId: bulkPlanDraft })}>Apply Plan</button>
-                    <button className="btn-secondary text-xs py-2 px-4" onClick={() => setSelectedIds([])}>Clear</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                    <th className="px-3 py-3 font-semibold w-10">
-                      <input
-                        ref={bulkSelectRef}
-                        type="checkbox"
-                        checked={allVisibleSelected}
-                        onChange={(e) => setSelectedIds(e.target.checked ? filteredUsers.map((user) => user.id) : [])}
-                        className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)]"
-                      />
-                    </th>
-                    <th className="px-3 py-3 font-semibold">User</th>
-                    <th className="px-3 py-3 font-semibold w-20">Plan</th>
-                    <th className="px-3 py-3 font-semibold w-20">Joined</th>
-                    <th className="px-3 py-3 font-semibold text-right w-20">Requests</th>
-                    <th className="px-3 py-3 font-semibold text-right w-14">Keys</th>
-                    <th className="px-3 py-3 font-semibold text-right w-20">Paid</th>
-                    <th className="px-3 py-3 font-semibold text-center w-20">Status</th>
-                    <th className="px-3 py-3 font-semibold text-center w-16">Notes</th>
-                    <th className="px-3 py-3 font-semibold w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => {
-                    const isSelected = selectedUserId === user.id;
-                    return (
-                      <tr
-                        key={user.id}
-                        className={`border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors cursor-pointer ${isSelected ? 'bg-[var(--color-bg-card)]' : ''}`}
-                        onClick={() => {
-                          setSelectedUser(null);
-                          setDetailError('');
-                          setSelectedUserId(user.id);
-                        }}
-                      >
-                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(user.id)}
-                            onChange={(e) => toggleSelection(user.id, e.target.checked)}
-                            className="h-4 w-4 rounded border-[var(--color-border)] bg-transparent text-[var(--color-accent)] shrink-0"
-                          />
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--color-bg-card-hover)] border border-[var(--color-border)] text-white">
-                              {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-medium truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.name || '—'}</div>
-                              <div className="text-xs text-[var(--color-text-muted)] truncate max-w-[140px] sm:max-w-[180px] lg:max-w-[200px]">{user.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className={`badge-${user.plan.id === 'free' ? 'warning' : user.plan.id === 'pro' ? 'accent' : 'success'}`}>{user.plan.name}</span>
-                        </td>
-                        <td className="px-3 py-3 text-[var(--color-text-muted)]">
-                          {timeAgo(user.createdAt, now)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-mono font-medium">{fmt(user.usage.totalRequests)}</td>
-                        <td className="px-3 py-3 text-right font-mono">{fmt(user.apiKeys.length)}</td>
-                        <td className="px-3 py-3 text-right font-mono" style={{ color: user.totalPaidCents > 0 ? '#10b981' : 'var(--color-text-muted)' }}>
-                          {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            {user.isLocked ? (
-                              <span className="badge-danger">locked</span>
-                            ) : user.emailVerified ? (
-                              <span className="badge-success">verified</span>
-                            ) : (
-                              <span className="badge-warning">pending</span>
-                            )}
-                            {user.isShadowBanned && (
-                              <span className="badge-danger text-[10px] py-0.5 px-1.5">shadowbanned</span>
-                            )}
-                            {user.isShadowLocked && (
-                              <span className="badge-warning text-[10px] py-0.5 px-1.5">shadowlocked</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          {user.adminNote ? <span className="badge-accent">note</span> : <span className="text-[var(--color-text-muted)]">—</span>}
-                        </td>
-                        <td className="px-3 py-3 text-right text-[var(--color-text-muted)]">
-                          <ChevronRight size={15} className={`inline-block transition-transform ${isSelected ? 'rotate-90' : ''}`} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="space-y-6 min-w-0 w-full">
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-base font-semibold">Attention Queue</h2>
-                <span className="badge-accent">{attentionUsers.length}</span>
-              </div>
-              <div className="space-y-3">
-                {attentionUsers.length > 0 ? attentionUsers.map((user) => (
-                  <button
+                </th>
+                <th>User Account</th>
+                <th>Plan</th>
+                <th>Joined</th>
+                <th style={{ textAlign: 'right' }}>Requests</th>
+                <th style={{ textAlign: 'right' }}>Keys</th>
+                <th style={{ textAlign: 'right' }}>Paid</th>
+                <th style={{ textAlign: 'center' }}>Status</th>
+                <th style={{ textAlign: 'center' }}>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => {
+                const isSelected = selectedUserId === user.id;
+                return (
+                  <tr
                     key={user.id}
-                    className="w-full p-3 rounded-xl text-left border border-transparent hover:border-[var(--color-border-focus)] transition-colors"
-                    style={{ background: 'var(--color-bg-primary)' }}
+                    className={isSelected ? 'active' : ''}
+                    style={{ cursor: 'pointer' }}
                     onClick={() => {
                       setSelectedUser(null);
                       setDetailError('');
                       setSelectedUserId(user.id);
                     }}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{user.name || user.email}</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">
-                          {user.isLocked ? 'Locked' : user.emailVerified ? 'Verified' : 'Needs verification'} · {fmt(user.apiKeys.length)} keys · {fmt(user.usage.totalRequests)} requests
+                    <td style={{ paddingLeft: '16px' }} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(user.id)}
+                        onChange={(e) => toggleSelection(user.id, e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="dash-avatar" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
+                          {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{user.name || '—'}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{user.email}</div>
                         </div>
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${user.isLocked ? 'bg-red-500/10 text-red-400' : 'bg-slate-500/10 text-slate-300'}`}>
-                        Review
+                    </td>
+                    <td>
+                      <span className={`badge ${user.plan.id === 'free' ? 'badge-warning' : user.plan.id === 'pro' ? 'badge-accent' : 'badge-success'}`}>
+                        {user.plan.name}
                       </span>
-                    </div>
-                  </button>
-                )) : (
-                  <p className="text-sm text-[var(--color-text-muted)]">No accounts need attention right now.</p>
-                )}
-              </div>
-            </div>
+                    </td>
+                    <td style={{ color: 'var(--muted)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}>
+                      {timeAgo(user.createdAt, now)}
+                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace' }}>{fmt(user.usage.totalRequests)}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace' }}>{user.apiKeys.length}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', color: user.totalPaidCents > 0 ? 'var(--accent)' : 'var(--muted)' }}>
+                      {user.totalPaidCents > 0 ? fmtUSD(user.totalPaidCents) : '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                        {user.isLocked ? (
+                          <span className="badge badge-danger">locked</span>
+                        ) : user.emailVerified ? (
+                          <span className="badge badge-success">verified</span>
+                        ) : (
+                          <span className="badge badge-warning">pending</span>
+                        )}
+                        {user.isShadowBanned && <span className="badge badge-danger" style={{ fontSize: '8px', padding: '1px 4px' }}>sbanned</span>}
+                        {user.isShadowLocked && <span className="badge badge-warning" style={{ fontSize: '8px', padding: '1px 4px' }}>slocked</span>}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {user.adminNote ? <span className="badge badge-accent">note</span> : <span style={{ color: 'var(--muted)' }}>—</span>}
+                    </td>
+                    <td style={{ textAlign: 'right', color: 'var(--muted)' }}>
+                      <ChevronRight size={14} style={{ transform: isSelected ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-base font-semibold">Top Models</h2>
-                <Activity size={15} className="text-[var(--color-text-muted)]" />
-              </div>
-              <div className="space-y-2">
-                {topModels.length > 0 ? topModels.map((model, index) => (
-                  <div key={model.model} className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ background: index === 0 ? 'var(--color-accent-subtle)' : 'transparent' }}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-[var(--color-text-muted)] w-5">{index + 1}.</span>
-                      <span className="text-sm font-medium font-mono truncate">{model.model}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Attention Queue */}
+          <div className="dash-card" style={{ marginBottom: 0 }}>
+            <div className="dash-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Attention Queue</span>
+              <span className="badge badge-accent">{attentionUsers.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {attentionUsers.length > 0 ? attentionUsers.map((user) => (
+                <button
+                  key={user.id}
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '12px', display: 'block', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setDetailError('');
+                    setSelectedUserId(user.id);
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name || user.email}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+                        {user.isLocked ? 'Locked' : user.emailVerified ? 'Verified' : 'Unverified'} · {user.apiKeys.length} keys · {fmt(user.usage.totalRequests)} reqs
+                      </div>
                     </div>
-                    <span className="text-xs text-[var(--color-text-muted)]">{fmt(model.requests || 0)} reqs</span>
+                    <span className="badge badge-warning" style={{ fontSize: '8px' }}>Review</span>
                   </div>
-                )) : (
-                  <p className="text-sm text-[var(--color-text-muted)] italic">No model usage data yet</p>
-                )}
-              </div>
+                </button>
+              )) : (
+                <div style={{ color: 'var(--muted)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}>No attention signals flagged.</div>
+              )}
             </div>
+          </div>
 
-            <div className="glass-card p-6">
-              <h2 className="text-base font-semibold mb-4">Plan Mix</h2>
-              <div className="space-y-3">
-                {summary.planBreakdown.map((plan) => {
-                  const share = summary.totalUsers > 0 ? (plan.userCount / summary.totalUsers) * 100 : 0;
-                  return (
-                    <div key={plan.id}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{plan.name}</span>
-                        <span className="text-[var(--color-text-muted)]">{fmt(plan.userCount)} users</span>
-                      </div>
-                      <div className="h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(share, 4)}%` }} />
-                      </div>
+          {/* Top Models */}
+          <div className="dash-card" style={{ marginBottom: 0 }}>
+            <div className="dash-card-title">Top Models Mix</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {topModels.map((model, index) => (
+                <div key={model.model} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: index === 0 ? 'var(--accent-dim)' : 'var(--surface)', border: index === 0 ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--muted)', fontFamily: 'Space Mono, monospace' }}>{index + 1}.</span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'Space Mono, monospace' }}>{model.model}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontFamily: 'Space Mono, monospace', color: 'var(--muted)' }}>{fmt(model.requests || 0)} reqs</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Plan Breakdown distribution */}
+          <div className="dash-card" style={{ marginBottom: 0 }}>
+            <div className="dash-card-title">Plan breakdown shares</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {summary.planBreakdown.map((plan) => {
+                const share = summary.totalUsers > 0 ? (plan.userCount / summary.totalUsers) * 100 : 0;
+                return (
+                  <div key={plan.id} style={{ border: '1px solid var(--border)', padding: '12px', background: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '12px' }}>{plan.name}</span>
+                      <span style={{ color: 'var(--muted)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}>{plan.userCount} users</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ height: '4px', background: 'var(--border-bright)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'var(--accent)', width: `${Math.max(share, 4)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Slide-out user detail drawer */}
       {selectedUserId && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-          <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-[var(--color-bg-primary)] border-l border-[var(--color-border)] shadow-2xl overflow-y-auto">
-            <div className="p-6 border-b border-[var(--color-border)] sticky top-0 z-10" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(14px)' }}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-                    Account Detail
-                  </div>
-                  <h3 className="text-2xl font-bold">{openUserShell?.name || openUserShell?.email || 'Loading account...'}</h3>
-                  <p className="text-sm text-[var(--color-text-muted)] mt-1">{openUserShell?.email || 'Fetching detail…'}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedUserId(null);
-                    setSelectedUser(null);
-                    setDetailError('');
-                  }}
-                  className="btn-secondary inline-flex items-center gap-2 text-sm px-3 py-2"
-                >
-                  <X size={16} />
-                  Close
-                </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}>
+          <div
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => {
+              setSelectedUserId(null);
+              setSelectedUser(null);
+              setDetailError('');
+            }}
+          />
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '680px',
+              height: '100%',
+              background: 'var(--bg)',
+              borderLeft: '1px solid var(--border-bright)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+              padding: '24px',
+              zIndex: 60
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-bright)', paddingBottom: '16px', marginBottom: '24px' }}>
+              <div>
+                <div className="badge badge-accent" style={{ marginBottom: '8px' }}>Customer File</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 700 }}>{openUserShell?.name || openUserShell?.email || 'Loading Account...'}</h3>
+                <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>{openUserShell?.email || 'Fetching profile parameters…'}</p>
               </div>
+              <button
+                onClick={() => {
+                  setSelectedUserId(null);
+                  setSelectedUser(null);
+                  setDetailError('');
+                }}
+                className="btn-border"
+                style={{ padding: '6px 12px', fontFamily: 'Space Mono, monospace', fontSize: '11px' }}
+              >
+                Close ✕
+              </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {detailError && <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>{detailError}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {detailError && (
+                <div style={{ padding: '12px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', fontSize: '12px', fontFamily: 'Space Mono, monospace' }}>
+                  {detailError}
+                </div>
+              )}
 
               {detailLoading ? (
-                <div className="py-16 flex items-center justify-center">
-                  <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+                <div style={{ py: '40px', display: 'flex', justifyContent: 'center' } as any}>
+                  <div className="auth-spinner" />
                 </div>
               ) : !openUser ? (
-                <div className="py-16 text-center text-[var(--color-text-muted)]">
-                  <p className="text-lg mb-2">Unable to load account detail</p>
-                  <p className="text-sm">Try selecting the account again or refreshing the dashboard.</p>
+                <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                  Unable to parse customer details.
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Requests</div>
-                      <div className="stat-value text-2xl">{fmt(openUser.usage.totalRequests)}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total API requests</div>
+                  {/* Stats telemetry */}
+                  <div className="dash-stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
+                    <div className="dash-stat">
+                      <div className="dash-stat-label">Requests</div>
+                      <div className="dash-stat-value" style={{ fontSize: '18px' }}>{fmt(openUser.usage.totalRequests)}</div>
                     </div>
-                    <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Tokens</div>
-                      <div className="stat-value text-2xl">{fmtTokens(openUser.usage.totalTokens)}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">
-                        {fmtTokens(openUser.usage.promptTokens)} prompt · {fmtTokens(openUser.usage.completionTokens)} completion
-                      </div>
+                    <div className="dash-stat">
+                      <div className="dash-stat-label">Tokens</div>
+                      <div className="dash-stat-value" style={{ fontSize: '18px' }}>{fmtTokens(openUser.usage.totalTokens)}</div>
                     </div>
-                    <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Estimated Spend</div>
-                      <div className="stat-value text-2xl">{fmtUSD(Math.round(openUser.usage.totalCost * 100))}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Based on model usage</div>
+                    <div className="dash-stat">
+                      <div className="dash-stat-label">Spend</div>
+                      <div className="dash-stat-value" style={{ fontSize: '18px' }}>{fmtUSD(Math.round(openUser.usage.totalCost * 100))}</div>
                     </div>
-                    <div className="stat-card">
-                      <div className="text-xs text-[var(--color-text-muted)] mb-1">Paid</div>
-                      <div className="stat-value text-2xl">{openUser.totalPaidCents > 0 ? fmtUSD(openUser.totalPaidCents) : '—'}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-1">Total payments received</div>
+                    <div className="dash-stat">
+                      <div className="dash-stat-label">Paid</div>
+                      <div className="dash-stat-value" style={{ fontSize: '18px' }}>{openUser.totalPaidCents > 0 ? fmtUSD(openUser.totalPaidCents) : '—'}</div>
                     </div>
                   </div>
 
-                  <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-6">
-                    <div className="space-y-6">
-                      <div className="glass-card p-5">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                          <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Profile State</h4>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {openUser.isLocked ? <span className="badge-danger">locked</span> : <span className="badge-success">active</span>}
-                            {openUser.isShadowBanned && <span className="badge-danger">shadowbanned</span>}
-                            {openUser.isShadowLocked && <span className="badge-warning">shadowlocked</span>}
-                            {openUser.emailVerified ? <span className="badge-success">verified</span> : <span className="badge-warning">pending</span>}
+                  <div className="dash-grid-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {/* State profile */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span>Profile limits & status</span>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {openUser.isLocked ? <span className="badge badge-danger">locked</span> : <span className="badge badge-success">active</span>}
+                            {openUser.emailVerified ? <span className="badge badge-success">verified</span> : <span className="badge badge-warning">pending</span>}
                           </div>
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Plan</div>
-                            <div className="font-semibold">{openUser.plan.name}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                            <span style={{ color: 'var(--muted)' }}>Plan Tier</span>
+                            <span style={{ fontWeight: 600 }}>{openUser.plan.name}</span>
                           </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Joined</div>
-                            <div className="font-semibold">{new Date(openUser.createdAt).toLocaleDateString()}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                            <span style={{ color: 'var(--muted)' }}>Joined Date</span>
+                            <span style={{ fontWeight: 600 }}>{new Date(openUser.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Keys</div>
-                            <div className="font-semibold">{fmt(openUser.apiKeys.length)}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                            <span style={{ color: 'var(--muted)' }}>Active API Keys</span>
+                            <span style={{ fontWeight: 600 }}>{openUser.apiKeys.length}</span>
                           </div>
-                          <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                            <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Stripe Customer</div>
-                            <div className="font-semibold truncate">{openUser.stripeCustomerId || '—'}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: 'var(--muted)' }}>Stripe Ref ID</span>
+                            <span style={{ fontWeight: 600, fontSize: '10px', fontFamily: 'Space Mono, monospace' }}>{openUser.stripeCustomerId || '—'}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="glass-card p-5">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                          <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Internal Note</h4>
-                          <PencilLine size={15} className="text-[var(--color-text-muted)]" />
-                        </div>
+                      {/* Internal note form */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title">Staff Audit Note</div>
                         <textarea
-                          className="input-field min-h-32 w-full resize-y"
-                          placeholder="Add support context, risk notes, or follow-up reminders."
+                          className="input-field"
+                          style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+                          placeholder="Leave admin notes..."
                           value={noteDraft}
                           onChange={(e) => setNoteDraft(e.target.value)}
                         />
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className="text-xs text-[var(--color-text-muted)]">Shown to staff only. Use this to leave operational context on the account.</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--muted)' }}>Visible to operators only.</span>
                           <button
-                            className="btn-primary inline-flex items-center gap-2 text-sm px-4 py-2"
+                            className="btn-border"
+                            style={{ padding: '6px 12px', background: 'var(--accent)', color: 'var(--bg)', borderColor: 'var(--accent)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('note', { note: noteDraft })}
                             disabled={actionLoading === 'note'}
                           >
@@ -1154,39 +1170,40 @@ export default function AdminAccountsDashboard() {
                         </div>
                       </div>
 
-                      <div className="glass-card p-5">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                          <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Plan Control</h4>
-                          <KeyRound size={15} className="text-[var(--color-text-muted)]" />
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Plan draft config */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title">Modify Billing Plan</div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <select
-                            className="input-field flex-1"
+                            className="input-field"
                             value={planDraft}
                             onChange={(e) => setPlanDraft(e.target.value)}
-                            style={{ appearance: 'auto' }}
+                            style={{ flex: 1, padding: '6px 12px', fontSize: '11px', fontFamily: 'Space Mono, monospace', appearance: 'auto', background: 'var(--bg)' }}
                           >
                             {summary.planBreakdown.map((plan) => (
                               <option key={plan.id} value={plan.id}>{plan.name}</option>
                             ))}
                           </select>
                           <button
-                            className="btn-primary inline-flex items-center gap-2 text-sm px-4 py-2"
+                            className="btn-border"
+                            style={{ padding: '6px 12px', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('plan', { planId: planDraft })}
                             disabled={actionLoading === 'plan'}
                           >
-                            {actionLoading === 'plan' ? 'Updating...' : 'Apply Plan'}
+                            {actionLoading === 'plan' ? 'Saving...' : 'Apply Plan'}
                           </button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div className="glass-card p-5">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Admin Actions</h4>
-                        <div className="grid gap-3">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {/* Operations buttons list */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title">Administrative Actions</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void (async () => {
                               const result = await submitAction('impersonate');
                               const url = result && typeof result === 'object' ? (result.url as string | undefined) : undefined;
@@ -1196,137 +1213,126 @@ export default function AdminAccountsDashboard() {
                             })()}
                             disabled={actionLoading === 'impersonate'}
                           >
-                            <span className="inline-flex items-center gap-2">
-                              <LogIn size={16} />
-                              Impersonate account
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">support</span>
+                            <span>Impersonate customer</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>SUPPORT</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('resendVerification')}
                             disabled={actionLoading === 'resendVerification' || openUser.emailVerified}
                           >
-                            <span className="inline-flex items-center gap-2">
-                              <Mail size={16} />
-                              Resend verification
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">support</span>
+                            <span>Resend verification email</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>SUPPORT</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('resetPassword')}
                             disabled={actionLoading === 'resetPassword'}
                           >
-                            <span className="inline-flex items-center gap-2">
-                              <Send size={16} />
-                              Send password reset
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">support</span>
+                            <span>Send password reset</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>SUPPORT</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction(openUser.isLocked ? 'unlock' : 'lock', { note: noteDraft })}
                             disabled={actionLoading === 'lock' || actionLoading === 'unlock'}
                           >
-                            <span className="inline-flex items-center gap-2">
-                              {openUser.isLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
-                              {openUser.isLocked ? 'Unlock account' : 'Lock account'}
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                            <span>{openUser.isLocked ? 'Unlock access' : 'Lock access'}</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>ACCESS</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('shadowBan', { active: !openUser.isShadowBanned })}
                             disabled={actionLoading === 'shadowBan'}
                           >
-                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowBanned ? 'text-green-400' : 'text-red-400'}`}>
-                              {openUser.isShadowBanned ? <Unlock size={16} /> : <Ban size={16} />}
-                              {openUser.isShadowBanned ? 'Remove Shadowban' : 'Shadowban account'}
+                            <span style={{ color: openUser.isShadowBanned ? '#10b981' : '#ef4444' }}>
+                              {openUser.isShadowBanned ? 'Remove shadowban' : 'Shadowban user'}
                             </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>ACCESS</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('shadowLock', { active: !openUser.isShadowLocked })}
                             disabled={actionLoading === 'shadowLock'}
                           >
-                            <span className={`inline-flex items-center gap-2 ${openUser.isShadowLocked ? 'text-green-400' : 'text-amber-400'}`}>
-                              {openUser.isShadowLocked ? <Unlock size={16} /> : <LockKeyhole size={16} />}
-                              {openUser.isShadowLocked ? 'Remove Shadowlock' : 'Shadowlock account'}
+                            <span style={{ color: openUser.isShadowLocked ? '#10b981' : '#f59e0b' }}>
+                              {openUser.isShadowLocked ? 'Remove shadowlock' : 'Shadowlock user'}
                             </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">access</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>ACCESS</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('revokeKeys')}
                             disabled={actionLoading === 'revokeKeys'}
                           >
-                            <span className="inline-flex items-center gap-2">
-                              <Ban size={16} />
-                              Revoke all keys
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">api</span>
+                            <span>Revoke all API keys</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>API KEYS</span>
                           </button>
+
                           <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
-                            onClick={() => void submitAction('note', { note: `${noteDraft}\n\nReviewed at ${new Date().toLocaleString()}`.trim() })}
-                            disabled={actionLoading === 'note'}
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <PencilLine size={16} />
-                              Append review note
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">log</span>
-                          </button>
-                          <button
-                            className="btn-secondary flex items-center justify-between gap-3 px-4 py-3"
+                            className="btn-border"
+                            style={{ width: '100%', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}
                             onClick={() => void submitAction('delete')}
                             disabled={actionLoading === 'delete'}
                           >
-                            <span className="inline-flex items-center gap-2 text-red-300">
-                              <Trash2 size={16} />
-                              Soft delete account
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">danger</span>
+                            <span style={{ color: '#ef4444' }}>Soft delete profile</span>
+                            <span style={{ color: 'var(--muted)', fontSize: '9px' }}>DANGER</span>
                           </button>
                         </div>
                       </div>
 
-                      <div className="glass-card p-5">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">API Keys</h4>
-                        <div className="space-y-3">
+                      {/* API Keys list */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title">Customer Keys</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {openUser.apiKeys.length > 0 ? openUser.apiKeys.map((key) => (
-                            <div key={key.id} className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                              <div className="flex items-start justify-between gap-3">
+                            <div key={key.id} style={{ border: '1px solid var(--border)', padding: '10px', background: 'var(--surface)', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                  <div className="font-medium">{key.name}</div>
-                                  <div className="text-xs text-[var(--color-text-muted)]">
-                                    {key.lastFour ? `•••• ${key.lastFour}` : 'No visible suffix'} · {new Date(key.createdAt).toLocaleDateString()}
+                                  <div style={{ fontWeight: 600 }}>{key.name}</div>
+                                  <div style={{ color: 'var(--muted)', marginTop: '2px' }}>
+                                    {key.lastFour ? `•••• ${key.lastFour}` : '••••'} · {new Date(key.createdAt).toLocaleDateString()}
                                   </div>
                                 </div>
-                                {key.isActive ? <span className="badge-success text-[10px]">active</span> : <span className="badge-danger text-[10px]">revoked</span>}
+                                <span className={`badge ${key.isActive ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '8px' }}>
+                                  {key.isActive ? 'active' : 'revoked'}
+                                </span>
                               </div>
                             </div>
                           )) : (
-                            <p className="text-sm text-[var(--color-text-muted)]">No keys on this account.</p>
+                            <div style={{ color: 'var(--muted)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}>No keys active.</div>
                           )}
                         </div>
                       </div>
 
-                      <div className="glass-card p-5">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Recent Activity</h4>
-                        <div className="space-y-3">
+                      {/* Audit activity history */}
+                      <div className="dash-card" style={{ marginBottom: 0 }}>
+                        <div className="dash-card-title">Account Activity history</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {openUser.recentAudit.length > 0 ? openUser.recentAudit.map((item) => (
-                            <div key={item.id} className="p-3 rounded-xl flex items-start justify-between gap-3" style={{ background: 'var(--color-bg-primary)' }}>
-                              <div className="min-w-0">
-                                <div className="font-medium">{actionLabel(item.action)}</div>
-                                <div className="text-xs text-[var(--color-text-muted)] truncate">{item.targetUserEmail || 'system'} · {item.actor}</div>
+                            <div key={item.id} style={{ border: '1px solid var(--border)', padding: '10px', background: 'var(--surface)', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600 }}>{actionLabel(item.action)}</div>
+                                  <div style={{ color: 'var(--muted)', fontSize: '9px', marginTop: '2px', truncate: 'true' } as any}>{item.actor}</div>
+                                </div>
+                                <span style={{ color: 'var(--muted)', fontFamily: 'Space Mono, monospace' }}>{timeAgo(item.createdAt, now)}</span>
                               </div>
-                              <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">{timeAgo(item.createdAt, now)}</span>
                             </div>
                           )) : (
-                            <p className="text-sm text-[var(--color-text-muted)]">No audit entries yet for this account.</p>
+                            <div style={{ color: 'var(--muted)', fontSize: '11px', fontFamily: 'Space Mono, monospace' }}>No operations recorded.</div>
                           )}
                         </div>
                       </div>

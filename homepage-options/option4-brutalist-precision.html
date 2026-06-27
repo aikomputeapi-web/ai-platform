@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 4 — Brutalist Precision</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0c0c0c;
+      --surface: #141414;
+      --border: #252525;
+      --border-bright: #3a3a3a;
+      --text: #f5f3ef;
+      --muted: #5c5c5c;
+      --accent: #e8ff4d;
+      --accent-dim: rgba(232,255,77,0.08);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: stretch;
+      height: 56px;
+      border-bottom: 1px solid var(--border-bright);
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg);
+    }
+    .nav-brand {
+      display: flex; align-items: center;
+      padding: 0 28px;
+      border-right: 1px solid var(--border-bright);
+      font-family: 'Space Mono', monospace;
+      font-size: 14px; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .nav-brand span { color: var(--accent); }
+    .nav-links {
+      display: flex; align-items: stretch;
+    }
+    .nav-links a {
+      display: flex; align-items: center;
+      padding: 0 20px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      border-right: 1px solid var(--border);
+      transition: all 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); background: var(--surface); }
+    .nav-right {
+      margin-left: auto;
+      display: flex; align-items: stretch;
+      border-left: 1px solid var(--border-bright);
+    }
+    .nav-cta {
+      display: flex; align-items: center;
+      padding: 0 28px;
+      background: var(--accent);
+      color: var(--bg);
+      font-family: 'Space Mono', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* HERO — full screen split */
+    .hero {
+      display: grid;
+      grid-template-columns: 60% 40%;
+      min-height: calc(100vh - 56px);
+      border-bottom: 1px solid var(--border-bright);
+    }
+
+    .hero-main {
+      padding: 72px 64px;
+      border-right: 1px solid var(--border-bright);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .hero-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .hero-tag::before { content: '●'; color: var(--accent); font-size: 8px; }
+
+    h1 {
+      font-size: clamp(44px, 5.5vw, 88px);
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      margin: 48px 0;
+    }
+    h1 .outline {
+      -webkit-text-stroke: 1.5px var(--text);
+      color: transparent;
+    }
+    h1 .highlight {
+      color: var(--accent);
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 500px;
+      line-height: 1.7;
+    }
+
+    .hero-ctas {
+      display: flex; gap: 12px; margin-top: 40px;
+      flex-wrap: wrap;
+    }
+    .btn-accent {
+      padding: 14px 32px;
+      background: var(--accent);
+      color: var(--bg);
+      font-family: 'Space Mono', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-accent:hover { opacity: 0.85; }
+    .btn-border {
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-bright);
+      font-size: 13px;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: all 0.15s;
+    }
+    .btn-border:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hero-side {
+      display: flex; flex-direction: column;
+    }
+    .hero-side-block {
+      flex: 1;
+      padding: 40px 36px;
+      border-bottom: 1px solid var(--border-bright);
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .hero-side-block:last-child { border-bottom: none; }
+    .side-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .side-num {
+      font-size: 60px; font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+    .side-num .unit {
+      font-size: 20px; font-weight: 400;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+    .side-desc { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
+    /* COMPLIANCE TICKER */
+    .compliance-bar {
+      border-top: 1px solid var(--border-bright);
+      border-bottom: 1px solid var(--border-bright);
+      display: flex;
+      overflow: hidden;
+    }
+    .compliance-label {
+      padding: 0 24px;
+      display: flex; align-items: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-right: 1px solid var(--border-bright);
+      white-space: nowrap;
+    }
+    .compliance-items {
+      display: flex; align-items: center;
+      animation: scroll 18s linear infinite;
+      gap: 0;
+    }
+    .compliance-item {
+      padding: 14px 28px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .compliance-item .dot { color: var(--accent); margin-right: 8px; }
+    @keyframes scroll { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+    /* FEATURE GRID */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--border-bright);
+    }
+    .feat-cell {
+      padding: 48px 32px;
+      border-right: 1px solid var(--border-bright);
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s;
+    }
+    .feat-cell:last-child { border-right: none; }
+    .feat-cell:hover { background: var(--surface); }
+    .feat-cell:hover .feat-num { color: var(--accent); }
+
+    .feat-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 40px; font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--border-bright);
+      display: block; margin-bottom: 24px;
+      transition: color 0.2s;
+      line-height: 1;
+    }
+    .feat-title {
+      font-size: 15px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 12px;
+    }
+    .feat-desc { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+    /* WIDE FEATURE — terminal */
+    .feature-wide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border-bright);
+    }
+    .feature-wide-text {
+      padding: 64px;
+      border-right: 1px solid var(--border-bright);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .feature-wide-text .eyebrow {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .feature-wide-text h2 {
+      font-size: 36px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .feature-wide-text p { color: var(--muted); font-size: 15px; line-height: 1.7; }
+    .feature-wide-text .btn-accent { display: inline-block; margin-top: 32px; }
+
+    .feature-wide-code {
+      background: var(--surface);
+      padding: 48px;
+      overflow: hidden;
+    }
+    .terminal-window {
+      border: 1px solid var(--border-bright);
+      overflow: hidden;
+    }
+    .terminal-header {
+      background: var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--border-bright);
+    }
+    .tdot { width: 10px; height: 10px; border-radius: 50%; }
+    .tdot.r { background: #ff5f57; }
+    .tdot.y { background: #febc2e; }
+    .tdot.g { background: #28c840; }
+    .terminal-code { padding: 20px; font-family: 'Space Mono', monospace; font-size: 12px; line-height: 1.9; }
+    .tc-prompt { color: var(--accent); }
+    .tc-cmd { color: var(--text); }
+    .tc-out { color: #4caf50; }
+    .tc-comment { color: var(--muted); }
+
+    /* CTA BANNER */
+    .cta-banner {
+      background: var(--accent);
+      padding: 0;
+      display: flex;
+      border-bottom: 1px solid var(--border-bright);
+    }
+    .cta-banner-text {
+      flex: 1;
+      padding: 56px 64px;
+      border-right: 1px solid rgba(0,0,0,0.15);
+    }
+    .cta-banner-text h2 {
+      font-size: 40px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: -0.03em;
+      color: var(--bg);
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .cta-banner-text p {
+      color: rgba(0,0,0,0.5);
+      font-size: 15px;
+    }
+    .cta-banner-action {
+      padding: 56px 64px;
+      display: flex; align-items: center;
+      flex-shrink: 0;
+    }
+    .btn-dark {
+      padding: 14px 32px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-dark:hover { opacity: 0.7; }
+
+    /* FOOTER */
+    footer {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--border-bright);
+    }
+    .footer-col {
+      padding: 48px 32px;
+      border-right: 1px solid var(--border-bright);
+    }
+    .footer-col:last-child { border-right: none; }
+    .footer-brand {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px; font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .footer-brand span { color: var(--accent); }
+    .footer-tagline { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 240px; }
+    .footer-col h5 {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .footer-col a {
+      display: block; font-size: 13px;
+      color: var(--text); text-decoration: none;
+      margin-bottom: 12px;
+      transition: color 0.15s;
+    }
+    .footer-col a:hover { color: var(--accent); }
+    .footer-bottom {
+      padding: 20px 32px;
+      display: flex; justify-content: space-between;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">MEDI<span>SYNC</span></div>
+  <div class="nav-links">
+    <a href="#">PLATFORM</a>
+    <a href="#">SOLUTIONS</a>
+    <a href="#">DEVELOPERS</a>
+    <a href="#">PRICING</a>
+  </div>
+  <div class="nav-right">
+    <a href="#" class="nav-cta">START FREE →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-main">
+    <div class="hero-tag">Medical Device Infrastructure — v2.4.1</div>
+    <div>
+      <h1>
+        Device<br>
+        <span class="outline">Intelligence</span><br>
+        <span class="highlight">Reimagined.</span>
+      </h1>
+      <p class="hero-desc">
+        Real-time telemetry, predictive analytics, and automated compliance for connected medical equipment. 
+        Built for teams that can't afford downtime.
+      </p>
+      <div class="hero-ctas">
+        <a href="#" class="btn-accent">START FREE TRIAL →</a>
+        <a href="#" class="btn-border">View Demo</a>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);letter-spacing:0.05em;">
+      340+ hospital systems · 2.1M devices · HIPAA · FDA · ISO 13485
+    </div>
+  </div>
+  <div class="hero-side">
+    <div class="hero-side-block">
+      <div class="side-label">Live Devices</div>
+      <div>
+        <div class="side-num">2.1<span class="unit">M</span></div>
+        <div class="side-desc">Connected medical devices streaming real-time telemetry right now.</div>
+      </div>
+    </div>
+    <div class="hero-side-block">
+      <div class="side-label">Avg. Latency</div>
+      <div>
+        <div class="side-num">&lt;50<span class="unit">ms</span></div>
+        <div class="side-desc">From device sensor to dashboard. Fastest in the industry.</div>
+      </div>
+    </div>
+    <div class="hero-side-block">
+      <div class="side-label">Uptime SLA</div>
+      <div>
+        <div class="side-num">99<span class="unit">.99%</span></div>
+        <div class="side-desc">Mission-critical reliability. Contractually guaranteed.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE BAR -->
+<div class="compliance-bar">
+  <div class="compliance-label">Compliance</div>
+  <div class="compliance-items">
+    <div class="compliance-item"><span class="dot">●</span>HIPAA COMPLIANT</div>
+    <div class="compliance-item"><span class="dot">●</span>FDA 21 CFR PART 11</div>
+    <div class="compliance-item"><span class="dot">●</span>ISO 13485</div>
+    <div class="compliance-item"><span class="dot">●</span>SOC 2 TYPE II</div>
+    <div class="compliance-item"><span class="dot">●</span>IEC 62304</div>
+    <div class="compliance-item"><span class="dot">●</span>HL7 FHIR R4</div>
+    <div class="compliance-item"><span class="dot">●</span>HIPAA COMPLIANT</div>
+    <div class="compliance-item"><span class="dot">●</span>FDA 21 CFR PART 11</div>
+    <div class="compliance-item"><span class="dot">●</span>ISO 13485</div>
+    <div class="compliance-item"><span class="dot">●</span>SOC 2 TYPE II</div>
+    <div class="compliance-item"><span class="dot">●</span>IEC 62304</div>
+    <div class="compliance-item"><span class="dot">●</span>HL7 FHIR R4</div>
+  </div>
+</div>
+
+<!-- FEATURE GRID -->
+<div class="feature-grid">
+  <div class="feat-cell">
+    <span class="feat-num">01</span>
+    <div class="feat-title">Real-Time Telemetry</div>
+    <p class="feat-desc">Sub-50ms device data streaming across our global edge network with 140+ PoPs worldwide.</p>
+  </div>
+  <div class="feat-cell">
+    <span class="feat-num">02</span>
+    <div class="feat-title">Predictive AI</div>
+    <p class="feat-desc">Clinical ML models detect device anomalies up to 48 hours before critical failures occur.</p>
+  </div>
+  <div class="feat-cell">
+    <span class="feat-num">03</span>
+    <div class="feat-title">Auto Compliance</div>
+    <p class="feat-desc">HIPAA, FDA, and ISO audit trails generated automatically — stay compliant by default.</p>
+  </div>
+  <div class="feat-cell">
+    <span class="feat-num">04</span>
+    <div class="feat-title">Universal API</div>
+    <p class="feat-desc">REST, GraphQL, FHIR, HL7. Integrate with any EHR or hospital information system.</p>
+  </div>
+</div>
+
+<!-- WIDE FEATURE / TERMINAL -->
+<div class="feature-wide">
+  <div class="feature-wide-text">
+    <div class="eyebrow">QUICK START</div>
+    <h2>Ship in<br>minutes.</h2>
+    <p>Install our SDK, connect your devices, deploy to our global edge. That's it. Three commands and you're live.</p>
+    <a href="#" class="btn-accent">READ THE DOCS →</a>
+  </div>
+  <div class="feature-wide-code">
+    <div class="terminal-window">
+      <div class="terminal-header">
+        <div class="tdot r"></div>
+        <div class="tdot y"></div>
+        <div class="tdot g"></div>
+      </div>
+      <div class="terminal-code">
+        <div><span class="tc-prompt">$</span> <span class="tc-cmd">npm i @medisync/sdk</span></div>
+        <div><span class="tc-out">+ @medisync/sdk@2.4.1</span></div>
+        <br>
+        <div><span class="tc-prompt">$</span> <span class="tc-cmd">medisync init</span></div>
+        <div><span class="tc-out">✓ Config written</span></div>
+        <br>
+        <div><span class="tc-comment"># Connect device</span></div>
+        <div><span class="tc-cmd">const s = new DeviceStream('ecg-01')</span></div>
+        <div><span class="tc-cmd">s.on('data', handler)</span></div>
+        <br>
+        <div><span class="tc-prompt">$</span> <span class="tc-cmd">medisync deploy</span></div>
+        <div><span class="tc-out">✓ Live — 140 edge nodes</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA BANNER -->
+<div class="cta-banner">
+  <div class="cta-banner-text">
+    <h2>Ready to go live?</h2>
+    <p>Start building for free. No credit card required. Cancel anytime.</p>
+  </div>
+  <div class="cta-banner-action">
+    <a href="#" class="btn-dark">START FOR FREE →</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-col">
+    <div class="footer-brand">MEDI<span>SYNC</span></div>
+    <p class="footer-tagline">Medical device infrastructure, purpose-built for the teams that need it most.</p>
+  </div>
+  <div class="footer-col">
+    <h5>Product</h5>
+    <a href="#">Platform</a>
+    <a href="#">Pricing</a>
+    <a href="#">Changelog</a>
+    <a href="#">Status</a>
+  </div>
+  <div class="footer-col">
+    <h5>Developers</h5>
+    <a href="#">Docs</a>
+    <a href="#">API Ref</a>
+    <a href="#">SDKs</a>
+    <a href="#">GitHub</a>
+  </div>
+  <div class="footer-col">
+    <h5>Legal</h5>
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Security</a>
+    <a href="#">HIPAA BAA</a>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>© 2025 MEDISYNC INC.</span>
+  <span>MISSION-CRITICAL INFRASTRUCTURE</span>
+</div>
+
+</body>
+</html>

@@ -91,11 +91,8 @@ export default function AdminPlansPage() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading plan manager…</p>
-        </div>
+      <div className="loading-box">
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -105,154 +102,160 @@ export default function AdminPlansPage() {
   const activePlans = plans.length;
 
   return (
-    <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
-        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 35%)' }} />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
-                Pricing & Plan Control
-              </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                Keep the pricing stack aligned with the product.
-              </h1>
-              <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                This page gives the owner a live view of each subscription tier, how many users are on it, and what limits are in effect.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {RANGE_OPTIONS.map(r => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    setRange(r);
-                    void fetchData(r);
-                  }}
-                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all cursor-pointer ${
-                    range === r
-                      ? 'bg-white text-black border-white'
-                      : 'bg-transparent text-[var(--color-text-secondary)] hover:text-white border-[var(--color-border)] hover:bg-[var(--color-bg-card-hover)]'
-                  }`}
-                >
-                  {r.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
+    <div>
+      {/* Header */}
+      <div className="dash-page-header flex justify-between items-end flex-wrap gap-20">
+        <div>
+          <h1 className="dash-page-title">Pricing & Plan Tiers</h1>
+          <p className="dash-page-sub">
+            Review subscription levels, active user distribution, request daily limitations, and metadata configurations.
+          </p>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Plans', value: fmt(activePlans), sub: 'active tiers', color: '#f59e0b' },
-            { label: 'Paid Accounts', value: fmt(payingAccounts), sub: 'customer subscriptions', color: '#10b981' },
-            { label: 'Revenue', value: fmtUSD(s.totalRevenueCents), sub: 'all plans', color: '#10b981' },
-            { label: 'Requests', value: fmtTokens(s.totalRequests), sub: `range ${data.range.toUpperCase()}`, color: '#ef4444' },
-          ].map((card, i) => (
-            <div key={card.label} className="stat-card" style={{ animationDelay: `${i * 0.04}s` }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                <span className="text-base" style={{ color: card.color }}>●</span>
-              </div>
-              <div className="stat-value text-2xl">{card.value}</div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
-            </div>
+        <div className="flex gap-8">
+          {RANGE_OPTIONS.map(r => (
+            <button
+              key={r}
+              onClick={() => {
+                setRange(r);
+                void fetchData(r);
+              }}
+              className={range === r ? 'btn-xs btn-xs-accent' : 'btn-xs'}
+            >
+              {r.toUpperCase()}
+            </button>
           ))}
         </div>
+      </div>
 
-        <div className="grid xl:grid-cols-2 gap-6 mb-8">
-          {plans.map((plan, i) => {
-            const share = s.totalUsers > 0 ? Math.round((plan.userCount / s.totalUsers) * 100) : 0;
-            const meta = plan.meta;
-            return (
-              <div key={plan.id} className="glass-card p-6 relative overflow-hidden" style={{ animationDelay: `${i * 0.05}s` }}>
-                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.02), transparent)' }} />
-                <div className="relative">
-                  <div className="flex items-start justify-between gap-4 mb-5">
-                    <div>
-                      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--color-text-muted)' }}>
-                        {plan.id}
-                      </div>
-                      <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
-                      <p className="text-[var(--color-text-secondary)] text-sm">Used by {fmt(plan.userCount)} accounts ({share}%).</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-white">{plan.priceCents === 0 ? '$0' : fmtUSD(plan.priceCents)}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">{plan.priceCents === 0 ? 'free tier' : '/ month'}</div>
-                    </div>
+      {error && (
+        <div className="error-box">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="dash-stats-grid dash-stats-grid-auto">
+        {[
+          { label: 'Active Tiers', value: fmt(activePlans), sub: 'configurations', color: 'var(--accent)' },
+          { label: 'Paying Clients', value: fmt(payingAccounts), sub: 'active subscriptions', color: 'var(--text)' },
+          { label: 'Total Revenue', value: fmtUSD(s.totalRevenueCents), sub: 'all active accounts', color: 'var(--accent)' },
+          { label: 'Total Requests', value: fmtTokens(s.totalRequests), sub: `range: ${data.range.toUpperCase()}`, color: 'var(--muted)' },
+        ].map((card, i) => (
+          <div key={card.label} className="dash-stat">
+            <div className="dash-stat-label">
+              <span>{card.label}</span>
+              <span style={{ color: card.color }}>●</span>
+            </div>
+            <div className="dash-stat-value">{card.value}</div>
+            <div className="dash-stat-sub">{card.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Plans List Grid */}
+      <div className="dash-grid-2 mb-24">
+        {plans.map((plan, i) => {
+          const share = s.totalUsers > 0 ? Math.round((plan.userCount / s.totalUsers) * 100) : 0;
+          const meta = plan.meta;
+          return (
+            <div key={plan.id} className="dash-card mb-0">
+              <div className="flex justify-between items-start" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '16px' }}>
+                <div>
+                  <div className="badge badge-accent mb-6">{plan.id.toUpperCase()}</div>
+                  <h2 className="font-700" style={{ fontSize: '18px', margin: 0 }}>{plan.name}</h2>
+                  <p className="text-muted text-12" style={{ marginTop: '4px' }}>
+                    Assigned to {fmt(plan.userCount)} accounts ({share}%)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="font-700 mono text-bright" style={{ fontSize: '22px' }}>
+                    {plan.priceCents === 0 ? '$0' : fmtUSD(plan.priceCents)}
                   </div>
-
-                  <div className="grid sm:grid-cols-3 gap-3 mb-5">
-                    <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                      <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Requests / Day</div>
-                      <div className="font-semibold">{meta?.requestsPerDay ? fmt(meta.requestsPerDay) : '—'}</div>
-                    </div>
-                    <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                      <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Requests / Month</div>
-                      <div className="font-semibold">{meta?.requestsPerMonth ? fmt(meta.requestsPerMonth) : '—'}</div>
-                    </div>
-                    <div className="p-3 rounded-xl" style={{ background: 'var(--color-bg-primary)' }}>
-                      <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Requests / Min</div>
-                      <div className="font-semibold">{meta?.requestsPerMinute ? fmt(meta.requestsPerMinute) : '—'}</div>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-[var(--color-text-muted)]">User Share</span>
-                      <span className="font-mono">{share}%</span>
-                    </div>
-                    <div className="h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-[var(--color-success)]" style={{ width: `${Math.max(share, 4)}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-[var(--color-text-muted)] mb-4">
-                    Allowed models: <span className="text-[var(--color-text-secondary)]">{meta?.allowedModels === '*' ? 'All' : meta?.allowedModels || 'Unknown'}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button className="btn-primary text-sm px-4 py-2">Edit Tier</button>
-                    <button className="btn-secondary text-sm px-4 py-2">View Accounts</button>
-                    <button className="btn-secondary text-sm px-4 py-2">Clone Plan</button>
+                  <div className="text-9 text-muted mono">
+                    {plan.priceCents === 0 ? 'free-tier' : 'per month'}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        <div className="glass-card overflow-hidden">
-          <div className="p-6 border-b border-[var(--color-border)]">
-            <h2 className="text-lg font-semibold">Plan Matrix</h2>
-            <p className="text-sm text-[var(--color-text-muted)]">A quick comparison of the tiers currently in use.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider" style={{ background: 'var(--color-bg-secondary)' }}>
-                  <th className="px-6 py-3 font-semibold">Plan</th>
-                  <th className="px-4 py-3 font-semibold">Price</th>
-                  <th className="px-4 py-3 font-semibold text-right">Users</th>
-                  <th className="px-4 py-3 font-semibold text-right">Req / Day</th>
-                  <th className="px-4 py-3 font-semibold text-right">Req / Min</th>
-                  <th className="px-4 py-3 font-semibold">Allowed Models</th>
+              {/* Limits Parameters Grid */}
+              <div className="dash-params-grid mb-16">
+                <div className="dash-param">
+                  <div className="dash-param-label">Requests / Day</div>
+                  <div className="dash-param-value">{meta?.requestsPerDay ? fmt(meta.requestsPerDay) : '—'}</div>
+                </div>
+                <div className="dash-param">
+                  <div className="dash-param-label">Requests / Month</div>
+                  <div className="dash-param-value">{meta?.requestsPerMonth ? fmt(meta.requestsPerMonth) : '—'}</div>
+                </div>
+                <div className="dash-param">
+                  <div className="dash-param-label">Requests / Min</div>
+                  <div className="dash-param-value">{meta?.requestsPerMinute ? fmt(meta.requestsPerMinute) : '—'}</div>
+                </div>
+              </div>
+
+              <div className="mb-16">
+                <div className="flex justify-between text-11" style={{ marginBottom: '4px' }}>
+                  <span className="text-muted">User Volume Share</span>
+                  <span className="font-600 mono">{share}%</span>
+                </div>
+                <div style={{ height: '4px', background: 'var(--border-bright)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'var(--accent)', width: `${Math.max(share, 4)}%` }} />
+                </div>
+              </div>
+
+              <div className="text-muted mono text-11" style={{ marginBottom: '20px' }}>
+                Allowed Models:{' '}
+                <span className="text-bright font-600">
+                  {meta?.allowedModels === '*' ? 'All available models' : meta?.allowedModels || '—'}
+                </span>
+              </div>
+
+              <div className="flex gap-8 flex-wrap">
+                <button className="btn-xs btn-xs-accent">
+                  Edit Tier
+                </button>
+                <button className="btn-xs">
+                  View Accounts
+                </button>
+                <button className="btn-xs">
+                  Clone Plan
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Plan matrix list */}
+      <div className="dash-card p-0 overflow-hidden">
+        <div className="dash-card-title pt-24" style={{ paddingLeft: '24px', paddingRight: '24px' }}>Plan Specification Matrix</div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: '24px' }}>Plan ID</th>
+                <th>Price</th>
+                <th className="text-right">Active Users</th>
+                <th className="text-right">Requests / Day</th>
+                <th className="text-right">Requests / Min</th>
+                <th style={{ paddingRight: '24px' }}>Allowed Models</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map(plan => (
+                <tr key={plan.id}>
+                  <td className="font-600" style={{ paddingLeft: '24px' }}>{plan.name}</td>
+                  <td className="text-muted">{plan.priceCents === 0 ? 'Free' : fmtUSD(plan.priceCents)}</td>
+                  <td className="text-right mono">{fmt(plan.userCount)}</td>
+                  <td className="text-right mono">{plan.meta?.requestsPerDay ? fmt(plan.meta.requestsPerDay) : '—'}</td>
+                  <td className="text-right mono">{plan.meta?.requestsPerMinute ? fmt(plan.meta.requestsPerMinute) : '—'}</td>
+                  <td className="text-muted truncate" style={{ paddingRight: '24px', maxWidth: '300px' }}>
+                    {plan.meta?.allowedModels === '*' ? 'All models' : plan.meta?.allowedModels || '—'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {plans.map(plan => (
-                  <tr key={plan.id} className="border-t border-[rgba(255,255,255,0.03)] hover:bg-[var(--color-bg-card)] transition-colors">
-                    <td className="px-6 py-4 font-medium">{plan.name}</td>
-                    <td className="px-4 py-4 text-[var(--color-text-muted)]">{plan.priceCents === 0 ? 'Free' : fmtUSD(plan.priceCents)}</td>
-                    <td className="px-4 py-4 text-right font-mono">{fmt(plan.userCount)}</td>
-                    <td className="px-4 py-4 text-right font-mono">{plan.meta?.requestsPerDay ? fmt(plan.meta.requestsPerDay) : '—'}</td>
-                    <td className="px-4 py-4 text-right font-mono">{plan.meta?.requestsPerMinute ? fmt(plan.meta.requestsPerMinute) : '—'}</td>
-                    <td className="px-4 py-4 text-[var(--color-text-muted)] max-w-[420px] truncate">{plan.meta?.allowedModels === '*' ? 'All models' : plan.meta?.allowedModels || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

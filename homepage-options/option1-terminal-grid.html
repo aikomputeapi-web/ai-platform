@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 1 — Terminal Grid</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0b;
+      --surface: #111114;
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(255,255,255,0.15);
+      --text: #e8e6e3;
+      --muted: #6b6a68;
+      --accent: #7c6af7;
+      --accent-glow: rgba(124,106,247,0.15);
+      --green: #3dd68c;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,11,0.85);
+      backdrop-filter: blur(12px);
+    }
+    .nav-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a {
+      font-size: 13px; color: var(--muted); text-decoration: none;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: 7px 18px;
+      border: 1px solid var(--accent);
+      color: var(--accent) !important;
+      font-size: 12px !important;
+      letter-spacing: 0.08em;
+    }
+    .nav-cta:hover { background: var(--accent-glow) !important; color: #fff !important; }
+
+    /* FRAME LINES — decorative structural elements */
+    .frame-tl, .frame-tr, .frame-bl, .frame-br {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-color: var(--border-accent);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .frame-tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+    .frame-tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+    .frame-bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+    .frame-br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 120px 40px 80px;
+      text-align: center;
+      z-index: 1;
+    }
+
+    .hero-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 14px;
+      border: 1px solid var(--border-accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 32px;
+      position: relative;
+    }
+    .hero-label::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    h1 {
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    h1 strong { font-weight: 600; }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 480px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      padding: 12px 28px;
+      background: var(--accent);
+      color: #fff;
+      border: none; cursor: pointer;
+      font-size: 14px; font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary:hover { background: #6c5ce7; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,106,247,0.3); }
+    .btn-secondary {
+      padding: 12px 28px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-accent);
+      cursor: pointer; font-size: 14px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* MARQUEE TICKER */
+    .ticker {
+      width: 100%; overflow: hidden;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      margin-top: 64px;
+      position: relative; z-index: 1;
+    }
+    .ticker-inner {
+      display: flex; gap: 60px;
+      animation: ticker 20s linear infinite;
+      width: max-content;
+    }
+    .ticker-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: 0.08em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .ticker-item span { color: var(--accent); margin-right: 8px; }
+    @keyframes ticker { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+    /* BENTO GRID SECTION */
+    .section { position: relative; z-index: 1; padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: 0.12em;
+      color: var(--muted); margin-bottom: 12px;
+    }
+    .section-label::before { content: '// '; color: var(--accent); }
+    .section-title { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 48px; }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto;
+      gap: 1px;
+      background: var(--border);
+    }
+    .bento-card {
+      background: var(--surface);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s;
+    }
+    .bento-card:hover { background: #16161a; }
+    .bento-card.wide { grid-column: span 2; }
+    .bento-card.tall { grid-row: span 2; }
+
+    .card-icon {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border-accent);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .card-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+    .card-desc { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+    .card-num {
+      position: absolute; top: 20px; right: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--border-accent);
+      letter-spacing: 0.05em;
+    }
+
+    /* STAT STRIP */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: var(--border);
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat {
+      background: var(--surface);
+      padding: 40px 32px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 42px; font-weight: 300;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      display: block; margin-bottom: 6px;
+    }
+    .stat-num em { font-style: normal; color: var(--accent); }
+    .stat-label { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* TERMINAL DEMO */
+    .demo-section { position: relative; z-index: 1; padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .terminal {
+      background: #0d0d10;
+      border: 1px solid var(--border-accent);
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #febc2e; }
+    .dot.green { background: #28c840; }
+    .terminal-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); margin: 0 auto; }
+    .terminal-body { padding: 24px; }
+    .terminal-line { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.9; }
+    .terminal-line .prompt { color: var(--accent); }
+    .terminal-line .cmd { color: var(--text); }
+    .terminal-line .comment { color: var(--muted); }
+    .terminal-line .output { color: var(--green); }
+
+    /* FOOTER */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-logo { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted); }
+    .footer-logo span { color: var(--accent); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <span>//</span> MEDISYNC
+  </div>
+  <div class="nav-links">
+    <a href="#">Platform</a>
+    <a href="#">Solutions</a>
+    <a href="#">Docs</a>
+    <a href="#">Pricing</a>
+    <a href="#" class="nav-cta">GET STARTED →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="frame-tl"></div><div class="frame-tr"></div>
+  <div class="frame-bl"></div><div class="frame-br"></div>
+
+  <div class="hero-label">SYSTEM ONLINE — v2.4.1</div>
+  <h1>Precision <em>Intelligence</em><br>for Medical <strong>Devices</strong></h1>
+  <p class="hero-sub">
+    Real-time data infrastructure for connected medical equipment. 
+    Compliant, fast, and built for mission-critical environments.
+  </p>
+  <div class="hero-actions">
+    <a href="#" class="btn-primary">Start Free Trial</a>
+    <a href="#" class="btn-secondary">$ npm install medisync</a>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <div class="ticker-item"><span>✓</span>HIPAA COMPLIANT</div>
+    <div class="ticker-item"><span>✓</span>FDA 21 CFR PART 11</div>
+    <div class="ticker-item"><span>✓</span>IEC 62304 READY</div>
+    <div class="ticker-item"><span>✓</span>SOC 2 TYPE II</div>
+    <div class="ticker-item"><span>✓</span>ISO 13485</div>
+    <div class="ticker-item"><span>✓</span>99.99% UPTIME SLA</div>
+    <div class="ticker-item"><span>✓</span>HIPAA COMPLIANT</div>
+    <div class="ticker-item"><span>✓</span>FDA 21 CFR PART 11</div>
+    <div class="ticker-item"><span>✓</span>IEC 62304 READY</div>
+    <div class="ticker-item"><span>✓</span>SOC 2 TYPE II</div>
+    <div class="ticker-item"><span>✓</span>ISO 13485</div>
+    <div class="ticker-item"><span>✓</span>99.99% UPTIME SLA</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <span class="stat-num">2<em>M+</em></span>
+    <div class="stat-label">Devices Connected</div>
+  </div>
+  <div class="stat">
+    <span class="stat-num"><em>&lt;</em>50<em>ms</em></span>
+    <div class="stat-label">Avg. Latency</div>
+  </div>
+  <div class="stat">
+    <span class="stat-num">99<em>.99%</em></span>
+    <div class="stat-label">Uptime SLA</div>
+  </div>
+  <div class="stat">
+    <span class="stat-num">340<em>+</em></span>
+    <div class="stat-label">Hospital Systems</div>
+  </div>
+</div>
+
+<!-- BENTO FEATURES -->
+<div class="section">
+  <div class="section-label">core_capabilities</div>
+  <h2 class="section-title">Everything you need,<br>nothing you don't.</h2>
+  <div class="bento">
+    <div class="bento-card wide">
+      <div class="frame-tl"></div><div class="frame-tr"></div>
+      <div class="frame-bl"></div><div class="frame-br"></div>
+      <div class="card-num">01</div>
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Real-Time Telemetry</div>
+      <div class="card-desc">Stream device vitals, sensor readings, and diagnostic data with sub-50ms latency. Built on our proprietary edge network spanning 140+ global PoPs.</div>
+    </div>
+    <div class="bento-card tall">
+      <div class="frame-tl"></div><div class="frame-tr"></div>
+      <div class="frame-bl"></div><div class="frame-br"></div>
+      <div class="card-num">02</div>
+      <div class="card-icon">🔒</div>
+      <div class="card-title">Zero-Trust Security</div>
+      <div class="card-desc">End-to-end encryption, role-based access control, and automated audit trails for every data point — built to exceed HIPAA and FDA requirements by default.</div>
+    </div>
+    <div class="bento-card">
+      <div class="frame-tl"></div><div class="frame-tr"></div>
+      <div class="frame-bl"></div><div class="frame-br"></div>
+      <div class="card-num">03</div>
+      <div class="card-icon">🧠</div>
+      <div class="card-title">Predictive Analytics</div>
+      <div class="card-desc">ML models trained on clinical datasets flag anomalies before they escalate.</div>
+    </div>
+    <div class="bento-card">
+      <div class="frame-tl"></div><div class="frame-tr"></div>
+      <div class="frame-bl"></div><div class="frame-br"></div>
+      <div class="card-num">04</div>
+      <div class="card-icon">🔗</div>
+      <div class="card-title">Universal Integration</div>
+      <div class="card-desc">REST, GraphQL, FHIR, HL7 — connect to any EHR or hospital system in minutes.</div>
+    </div>
+    <div class="bento-card wide">
+      <div class="frame-tl"></div><div class="frame-tr"></div>
+      <div class="frame-bl"></div><div class="frame-br"></div>
+      <div class="card-num">05</div>
+      <div class="card-icon">📊</div>
+      <div class="card-title">Unified Dashboard</div>
+      <div class="card-desc">A single pane of glass for your entire device fleet. Monitor alerts, run queries, and generate compliance reports — all without leaving the interface.</div>
+    </div>
+  </div>
+</div>
+
+<!-- TERMINAL DEMO -->
+<div class="demo-section">
+  <div class="section-label">quick_start</div>
+  <h2 class="section-title" style="margin-bottom: 32px;">Ship in minutes,<br>not months.</h2>
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+      <div class="terminal-title">medisync — bash</div>
+    </div>
+    <div class="terminal-body">
+      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">npm install @medisync/sdk</span></div>
+      <div class="terminal-line"><span class="output">✓ Installed medisync@2.4.1</span></div>
+      <br>
+      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">medisync init --project my-device</span></div>
+      <div class="terminal-line"><span class="output">✓ Initialized project. Config written to medisync.config.js</span></div>
+      <br>
+      <div class="terminal-line"><span class="comment">// Connect your device stream in 3 lines</span></div>
+      <div class="terminal-line"><span class="cmd">import { DeviceStream } from '@medisync/sdk'</span></div>
+      <div class="terminal-line"><span class="cmd">const stream = new DeviceStream({ deviceId: 'ecg-01' })</span></div>
+      <div class="terminal-line"><span class="cmd">stream.on('data', (vitals) => console.log(vitals))</span></div>
+      <br>
+      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">medisync deploy</span></div>
+      <div class="terminal-line"><span class="output">✓ Deployed to edge. Live at https://dash.medisync.io/my-device</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo"><span>//</span> MEDISYNC © 2025</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Security</a>
+    <a href="#">Status</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -65,36 +65,34 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div>
+      <div className="dash-page-header flex-between">
         <div>
-          <h1 className="text-2xl font-bold">API Keys</h1>
-          <p className="text-[var(--color-text-secondary)] text-sm mt-1">Manage your API access credentials</p>
+          <h1 className="dash-page-title">API Keys</h1>
+          <p className="dash-page-sub">Manage your API access credentials</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary">
-          + Create Key
-        </button>
+        <button onClick={() => setShowCreate(true)} className="btn-accent lh-1">+ Create Key</button>
       </div>
 
-      {/* New Key Modal */}
+      {/* New Key Created */}
       {newRawKey && (
-        <div className="glass-card p-6 mb-6 border-[var(--color-success)]" style={{ borderColor: 'var(--color-success)' }}>
-          <div className="flex items-start gap-3 mb-3">
-            <span className="text-lg">✅</span>
+        <div className="dash-card dash-card-accent">
+          <div className="flex-start gap-12 mb-12">
+            <span style={{ fontSize: '16px' }}>✅</span>
             <div>
-              <h3 className="font-semibold">API Key Created</h3>
-              <p className="text-sm text-[var(--color-text-secondary)]">Copy it now — you won&apos;t see it again.</p>
+              <div className="font-700 text-14">API Key Created</div>
+              <div className="text-13 text-muted">Copy it now — you won&apos;t see it again.</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-3">
-            <code className="flex-1 bg-[var(--color-bg-primary)] rounded-lg px-4 py-3 text-sm font-mono text-[var(--color-success)] break-all">
+          <div className="flex-center gap-8 mt-12">
+            <code className="dash-code flex-1 text-accent break-all">
               {newRawKey}
             </code>
-            <button onClick={() => copyKey(newRawKey)} className="btn-secondary text-xs whitespace-nowrap">
+            <button onClick={() => copyKey(newRawKey)} className="btn-border btn-sm">
               📋 Copy
             </button>
           </div>
-          <button onClick={() => setNewRawKey('')} className="text-xs text-[var(--color-text-muted)] mt-3 hover:text-[var(--color-text-secondary)]">
+          <button onClick={() => setNewRawKey('')} className="btn-ghost mt-12">
             I&apos;ve saved it, dismiss
           </button>
         </div>
@@ -102,10 +100,10 @@ export default function ApiKeysPage() {
 
       {/* Create Form */}
       {showCreate && !newRawKey && (
-        <div className="glass-card p-6 mb-6">
-          <h3 className="font-semibold mb-4">Create New API Key</h3>
-          {error && <div className="text-sm text-[var(--color-danger)] mb-3">{error}</div>}
-          <div className="flex gap-3">
+        <div className="dash-card">
+          <div className="dash-card-title">Create New API Key</div>
+          {error && <div className="auth-error">{error}</div>}
+          <div className="flex gap-12">
             <input
               type="text"
               value={newKeyName}
@@ -113,10 +111,10 @@ export default function ApiKeysPage() {
               className="input-field flex-1"
               placeholder="Key name (e.g. Production, Testing)"
             />
-            <button onClick={createKey} className="btn-primary" disabled={loading}>
+            <button onClick={createKey} className="btn-accent lh-1" disabled={loading}>
               {loading ? 'Creating...' : 'Create'}
             </button>
-            <button onClick={() => { setShowCreate(false); setError(''); }} className="btn-secondary">
+            <button onClick={() => { setShowCreate(false); setError(''); }} className="btn-border lh-1">
               Cancel
             </button>
           </div>
@@ -124,45 +122,51 @@ export default function ApiKeysPage() {
       )}
 
       {/* Key List */}
-      <div className="space-y-3">
-        {keys.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <div className="text-4xl mb-4">🔑</div>
-            <h3 className="font-semibold mb-2">No API keys yet</h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">Create your first API key to start making requests.</p>
-            <button onClick={() => setShowCreate(true)} className="btn-primary">Create Your First Key</button>
-          </div>
-        ) : (
-          keys.map(key => (
-            <div key={key.id} className="glass-card p-5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: key.isActive ? 'var(--color-accent-subtle)' : 'rgba(239,68,68,0.1)' }}>
-                  🔑
-                </div>
-                <div>
-                  <div className="font-medium text-sm">{key.name}</div>
-                  <div className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">
-                    ork_•••• {key.lastFour || '????'}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={key.isActive ? 'badge-success' : 'badge-danger'}>
-                  {key.isActive ? 'Active' : 'Revoked'}
-                </span>
-                <span className="text-xs text-[var(--color-text-muted)]">
+      {keys.length === 0 ? (
+        <div className="dash-card text-center" style={{ padding: '48px' }}>
+          <div className="text-40 mb-16">🔑</div>
+          <div className="font-700 mb-8 text-15">No API keys yet</div>
+          <p className="text-13 text-muted mb-16">Create your first API key to start making requests.</p>
+          <button onClick={() => setShowCreate(true)} className="btn-accent lh-1">Create Your First Key</button>
+        </div>
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Key</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map(key => (
+              <tr key={key.id}>
+                <td className="font-600">{key.name}</td>
+                <td className="text-12 text-muted mono">
+                  ork_•••• {key.lastFour || '????'}
+                </td>
+                <td>
+                  <span className={`badge ${key.isActive ? 'badge-active' : 'badge-revoked'}`}>
+                    {key.isActive ? 'Active' : 'Revoked'}
+                  </span>
+                </td>
+                <td className="text-12 text-muted">
                   {new Date(key.createdAt).toLocaleDateString()}
-                </span>
-                {key.isActive && (
-                  <button onClick={() => revokeKey(key.id)} className="btn-danger text-xs">
-                    Revoke
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+                </td>
+                <td>
+                  {key.isActive && (
+                    <button onClick={() => revokeKey(key.id)} className="btn-danger-sm">
+                      Revoke
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

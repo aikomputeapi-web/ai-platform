@@ -26,19 +26,8 @@ type CatalogData = {
 };
 
 function ProviderBadge({ alias }: { alias: string }) {
-  const colors: Record<string, string> = {
-    kr: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    gh: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    ag: 'bg-green-500/10 text-green-400 border-green-500/20',
-    cx: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    kiro: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    github: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    antigravity: 'bg-green-500/10 text-green-400 border-green-500/20',
-    codex: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  };
-  const style = colors[alias] || 'bg-[var(--color-accent-subtle)] text-[var(--color-text-secondary)] border-[var(--color-border)]';
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${style}`}>
+    <span className="badge">
       {alias}
     </span>
   );
@@ -46,26 +35,27 @@ function ProviderBadge({ alias }: { alias: string }) {
 
 function ModelRow({ entry, expanded, onToggle }: { entry: CatalogEntry; expanded: boolean; onToggle: () => void }) {
   return (
-    <div className="border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-card-hover)] transition-colors">
+    <div className="border-default bg-surface mb-8">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between gap-3 cursor-pointer text-left"
+        className="w-full flex-between gap-12"
+        style={{ padding: '12px 16px', background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          {expanded ? <ChevronDown size={14} className="text-[var(--color-text-muted)] shrink-0" /> : <ChevronRight size={14} className="text-[var(--color-text-muted)] shrink-0" />}
-          <code className="text-sm font-mono font-bold text-white truncate">{entry.id}</code>
+        <div className="flex-center gap-8" style={{ minWidth: 0 }}>
+          {expanded ? <ChevronDown size={14} style={{ color: 'var(--muted)', flexShrink: 0 }} /> : <ChevronRight size={14} style={{ color: 'var(--muted)', flexShrink: 0 }} />}
+          <code className="mono text-13 font-700 text-bright truncate">{entry.id}</code>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-[var(--color-text-muted)]">
+        <div className="flex-center gap-8" style={{ flexShrink: 0 }}>
+          <span className="text-11 text-muted mono">
             {entry.providers.length} provider{entry.providers.length !== 1 ? 's' : ''}
           </span>
-          <div className="flex gap-1">
+          <div className="flex gap-4">
             {entry.providers.slice(0, 4).map((p) => (
               <ProviderBadge key={p.prefixedId} alias={p.alias} />
             ))}
             {entry.providers.length > 4 && (
-              <span className="text-[10px] text-[var(--color-text-muted)]">
+              <span className="text-10 text-muted mono">
                 +{entry.providers.length - 4}
               </span>
             )}
@@ -73,26 +63,29 @@ function ModelRow({ entry, expanded, onToggle }: { entry: CatalogEntry; expanded
         </div>
       </button>
       {expanded && (
-        <div className="px-5 pb-4 pt-0">
-          <div className="border-t border-[var(--color-border)] pt-3 space-y-2">
-            <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">
+        <div style={{ padding: '0 16px 16px 16px' }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+            <div className="mono text-10 uppercase text-muted mb-8 font-600" style={{ letterSpacing: '0.08em' }}>
               Provider Priority (tried in order)
             </div>
-            {entry.providers.map((p, idx) => (
-              <div
-                key={p.prefixedId}
-                className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--color-bg-primary)]"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-[var(--color-text-muted)] w-5 text-center font-bold">
-                    {idx + 1}
-                  </span>
-                  <ProviderBadge alias={p.alias} />
-                  <code className="text-xs text-[var(--color-text-secondary)] font-mono">{p.prefixedId}</code>
+            <div className="flex flex-col gap-6">
+              {entry.providers.map((p, idx) => (
+                <div
+                  key={p.prefixedId}
+                  className="flex-between border-default bg-bg"
+                  style={{ padding: '8px 12px' }}
+                >
+                  <div className="flex-center gap-12">
+                    <span className="mono text-11 text-muted font-700" style={{ width: '16px', textAlign: 'center' }}>
+                      {idx + 1}
+                    </span>
+                    <ProviderBadge alias={p.alias} />
+                    <code className="mono text-11 text-muted">{p.prefixedId}</code>
+                  </div>
+                  {idx === 0 && <span className="badge badge-success" style={{ fontSize: '8px' }}>Primary</span>}
                 </div>
-                {idx === 0 && <span className="badge-success text-[10px]">Primary</span>}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -144,11 +137,9 @@ export default function CatalogAdminTab() {
         setError(result.error?.message || 'Failed to generate catalog');
         return;
       }
-      // Surface warnings from the generator
       if (Array.isArray(result.warnings) && result.warnings.length > 0) {
         setWarnings(result.warnings);
       }
-      // Surface errors from individual combo creation failures
       if (Array.isArray(result.errors) && result.errors.length > 0) {
         setError(`${result.errors.length} error(s): ${result.errors.join('; ')}`);
       }
@@ -237,143 +228,128 @@ export default function CatalogAdminTab() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-[calc(100vh-44px)] flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-10 h-10 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--color-text-muted)]">Loading customer catalog…</p>
+      <div className="flex-center justify-center bg-bg" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="flex flex-col items-center gap-16">
+          <div className="auth-spinner" />
+          <p className="text-13 text-muted mono">Loading virtual catalog…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-44px)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
-      <div className="max-w-[1480px] mx-auto px-6 py-8">
-        {/* Hero */}
-        <div className="glass-card p-6 mb-8 border border-[var(--color-border)] relative overflow-hidden">
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle at top right, rgba(99,102,241,0.08), transparent 35%)',
-            }}
-          />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-subtle)] text-white text-xs font-semibold uppercase tracking-wider mb-4 border border-[var(--color-border)]">
-                Customer Catalog
-              </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-3">
-                Control what models your customers see.
-              </h1>
-              <p className="text-[var(--color-text-secondary)] max-w-2xl leading-relaxed">
-                The virtual catalog replaces the raw provider-prefixed model list with a clean, deduplicated view.
-                Each model appears once, and requests are automatically routed to the best available provider with failover.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleToggle}
-                disabled={toggling}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer inline-flex items-center gap-2 ${
-                  data.enabled
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                    : 'bg-transparent text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-white hover:bg-[var(--color-bg-card-hover)]'
-                }`}
-              >
-                {data.enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                {toggling ? 'Updating…' : data.enabled ? 'Enabled' : 'Disabled'}
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={generating}
-                className="px-4 py-2 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer inline-flex items-center gap-2"
-              >
-                <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
-                {generating ? 'Generating…' : 'Regenerate Catalog'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void fetchData()}
-                className="px-3 py-2 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer"
-              >
-                <RefreshCw size={14} />
-              </button>
-            </div>
+    <div className="bg-bg" style={{ minHeight: 'calc(100vh - 56px)', color: 'var(--text)' }}>
+      <div style={{ maxWidth: '1480px', margin: '0 auto', padding: '0 24px 48px 24px' }}>
+        {/* Header */}
+        <div className="dash-page-header flex-start flex-wrap gap-20 justify-between">
+          <div>
+            <div className="badge badge-accent mb-8" style={{ fontSize: '9px' }}>Customer Catalog</div>
+            <h1 className="dash-page-title">Control customer models</h1>
+            <p className="dash-page-sub">
+              The virtual catalog replaces raw provider-prefixed lists with a clean, routed view.
+            </p>
+          </div>
+          <div className="flex-center gap-8 flex-wrap">
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={toggling}
+              className="btn-outline btn-sm inline-flex items-center gap-6"
+            >
+              {data.enabled ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+              {toggling ? 'Updating…' : data.enabled ? 'Enabled' : 'Disabled'}
+            </button>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              className="btn-primary btn-sm inline-flex items-center gap-6"
+            >
+              <RefreshCw size={12} className={generating ? 'animate-spin' : ''} />
+              {generating ? 'Generating…' : 'Regenerate Catalog'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void fetchData()}
+              className="btn-outline btn-sm inline-flex items-center"
+            >
+              <RefreshCw size={12} />
+            </button>
           </div>
         </div>
 
         {/* Alerts */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
+          <div className="alert-error mb-24">
             {error}
           </div>
         )}
         {warnings.length > 0 && (
-          <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-sm space-y-1">
-            <div className="font-semibold mb-1">⚠ Warning{warnings.length > 1 ? 's' : ''}</div>
+          <div className="alert-warning mb-24">
+            <div className="font-700 mb-6">Warnings:</div>
             {warnings.map((w, i) => (
-              <div key={i}>{w}</div>
+              <div key={i}>· {w}</div>
             ))}
           </div>
         )}
         {successMessage && (
-          <div className="mb-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-200 text-sm">
+          <div className="alert-success mb-24">
             {successMessage}
           </div>
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            {
-              label: 'Status',
-              value: data.enabled ? 'Active' : 'Off',
-              sub: data.enabled ? 'Customers see clean list' : 'Customers see raw providers',
-              color: data.enabled ? '#34d399' : '#a1a1aa',
-            },
-            { label: 'Virtual Models', value: String(data.totalModels), sub: 'unique models in catalog', color: '#ffffff' },
-            { label: 'Providers', value: String(uniqueProviders.length), sub: uniqueProviders.slice(0, 3).join(', ') || 'none', color: '#a1a1aa' },
-            { label: 'Brand', value: data.brand, sub: 'owned_by in API response', color: '#71717a' },
-          ].map((card) => (
-            <div key={card.label} className="stat-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[var(--color-text-muted)] text-xs font-medium">{card.label}</span>
-                <span className="text-base" style={{ color: card.color }}>●</span>
-              </div>
-              <div className="stat-value text-2xl">{card.value}</div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-1">{card.sub}</div>
+        <div className="dash-stats-grid">
+          <div className="dash-stat">
+            <div className="dash-stat-label">
+              <span>Status</span>
+              <span style={{ color: data.enabled ? 'var(--accent)' : 'var(--muted)' }}>●</span>
             </div>
-          ))}
+            <div className="dash-stat-value">{data.enabled ? 'Active' : 'Off'}</div>
+            <div className="dash-stat-sub">{data.enabled ? 'Clean /v1/models active' : 'Raw provider names exposed'}</div>
+          </div>
+          <div className="dash-stat">
+            <div className="dash-stat-label">Virtual Models</div>
+            <div className="dash-stat-value">{data.totalModels}</div>
+            <div className="dash-stat-sub">unique models in catalog</div>
+          </div>
+          <div className="dash-stat">
+            <div className="dash-stat-label">Providers</div>
+            <div className="dash-stat-value">{uniqueProviders.length}</div>
+            <div className="dash-stat-sub">{uniqueProviders.slice(0, 3).join(', ') || 'none'}</div>
+          </div>
+          <div className="dash-stat">
+            <div className="dash-stat-label">Brand prefix</div>
+            <div className="dash-stat-value uppercase">{data.brand}</div>
+            <div className="dash-stat-sub">owned_by in API response</div>
+          </div>
         </div>
 
-        <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">
+        <div className="dash-grid-2">
           {/* Model list */}
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Model Catalog</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">
-                  Each model below appears once in the customer&apos;s <code className="text-xs bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded">/v1/models</code> response.
-                </p>
-              </div>
-              <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
+          <div className="dash-card mb-0">
+            <div className="dash-card-title flex-between">
+              <span>Model Catalog</span>
+              <span className="badge font-mono-brand" style={{ fontSize: '9px' }}>
                 {filtered.length} model{filtered.length !== 1 ? 's' : ''}
               </span>
             </div>
+            <p className="text-13 text-muted mb-16">
+              Each model below appears once in the customer&apos;s <code className="mono" style={{ fontSize: '11px', background: 'var(--surface)', padding: '2px 6px', border: '1px solid var(--border)' }}>/v1/models</code> response.
+            </p>
 
-            <div className="p-4 border-b border-[var(--color-border)]">
+            <div className="mb-16">
               <input
                 type="text"
-                className="input-field max-w-sm"
+                className="input-field"
+                style={{ maxWidth: '360px' }}
                 placeholder="Search models or providers…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
 
-            <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
+            <div className="flex flex-col" style={{ maxHeight: '600px', overflowY: 'auto' }}>
               {filtered.length > 0 ? (
                 filtered.map((entry) => (
                   <ModelRow
@@ -384,23 +360,23 @@ export default function CatalogAdminTab() {
                   />
                 ))
               ) : data.entries.length === 0 ? (
-                <div className="text-center py-12">
-                  <Layers size={32} className="mx-auto mb-3 text-[var(--color-text-muted)]" />
-                  <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                <div className="text-center" style={{ padding: '48px 0' }}>
+                  <Layers size={32} style={{ margin: '0 auto 12px', color: 'var(--muted)' }} />
+                  <p className="text-13 text-muted mb-16">
                     No virtual catalog entries yet.
                   </p>
                   <button
                     type="button"
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="btn-primary text-sm px-5 py-2.5"
+                    className="btn-accent btn-sm"
                   >
-                    <Zap size={14} className="inline mr-1.5" />
+                    <Zap size={12} className="inline mr-1.5" />
                     Generate Catalog Now
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-[var(--color-text-muted)] text-center py-8">
+                <p className="text-13 text-muted text-center" style={{ padding: '24px 0' }}>
                   No models match &quot;{search}&quot;
                 </p>
               )}
@@ -408,61 +384,53 @@ export default function CatalogAdminTab() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">How It Works</h2>
-                  <p className="text-sm text-[var(--color-text-muted)]">What happens when you enable the virtual catalog.</p>
+          <div className="flex flex-col gap-24">
+            <div className="dash-card mb-0">
+              <div className="dash-card-title">How It Works</div>
+              <div className="flex flex-col gap-12">
+                <div className="border-default p-12 bg-bg">
+                  <div className="font-700 text-12 text-bright mb-4">1. Clean Model List</div>
+                  <p className="text-11 text-muted" style={{ lineHeight: '1.4' }}>
+                    Customers calling <code className="mono text-10 bg-surface" style={{ padding: '1px 3px' }}>GET /v1/models</code> see each model once without provider prefixes.
+                  </p>
                 </div>
-                <Server size={16} className="text-[var(--color-accent)]" />
-              </div>
-              <div className="space-y-4 text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                <div className="rounded-xl p-4 bg-[var(--color-bg-primary)]">
-                  <div className="font-semibold text-white mb-1">1. Clean Model List</div>
-                  <p>Customers calling <code className="text-xs bg-[var(--color-bg-secondary)] px-1 rounded">GET /v1/models</code> see each model once without provider prefixes.</p>
+                <div className="border-default p-12 bg-bg">
+                  <div className="font-700 text-12 text-bright mb-4">2. Automatic Failover</div>
+                  <p className="text-11 text-muted" style={{ lineHeight: '1.4' }}>
+                    When a customer uses <code className="mono text-10 bg-surface" style={{ padding: '1px 3px' }}>claude-sonnet-4-6</code>, the system tries providers in priority order until one succeeds.
+                  </p>
                 </div>
-                <div className="rounded-xl p-4 bg-[var(--color-bg-primary)]">
-                  <div className="font-semibold text-white mb-1">2. Automatic Failover</div>
-                  <p>When a customer uses <code className="text-xs bg-[var(--color-bg-secondary)] px-1 rounded">claude-sonnet-4-6</code>, the system tries providers in priority order until one succeeds.</p>
-                </div>
-                <div className="rounded-xl p-4 bg-[var(--color-bg-primary)]">
-                  <div className="font-semibold text-white mb-1">3. No Code Changes</div>
-                  <p>Customers don&apos;t need to change anything. Their existing API calls work — they just see cleaner model names.</p>
+                <div className="border-default p-12 bg-bg">
+                  <div className="font-700 text-12 text-bright mb-4">3. No Code Changes</div>
+                  <p className="text-11 text-muted" style={{ lineHeight: '1.4' }}>
+                    Customers don&apos;t need to change anything. Their existing API calls work — they just see cleaner model names.
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Active Providers</h2>
-                  <p className="text-sm text-[var(--color-text-muted)]">Providers backing the virtual catalog.</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
+            <div className="dash-card mb-0">
+              <div className="dash-card-title">Active Providers</div>
+              <div className="flex flex-wrap gap-6">
                 {uniqueProviders.length > 0 ? (
                   uniqueProviders.map((alias) => (
                     <ProviderBadge key={alias} alias={alias} />
                   ))
                 ) : (
-                  <p className="text-sm text-[var(--color-text-muted)]">No providers detected. Generate the catalog first.</p>
+                  <p className="text-11 text-muted">No providers detected. Generate the catalog first.</p>
                 )}
               </div>
             </div>
 
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Quick Actions</h2>
-                </div>
-              </div>
-              <div className="space-y-2">
+            <div className="dash-card mb-0">
+              <div className="dash-card-title">Quick Actions</div>
+              <div className="flex flex-col gap-8">
                 <button
                   type="button"
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="w-full px-4 py-3 rounded-lg text-sm font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer text-left inline-flex items-center gap-2"
+                  className="btn-outline w-full flex-center gap-8 text-12"
+                  style={{ textAlign: 'left', padding: '12px' }}
                 >
                   <Zap size={14} />
                   Regenerate from current providers
@@ -471,7 +439,8 @@ export default function CatalogAdminTab() {
                   type="button"
                   onClick={handleToggle}
                   disabled={toggling}
-                  className="w-full px-4 py-3 rounded-lg text-sm font-semibold border border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-bg-card-hover)] transition-all cursor-pointer text-left inline-flex items-center gap-2"
+                  className="btn-outline w-full flex-center gap-8 text-12"
+                  style={{ textAlign: 'left', padding: '12px' }}
                 >
                   {data.enabled ? <ToggleLeft size={14} /> : <ToggleRight size={14} />}
                   {data.enabled ? 'Disable virtual catalog' : 'Enable virtual catalog'}

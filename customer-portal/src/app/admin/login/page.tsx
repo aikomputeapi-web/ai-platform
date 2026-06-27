@@ -31,14 +31,12 @@ function AdminLoginForm() {
     void checkAuth();
   }, [router, redirect]);
 
-  // Show loading state while checking authentication
   if (isChecking) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: 'var(--color-bg-primary)' }}
-      >
-        <div className="w-12 h-12 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+      <div className="auth-centered">
+        <div className="auth-centered-body">
+          <div className="auth-spinner" />
+        </div>
       </div>
     );
   }
@@ -62,7 +60,6 @@ function AdminLoginForm() {
         return;
       }
 
-      // Login successful, redirect
       router.push(redirect);
       router.refresh();
     } catch {
@@ -72,88 +69,51 @@ function AdminLoginForm() {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center px-6" 
-      style={{ background: 'var(--color-bg-primary)' }}
-    >
-      <div className="w-full max-w-md">
-        <form onSubmit={handleSubmit} className="glass-card p-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" 
-            >
-              <span style={{ fontSize: '1.5rem' }}>🛡️</span>
-            </div>
+    <div className="auth-centered">
+      <nav className="auth-nav">
+        <Link href="/" className="nav-brand">AI<span>KOMPUTE</span></Link>
+        <div className="auth-nav-right">
+          <Link href="/">← Back to Portal</Link>
+        </div>
+      </nav>
+
+      <div className="auth-centered-body">
+        <div className="auth-card">
+          <div className="flex-center gap-16 mb-32">
+            <div className="auth-card-icon-box">🛡️</div>
             <div>
-              <h1 className="text-2xl font-bold">Admin Login</h1>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                Enter your admin password to continue
-              </p>
+              <h2 className="auth-card-title">Admin Login</h2>
+              <p className="auth-card-subtitle">Enter your admin password to continue</p>
             </div>
           </div>
 
-          {error && (
-            <div 
-              className="mb-4 p-3 rounded-lg text-sm" 
-              style={{ 
-                background: 'rgba(239,68,68,0.1)', 
-                color: '#ef4444', 
-                border: '1px solid rgba(239,68,68,0.2)' 
-              }}
-            >
-              {error}
+          {error && <div className="auth-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div>
+              <label htmlFor="password" className="auth-label">Admin Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="input-field"
+                autoFocus
+                required
+                disabled={loading}
+              />
             </div>
-          )}
+            <button type="submit" className="auth-submit" disabled={loading || !password}>
+              {loading ? 'Authenticating...' : 'Login to Admin Dashboard →'}
+            </button>
+          </form>
 
-          <div className="mb-6">
-            <label 
-              htmlFor="password" 
-              className="block text-sm font-medium mb-2"
-            >
-              Admin Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter admin password"
-              className="input-field"
-              autoFocus
-              required
-              disabled={loading}
-            />
+          <div className="auth-card-footer">
+            <p className="footnote">
+              Session expires 30 minutes after login
+            </p>
           </div>
-
-          <button
-            type="submit"
-            className="btn-primary w-full"
-            disabled={loading || !password}
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Authenticating...
-              </span>
-            ) : (
-              'Login to Admin Dashboard'
-            )}
-          </button>
-
-          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
-            <p className="text-xs text-[var(--color-text-muted)] text-center">
-                  Session expires 30 minutes after login
-                </p>
-          </div>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link 
-            href="/" 
-            className="text-sm text-[var(--color-text-muted)] hover:text-white transition-colors"
-          >
-            ← Back to Portal
-          </Link>
         </div>
       </div>
     </div>
@@ -163,11 +123,10 @@ function AdminLoginForm() {
 export default function AdminLoginPage() {
   return (
     <Suspense fallback={
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: 'var(--color-bg-primary)' }}
-      >
-        <div className="w-12 h-12 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+      <div className="auth-centered">
+        <div className="auth-centered-body">
+          <div className="auth-spinner" />
+        </div>
       </div>
     }>
       <AdminLoginForm />

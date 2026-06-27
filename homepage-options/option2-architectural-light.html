@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 2 — Architectural Light</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #f7f6f4;
+      --surface: #ffffff;
+      --border: #e2dfd9;
+      --border-dark: #c8c4be;
+      --text: #1a1916;
+      --muted: #8a8680;
+      --accent: #1a1916;
+      --accent2: #c84b4b;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: stretch;
+      height: 56px;
+      border-bottom: 1px solid var(--border-dark);
+      background: var(--bg);
+    }
+    .nav-logo-wrap {
+      display: flex; align-items: center;
+      padding: 0 32px;
+      border-right: 1px solid var(--border-dark);
+    }
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .nav-links {
+      display: flex; align-items: stretch;
+      flex: 1;
+    }
+    .nav-links a {
+      display: flex; align-items: center;
+      padding: 0 24px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      border-right: 1px solid var(--border);
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(0,0,0,0.03); }
+    .nav-right {
+      display: flex; align-items: center;
+      padding: 0 32px;
+      margin-left: auto;
+      gap: 16px;
+    }
+    .nav-cta {
+      padding: 8px 20px;
+      background: var(--text);
+      color: #fff;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.8; }
+
+    /* HERO — full-width architectural */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: calc(100vh - 56px);
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .hero-left {
+      padding: 80px 64px;
+      border-right: 1px solid var(--border-dark);
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 48px;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 20px; height: 1px;
+      background: var(--accent2);
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 5.5vw, 80px);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+    h1 em {
+      font-style: normal;
+      -webkit-text-stroke: 1.5px var(--text);
+      color: transparent;
+    }
+
+    .hero-desc {
+      margin-top: 40px;
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 360px;
+      line-height: 1.8;
+    }
+    .hero-actions-bottom {
+      display: flex; gap: 12px; margin-top: 48px;
+    }
+    .btn-fill {
+      padding: 14px 32px;
+      background: var(--text);
+      color: #fff;
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-fill:hover { opacity: 0.8; }
+    .btn-outline {
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-dark);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-outline:hover { background: var(--border); }
+
+    .hero-right {
+      display: flex; flex-direction: column;
+    }
+    .hero-right-top {
+      flex: 1;
+      padding: 64px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--text);
+      position: relative; overflow: hidden;
+    }
+    /* Large decorative letter */
+    .hero-right-top::before {
+      content: 'M';
+      font-family: 'Syne', sans-serif;
+      font-size: 400px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.04);
+      position: absolute;
+      line-height: 1;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      user-select: none;
+    }
+    .hero-visual-content {
+      position: relative; z-index: 1;
+      text-align: center;
+    }
+    .live-indicator {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+      font-size: 11px; letter-spacing: 0.1em;
+      margin-bottom: 24px;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: #3dd68c;
+      border-radius: 50%;
+      animation: blink 1.5s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+    .device-count {
+      font-family: 'Syne', sans-serif;
+      font-size: 80px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+    .device-count small {
+      font-size: 20px;
+      font-weight: 400;
+      opacity: 0.5;
+      display: block;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    .hero-right-bottom {
+      border-top: 1px solid var(--border-dark);
+      display: grid; grid-template-columns: 1fr 1fr;
+    }
+    .mini-stat {
+      padding: 28px 32px;
+      border-right: 1px solid var(--border);
+    }
+    .mini-stat:last-child { border-right: none; }
+    .mini-stat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px; font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .mini-stat-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+    /* DIVIDER WITH TEXT */
+    .divider-label {
+      display: flex; align-items: center; gap: 0;
+      border-top: 1px solid var(--border-dark);
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .divider-label-text {
+      padding: 16px 32px;
+      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+      border-right: 1px solid var(--border-dark);
+      white-space: nowrap;
+    }
+    .divider-logos {
+      display: flex; align-items: center; gap: 32px;
+      padding: 0 40px;
+      flex: 1;
+    }
+    .logo-pill {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px; font-weight: 700;
+      color: var(--border-dark);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* FEATURES ROW */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .feature {
+      padding: 56px 40px;
+      border-right: 1px solid var(--border-dark);
+    }
+    .feature:last-child { border-right: none; }
+    .feature-num {
+      font-size: 11px; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 32px;
+      font-weight: 500;
+    }
+    .feature-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+    .feature-title em {
+      font-style: normal;
+      -webkit-text-stroke: 1px var(--text);
+      color: transparent;
+    }
+    .feature-desc { font-size: 14px; color: var(--muted); line-height: 1.8; }
+    .feature-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 24px;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text); text-decoration: none;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 2px;
+      transition: border-color 0.15s;
+    }
+    .feature-link:hover { border-color: var(--text); }
+
+    /* CTA BLOCK */
+    .cta-block {
+      display: grid; grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .cta-left {
+      padding: 80px 64px;
+      border-right: 1px solid var(--border-dark);
+    }
+    .cta-left h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 40px; font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    .cta-left p { color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 360px; }
+    .cta-left .btn-fill { margin-top: 32px; display: inline-block; }
+    .cta-right {
+      padding: 80px 64px;
+      background: var(--text);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .cta-right p {
+      font-size: 13px; color: rgba(255,255,255,0.5);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .cta-right blockquote {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px; font-weight: 600;
+      color: #fff; line-height: 1.4;
+      font-style: italic;
+    }
+    .cta-right cite {
+      display: block; margin-top: 20px;
+      font-size: 12px; color: rgba(255,255,255,0.4);
+      font-style: normal; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+
+    /* FOOTER */
+    footer {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      border-top: 1px solid var(--border-dark);
+    }
+    .footer-col { padding: 40px 32px; border-right: 1px solid var(--border); }
+    .footer-col:last-child { border-right: none; }
+    .footer-col h4 {
+      font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .footer-col a {
+      display: block; color: var(--text);
+      font-size: 13px; text-decoration: none;
+      margin-bottom: 10px;
+    }
+    .footer-col a:hover { color: var(--accent2); }
+    .footer-bottom {
+      padding: 20px 32px;
+      border-top: 1px solid var(--border-dark);
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo-wrap">
+    <div class="nav-logo">MEDISYNC</div>
+  </div>
+  <div class="nav-links">
+    <a href="#">Platform</a>
+    <a href="#">Solutions</a>
+    <a href="#">Enterprise</a>
+    <a href="#">Docs</a>
+  </div>
+  <div class="nav-right">
+    <a href="#" style="font-size:12px;color:var(--muted);text-decoration:none;letter-spacing:0.04em;">Sign In</a>
+    <a href="#" class="nav-cta">Get Started</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div>
+      <div class="hero-badge">Medical Infrastructure Platform</div>
+      <h1>The <em>smart</em><br>layer for<br>connected<br>devices.</h1>
+      <p class="hero-desc">
+        Real-time telemetry, predictive analytics, and compliance tooling — 
+        purpose-built for the modern medical device stack.
+      </p>
+      <div class="hero-actions-bottom">
+        <a href="#" class="btn-fill">Start Building</a>
+        <a href="#" class="btn-outline">View Demo →</a>
+      </div>
+    </div>
+    <div style="font-size:11px;letter-spacing:0.06em;color:var(--muted);text-transform:uppercase;">
+      Trusted by 340+ hospital systems worldwide
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-right-top">
+      <div class="hero-visual-content">
+        <div class="live-indicator"><div class="live-dot"></div>Live Network Status</div>
+        <div class="device-count">2.1M<small>devices online</small></div>
+      </div>
+    </div>
+    <div class="hero-right-bottom">
+      <div class="mini-stat">
+        <div class="mini-stat-num">&lt;50ms</div>
+        <div class="mini-stat-label">Avg. Latency</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-num">99.99%</div>
+        <div class="mini-stat-label">Uptime SLA</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIVIDER -->
+<div class="divider-label">
+  <div class="divider-label-text">Compliant With</div>
+  <div class="divider-logos">
+    <div class="logo-pill">HIPAA</div>
+    <div class="logo-pill">FDA 21 CFR</div>
+    <div class="logo-pill">ISO 13485</div>
+    <div class="logo-pill">SOC 2 Type II</div>
+    <div class="logo-pill">IEC 62304</div>
+    <div class="logo-pill">HL7 FHIR</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="features">
+  <div class="feature">
+    <div class="feature-num">01 / 03</div>
+    <div class="feature-title">Real-Time <em>Telemetry</em></div>
+    <p class="feature-desc">Stream sensor data from any connected device with sub-50ms latency. Our edge network spans 140+ global PoPs for reliable, low-latency delivery.</p>
+    <a href="#" class="feature-link">Explore →</a>
+  </div>
+  <div class="feature">
+    <div class="feature-num">02 / 03</div>
+    <div class="feature-title">Predictive <em>Analytics</em></div>
+    <p class="feature-desc">Clinical ML models trained on anonymized device data surface anomalies up to 48 hours before they become critical incidents.</p>
+    <a href="#" class="feature-link">Explore →</a>
+  </div>
+  <div class="feature">
+    <div class="feature-num">03 / 03</div>
+    <div class="feature-title">Compliance <em>Automation</em></div>
+    <p class="feature-desc">Automated audit trails, report generation, and regulatory documentation that keeps your team audit-ready at all times.</p>
+    <a href="#" class="feature-link">Explore →</a>
+  </div>
+</div>
+
+<!-- CTA BLOCK -->
+<div class="cta-block">
+  <div class="cta-left">
+    <h2>Ready to<br>ship faster?</h2>
+    <p>Join 340+ hospital systems and medical device manufacturers building on the Medisync platform.</p>
+    <a href="#" class="btn-fill">Start Free Trial</a>
+  </div>
+  <div class="cta-right">
+    <p>Customer Story</p>
+    <blockquote>"Medisync reduced our time-to-compliance from 18 months to 6 weeks. It's the most important infrastructure decision we've made."</blockquote>
+    <cite>— VP Engineering, MedCore Systems</cite>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-col">
+    <h4>Medisync</h4>
+    <a href="#">Platform</a>
+    <a href="#">Pricing</a>
+    <a href="#">Changelog</a>
+    <a href="#">Status</a>
+  </div>
+  <div class="footer-col">
+    <h4>Solutions</h4>
+    <a href="#">Hospitals</a>
+    <a href="#">Device Makers</a>
+    <a href="#">Research</a>
+    <a href="#">Enterprise</a>
+  </div>
+  <div class="footer-col">
+    <h4>Developers</h4>
+    <a href="#">Documentation</a>
+    <a href="#">API Reference</a>
+    <a href="#">SDKs</a>
+    <a href="#">GitHub</a>
+  </div>
+  <div class="footer-col">
+    <h4>Legal</h4>
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Security</a>
+    <a href="#">HIPAA BAA</a>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>© 2025 Medisync, Inc.</span>
+  <span>Built for mission-critical environments</span>
+</div>
+
+</body>
+</html>

@@ -17,7 +17,6 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -25,12 +24,7 @@ export default function SignupPage() {
         body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Signup failed');
-        return;
-      }
-      
-      // Check if email verification is required
+      if (!res.ok) { setError(data.error || 'Signup failed'); return; }
       if (data.requiresVerification) {
         router.push(`/verify-pending?email=${encodeURIComponent(email)}`);
       } else {
@@ -43,7 +37,7 @@ export default function SignupPage() {
     }
   }
 
-  async function handleOAuthSignIn(provider: 'google' | 'github' | 'apple') {
+  async function handleOAuthSignIn(provider: 'google' | 'github') {
     setError('');
     setLoading(true);
     try {
@@ -55,89 +49,81 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 font-mono">
-      <div className="w-full max-w-sm font-mono">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-[2px] bg-white mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-            </svg>
+    <div className="auth-page">
+
+      {/* Top bar */}
+      <nav className="auth-nav">
+        <Link href="/" className="nav-brand">AI<span>KOMPUTE</span></Link>
+        <div className="auth-nav-right">
+          Already have an account?&nbsp;
+          <Link href="/login">Sign in →</Link>
+        </div>
+      </nav>
+
+      {/* Form area */}
+      <div className="auth-body">
+        {/* Left panel */}
+        <div className="auth-panel-left">
+          <div>
+            <div className="auth-eyebrow">● FREE TIER INCLUDED</div>
+            <h1 className="auth-heading">
+              Start<br />
+              <span className="outline">Building</span><br />
+              Free.
+            </h1>
+            <p className="auth-subtext">
+              Get your API key instantly. 50 free requests to start — no credit card required. Access every frontier model from day one.
+            </p>
           </div>
-          <h1 className="text-lg font-bold text-white uppercase tracking-tight">[Create Account]</h1>
-          <p className="text-[var(--color-text-secondary)] text-[10px] mt-1 font-medium">Register for free developer credentials</p>
+
+          {/* Feature bullets */}
+          <div className="auth-feature-list">
+            <div className="auth-feature-item">All Anthropic &amp; OpenAI models, plus top open source</div>
+            <div className="auth-feature-item">Automatic fallback &amp; smart routing</div>
+            <div className="auth-feature-item">Usage dashboard &amp; billing controls</div>
+          </div>
         </div>
 
-        {/* Form Container */}
-        <div className="glass-card p-6 border-[var(--color-border)] space-y-4 rounded-[2px]">
-          {error && (
-            <div className="border border-white/20 rounded-[2px] px-3 py-2 text-[10px] text-white bg-white/5 font-medium">
-              {error}
-            </div>
-          )}
+        {/* Right panel — form */}
+        <div className="auth-panel-right">
+          <h2 className="auth-form-title">Create Account</h2>
 
-          {/* OAuth Buttons */}
-          <div className="space-y-2 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => handleOAuthSignIn('google')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white text-black rounded-[2px] font-bold hover:bg-zinc-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
+          {error && <div className="auth-error">{error}</div>}
+
+          {/* OAuth */}
+          <div className="oauth-group">
+            <button type="button" onClick={() => handleOAuthSignIn('google')} disabled={loading} className="btn-oauth primary">
               Continue with Google
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleOAuthSignIn('github')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-[2px] border border-[var(--color-border)] hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
+            <button type="button" onClick={() => handleOAuthSignIn('github')} disabled={loading} className="btn-oauth secondary">
               Continue with GitHub
             </button>
           </div>
 
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[var(--color-border)]"></div>
-            </div>
-            <div className="relative flex justify-center text-[9px] font-bold uppercase tracking-wider">
-              <span className="px-2 bg-black text-[var(--color-text-muted)] font-mono">or email credentials</span>
-            </div>
-          </div>
+          <div className="auth-divider"><span>or</span></div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="auth-form">
             <div>
-              <label className="block text-[9px] font-bold uppercase tracking-wider mb-1.5 text-[var(--color-text-secondary)]">Full Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="John Doe" />
+              <label className="auth-label">Full Name</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="Jane Doe" />
             </div>
-
             <div>
-              <label className="block text-[9px] font-bold uppercase tracking-wider mb-1.5 text-[var(--color-text-secondary)]">Email Address</label>
+              <label className="auth-label">Email Address</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field" placeholder="developer@domain.com" required />
             </div>
-
             <div>
-              <label className="block text-[9px] font-bold uppercase tracking-wider mb-1.5 text-[var(--color-text-secondary)]">Password</label>
+              <label className="auth-label">Password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field" placeholder="Min 8 characters" required minLength={8} />
             </div>
-
-            <button type="submit" className="btn-primary w-full cursor-pointer" disabled={loading}>
-              {loading ? '[Creating Account...]' : '[Create Account]'}
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? 'Creating Account...' : 'Create Account →'}
             </button>
           </form>
 
-          <p className="text-center text-[10px] text-[var(--color-text-secondary)] pt-2 border-t border-white/[0.02]">
-            Have an account?{' '}
-            <Link href="/login" className="text-white hover:underline font-semibold">
-              [Sign in]
-            </Link>
+          <p className="auth-bottom-text">
+            Free tier includes 50 requests/month. No credit card required.
           </p>
         </div>
-
-        <p className="text-center text-[9px] text-[var(--color-text-muted)] mt-6 uppercase tracking-wider font-bold">
-          Free tier includes 50 requests/month total. No credit card required.
-        </p>
       </div>
     </div>
   );
