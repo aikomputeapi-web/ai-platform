@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     const config = {
       maintenance: {
-        enabled: maintenance.value.enabled !== false,
+        enabled: maintenance.value.enabled === true,
         message: typeof maintenance.value.message === 'string' ? maintenance.value.message : '',
         updatedAt: maintenance.updatedAt,
       } satisfies MaintenanceConfig,
@@ -115,7 +115,7 @@ export async function PATCH(req: NextRequest) {
     const changes: Record<string, unknown> = {};
 
     if (body?.maintenance) {
-      const enabled = body.maintenance.enabled !== false;
+      const enabled = body.maintenance.enabled === true;
       const message = typeof body.maintenance.message === 'string' ? body.maintenance.message.slice(0, 280) : '';
       tasks.push(writeSetting(SETTINGS.maintenance, {
         enabled,
@@ -179,7 +179,7 @@ export async function PATCH(req: NextRequest) {
       success: true,
       config: {
         maintenance: {
-          enabled: maintenance.value.enabled !== false,
+          enabled: maintenance.value.enabled === true,
           message: typeof maintenance.value.message === 'string' ? maintenance.value.message : '',
           updatedAt: maintenance.updatedAt,
         },

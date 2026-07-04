@@ -1,0 +1,1 @@
+{"version":3,"file":"testSingleProxy.js","sourceRoot":"","sources":["../../src/fallback/testSingleProxy.ts"],"names":[],"mappings":"AAEA,MAAM,UAAU,qBAAqB,CACnC,KAAiB;IAEjB,OAAO,KAAK,EACV,QAAgB,EAChB,SAAiB,EACjB,SAAS,GAAG,IAAI,EACoC,EAAE;QACtD,OAAO,KAAK,CAAC,IAAI,CAAC,QAAQ,EAAE,SAAS,EAAE,SAAS,CAAC,CAAC;IACpD,CAAC,CAAC;AACJ,CAAC"}

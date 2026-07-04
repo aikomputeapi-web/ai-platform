@@ -10,41 +10,43 @@ type ProviderBreaker = {
   lastFailure?: string | null;
 };
 
-type OperationsData = {
-  health: {
-    status?: string;
-    system?: {
-      uptime?: number;
-      version?: string;
-      nodeVersion?: string;
-      memoryUsage?: { rss?: number; heapUsed?: number; heapTotal?: number };
-    };
-    providerSummary?: { configuredCount?: number; activeCount?: number; monitoredCount?: number };
-    providerHealth?: Record<string, ProviderBreaker>;
-    rateLimitStatus?: Record<string, { queued?: number; running?: number }>;
-    learnedLimits?: Record<string, { limit?: number; remaining?: number; minTime?: number; lastUpdated?: number }>;
-    lockouts?: Record<string, { reason?: string; until?: string | null }>;
-    sessions?: {
-      activeCount?: number;
-      stickyBoundCount?: number;
-      byApiKey?: Record<string, unknown>;
-      top?: Array<{ sessionId: string; requestCount?: number; connectionId?: string; idleMs?: number; ageMs?: number }>;
-    };
-    quotaMonitor?: { active?: number; alerting?: number; exhausted?: number; backoff?: number };
-    inflightRequests?: number;
+type OperationsHealth = {
+  status?: string;
+  system?: {
+    uptime?: number;
+    version?: string;
+    nodeVersion?: string;
+    memoryUsage?: { rss?: number; heapUsed?: number; heapTotal?: number };
   };
+  providerSummary?: { configuredCount?: number; activeCount?: number; monitoredCount?: number };
+  providerHealth?: Record<string, ProviderBreaker>;
+  rateLimitStatus?: Record<string, { queued?: number; running?: number }>;
+  learnedLimits?: Record<string, { limit?: number; remaining?: number; minTime?: number; lastUpdated?: number }>;
+  lockouts?: Record<string, { reason?: string; until?: string | null }>;
+  sessions?: {
+    activeCount?: number;
+    stickyBoundCount?: number;
+    byApiKey?: Record<string, unknown>;
+    top?: Array<{ sessionId: string; requestCount?: number; connectionId?: string; idleMs?: number; ageMs?: number }>;
+  };
+  quotaMonitor?: { active?: number; alerting?: number; exhausted?: number; backoff?: number };
+  inflightRequests?: number;
+};
+
+type OperationsData = {
+  health: OperationsHealth | null;
   providerMetrics: Record<string, { totalRequests?: number; totalSuccesses?: number; successRate?: number; avgLatencyMs?: number }>;
   degradation?: {
     isDegraded?: boolean;
-    summary?: { full?: number; reduced?: number; minimal?: number; default?: number };
+    summary?: { full?: number; reduced?: number; minimal?: number; default?: number } | null;
     features?: Array<{ feature?: string; level?: string; capability?: string; reason?: string; since?: string }>;
   };
 };
 
-const CB_STYLES: Record<string, { tone: string; label: string; badge: string }> = {
-  CLOSED: { tone: 'border-color: var(--accent); background: var(--accent-dim); color: var(--accent);', label: 'Healthy', badge: 'badge-success' },
-  HALF_OPEN: { tone: 'border-color: #f59e0b; background: rgba(245, 158, 11, 0.05); color: #f59e0b;', label: 'Recovering', badge: 'badge-warning' },
-  OPEN: { tone: 'border-color: #ef4444; background: rgba(239, 68, 68, 0.05); color: #ef4444;', label: 'Down', badge: 'badge-danger' },
+const CB_STYLES: Record<string, { tone: React.CSSProperties; label: string; badge: string }> = {
+  CLOSED: { tone: { borderColor: 'var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)' }, label: 'Healthy', badge: 'badge-success' },
+  HALF_OPEN: { tone: { borderColor: '#f59e0b', background: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b' }, label: 'Recovering', badge: 'badge-warning' },
+  OPEN: { tone: { borderColor: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }, label: 'Down', badge: 'badge-danger' },
 };
 
 function formatUptime(seconds?: number) {
@@ -105,7 +107,7 @@ export default function AdminOperationsPage() {
     return () => window.clearTimeout(timer);
   }, [fetchData]);
 
-  const breakerEntries = useMemo(() => Object.entries(data?.health.providerHealth || {}), [data]);
+  const breakerEntries = useMemo(() => Object.entries(data?.health?.providerHealth || {}), [data]);
   const unhealthyBreakers = useMemo(() => breakerEntries.filter(([, breaker]) => breaker.state !== 'CLOSED'), [breakerEntries]);
   const healthyBreakers = useMemo(() => breakerEntries.filter(([, breaker]) => breaker.state === 'CLOSED'), [breakerEntries]);
   const providerRows = useMemo(() => Object.entries(data?.providerMetrics || {}).sort((a, b) => (b[1].totalRequests || 0) - (a[1].totalRequests || 0)).slice(0, 8), [data]);
@@ -152,7 +154,7 @@ export default function AdminOperationsPage() {
     );
   }
 
-  const health = data.health || {};
+  const health: Partial<OperationsHealth> = data.health ?? {};
   const system = health.system || {};
   const providerSummary = health.providerSummary || {};
   const sessions = health.sessions || {};
@@ -280,7 +282,7 @@ export default function AdminOperationsPage() {
                 {unhealthyBreakers.map(([provider, breaker]) => {
                   const style = CB_STYLES[breaker.state || 'OPEN'] || CB_STYLES.OPEN;
                   return (
-                    <div key={provider} style={{ border: '1px solid', padding: '12px', ...style.tone as any }}>
+                    <div key={provider} style={{ border: '1px solid', padding: '12px', ...style.tone }}>
                       <div className="flex-between">
                         <strong className="mono">{provider}</strong>
                         <span className={`badge ${style.badge}`}>{style.label}</span>

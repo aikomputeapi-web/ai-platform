@@ -1,0 +1,51 @@
+{
+  "name": "@ai-platform/free-proxy-pool",
+  "version": "0.1.0",
+  "description": "Portable 3-tier free proxy pool manager — extracted from OmniRoute",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./adapters": {
+      "import": "./dist/adapters/index.js",
+      "types": "./dist/adapters/index.d.ts"
+    },
+    "./providers": {
+      "import": "./dist/providers/index.js",
+      "types": "./dist/providers/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build",
+    "test": "node --experimental-strip-types tests/core.test.ts"
+  },
+  "peerDependencies": {
+    "better-sqlite3": ">=11.0.0",
+    "undici": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "undici": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "typescript": ">=5.5.0",
+    "undici": "^8.6.0"
+  },
+  "license": "MIT"
+}

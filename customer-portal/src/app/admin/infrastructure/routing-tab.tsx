@@ -10,34 +10,36 @@ type ProviderBreaker = {
   lastFailure?: string | null;
 };
 
-type RoutingData = {
-  health: {
-    status?: string;
-    providerSummary?: { configuredCount?: number; activeCount?: number; monitoredCount?: number };
-    providerHealth?: Record<string, ProviderBreaker>;
-    rateLimitStatus?: Record<string, { queued?: number; running?: number }>;
-    learnedLimits?: Record<string, { limit?: number; remaining?: number; minTime?: number; lastUpdated?: number }>;
-    lockouts?: Record<string, { reason?: string; until?: string | null }>;
-    sessions?: {
-      activeCount?: number;
-      stickyBoundCount?: number;
-      top?: Array<{ sessionId: string; requestCount?: number; connectionId?: string; idleMs?: number; ageMs?: number }>;
-    };
-    quotaMonitor?: { active?: number; alerting?: number; exhausted?: number; backoff?: number };
-    inflightRequests?: number;
+type RoutingHealth = {
+  status?: string;
+  providerSummary?: { configuredCount?: number; activeCount?: number; monitoredCount?: number };
+  providerHealth?: Record<string, ProviderBreaker>;
+  rateLimitStatus?: Record<string, { queued?: number; running?: number }>;
+  learnedLimits?: Record<string, { limit?: number; remaining?: number; minTime?: number; lastUpdated?: number }>;
+  lockouts?: Record<string, { reason?: string; until?: string | null }>;
+  sessions?: {
+    activeCount?: number;
+    stickyBoundCount?: number;
+    top?: Array<{ sessionId: string; requestCount?: number; connectionId?: string; idleMs?: number; ageMs?: number }>;
   };
+  quotaMonitor?: { active?: number; alerting?: number; exhausted?: number; backoff?: number };
+  inflightRequests?: number;
+};
+
+type RoutingData = {
+  health: RoutingHealth | null;
   providerMetrics: Record<string, { totalRequests?: number; totalSuccesses?: number; successRate?: number; avgLatencyMs?: number }>;
   degradation?: {
     isDegraded?: boolean;
-    summary?: { full?: number; reduced?: number; minimal?: number; default?: number };
+    summary?: { full?: number; reduced?: number; minimal?: number; default?: number } | null;
     features?: Array<{ feature?: string; level?: string; capability?: string; reason?: string; since?: string }>;
   };
 };
 
-const CB_STYLES: Record<string, { tone: string; label: string; badge: string }> = {
-  CLOSED: { tone: 'border-color: var(--accent); background: var(--accent-dim); color: var(--accent);', label: 'Healthy', badge: 'badge-success' },
-  HALF_OPEN: { tone: 'border-color: #f59e0b; background: rgba(245, 158, 11, 0.05); color: #f59e0b;', label: 'Recovering', badge: 'badge-warning' },
-  OPEN: { tone: 'border-color: #ef4444; background: rgba(239, 68, 68, 0.05); color: #ef4444;', label: 'Down', badge: 'badge-danger' },
+const CB_STYLES: Record<string, { tone: React.CSSProperties; label: string; badge: string }> = {
+  CLOSED: { tone: { borderColor: 'var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)' }, label: 'Healthy', badge: 'badge-success' },
+  HALF_OPEN: { tone: { borderColor: '#f59e0b', background: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b' }, label: 'Recovering', badge: 'badge-warning' },
+  OPEN: { tone: { borderColor: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }, label: 'Down', badge: 'badge-danger' },
 };
 
 function formatUptime(count?: number) {
@@ -83,16 +85,17 @@ export default function AdminRoutingPage() {
     }
   }, []);
 
-  const breakerEntries = useMemo(() => Object.entries(data?.health.providerHealth || {}), [data]);
+  const breakerEntries = useMemo(() => Object.entries(data?.health?.providerHealth || {}), [data]);
   const healthyBreakers = useMemo(() => breakerEntries.filter(([, breaker]) => breaker.state === 'CLOSED'), [breakerEntries]);
   const unhealthyBreakers = useMemo(() => breakerEntries.filter(([, breaker]) => breaker.state !== 'CLOSED'), [breakerEntries]);
   const providerRows = useMemo(() => Object.entries(data?.providerMetrics || {}).sort((a, b) => (b[1].totalRequests || 0) - (a[1].totalRequests || 0)), [data]);
-  const rateLimitRows = useMemo(() => Object.entries(data?.health.rateLimitStatus || {}).sort((a, b) => (b[1].queued || 0) - (a[1].queued || 0)), [data]);
-  const learnedLimitRows = useMemo(() => Object.entries(data?.health.learnedLimits || {}).sort((a, b) => (b[1].remaining || 0) - (a[1].remaining || 0)), [data]);
-  const lockoutRows = useMemo(() => Object.entries(data?.health.lockouts || {}), [data]);
-  const sessions = data?.health.sessions || {};
-  const quota = data?.health.quotaMonitor || {};
-  const statusHealthy = String(data?.health.status || '').toLowerCase() === 'healthy';
+  const rateLimitRows = useMemo(() => Object.entries(data?.health?.rateLimitStatus || {}).sort((a, b) => (b[1].queued || 0) - (a[1].queued || 0)), [data]);
+  const learnedLimitRows = useMemo(() => Object.entries(data?.health?.learnedLimits || {}).sort((a, b) => (b[1].remaining || 0) - (a[1].remaining || 0)), [data]);
+  const lockoutRows = useMemo(() => Object.entries(data?.health?.lockouts || {}), [data]);
+  const health: Partial<RoutingHealth> = data?.health ?? {};
+  const sessions = health.sessions || {};
+  const quota = health.quotaMonitor || {};
+  const statusHealthy = String(health.status || '').toLowerCase() === 'healthy';
 
   useEffect(() => {
     void fetchData();
@@ -150,9 +153,9 @@ export default function AdminRoutingPage() {
       {/* Metrics */}
       <div className="dash-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         {[
-          { label: 'System status', value: statusHealthy ? 'Healthy' : 'Degraded', sub: data.health.status || 'unknown', color: statusHealthy ? 'var(--accent)' : '#f59e0b' },
-          { label: 'Provider Nodes', value: formatUptime(data.health.providerSummary?.configuredCount), sub: `${data.health.providerSummary?.activeCount ?? 0} online`, color: 'var(--text)' },
-          { label: 'Inflight Requests', value: String(data.health.inflightRequests ?? 0), sub: 'current requests', color: 'var(--muted)' },
+          { label: 'System status', value: statusHealthy ? 'Healthy' : 'Degraded', sub: health.status || 'unknown', color: statusHealthy ? 'var(--accent)' : '#f59e0b' },
+          { label: 'Provider Nodes', value: formatUptime(health.providerSummary?.configuredCount), sub: `${health.providerSummary?.activeCount ?? 0} online`, color: 'var(--text)' },
+          { label: 'Inflight Requests', value: String(health.inflightRequests ?? 0), sub: 'current requests', color: 'var(--muted)' },
           { label: 'Alerting breakers', value: String((quota.alerting || 0) + unhealthyBreakers.length), sub: `${quota.exhausted || 0} exhausted quota`, color: '#ef4444' },
         ].map((card) => (
           <div key={card.label} className="dash-stat">
@@ -181,7 +184,7 @@ export default function AdminRoutingPage() {
                 {unhealthyBreakers.map(([provider, breaker]) => {
                   const style = CB_STYLES[breaker.state || 'OPEN'] || CB_STYLES.OPEN;
                   return (
-                    <div key={provider} style={{ border: '1px solid', padding: '12px', ...style.tone as any }}>
+                    <div key={provider} style={{ border: '1px solid', padding: '12px', ...style.tone }}>
                       <div className="flex-between">
                         <strong className="mono">{provider}</strong>
                         <span className={`badge ${style.badge}`}>{style.label}</span>
@@ -225,21 +228,21 @@ export default function AdminRoutingPage() {
             </div>
             <div className="dash-param">
               <div className="dash-param-label">Rate Limiters</div>
-              <div className="dash-param-value">{Object.keys(data.health.rateLimitStatus || {}).length}</div>
+              <div className="dash-param-value">{Object.keys(health.rateLimitStatus || {}).length}</div>
               <div className="text-10 text-muted mono" style={{ marginTop: '4px' }}>
                 {quota.backoff ?? 0} backoff states
               </div>
             </div>
             <div className="dash-param">
               <div className="dash-param-label">Learned limits</div>
-              <div className="dash-param-value">{Object.keys(data.health.learnedLimits || {}).length}</div>
+              <div className="dash-param-value">{Object.keys(health.learnedLimits || {}).length}</div>
               <div className="text-10 text-muted mono" style={{ marginTop: '4px' }}>
                 adaptive caps
               </div>
             </div>
             <div className="dash-param">
               <div className="dash-param-label">Active Lockouts</div>
-              <div className="dash-param-value">{Object.keys(data.health.lockouts || {}).length}</div>
+              <div className="dash-param-value">{Object.keys(health.lockouts || {}).length}</div>
               <div className="text-10 text-muted mono" style={{ marginTop: '4px' }}>
                 blocked providers
               </div>

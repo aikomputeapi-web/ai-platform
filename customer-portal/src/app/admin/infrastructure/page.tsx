@@ -8,6 +8,7 @@ import ModelsAdminPage from './models-tab';
 import AdminReportsPage from './reports-tab';
 import AdminSettingsPage from './settings-tab';
 import CatalogAdminTab from './catalog-tab';
+import ProxyControlCenterTab from './proxy-control-tab';
 
 function AdminInfrastructurePageContent() {
   const router = useRouter();
@@ -23,6 +24,7 @@ function AdminInfrastructurePageContent() {
   const tabs = [
     { id: 'operations', label: 'Operations' },
     { id: 'routing', label: 'Routing' },
+    { id: 'proxy', label: 'Proxy Control Center' },
     { id: 'catalog', label: 'Customer Catalog' },
     { id: 'models', label: 'Model Registry' },
     { id: 'reports', label: 'Scheduled Reports' },
@@ -51,6 +53,7 @@ function AdminInfrastructurePageContent() {
       <div>
         {activeTab === 'operations' && <AdminOperationsPage />}
         {activeTab === 'routing' && <AdminRoutingPage />}
+        {activeTab === 'proxy' && <ProxyControlCenterTab />}
         {activeTab === 'catalog' && <CatalogAdminTab />}
         {activeTab === 'models' && <ModelsAdminPage />}
         {activeTab === 'reports' && <AdminReportsPage />}

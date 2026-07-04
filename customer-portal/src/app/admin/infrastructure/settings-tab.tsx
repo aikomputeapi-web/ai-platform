@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, ShieldAlert, Sparkles } from 'lucide-react';
+import { Bell, ShieldAlert } from 'lucide-react';
 
 type SettingsData = {
   config: {
     maintenance: { enabled: boolean; message: string; updatedAt: string | null };
     support: { email: string; updatedAt: string | null };
     announcement: { enabled: boolean; message: string; updatedAt: string | null };
+    emailDotShadowban: { enabled: boolean; updatedAt: string | null };
   };
 };
 
@@ -51,7 +52,7 @@ export default function AdminSettingsPage() {
     try {
       const requests: Promise<Response>[] = [];
 
-      if (next.maintenance || next.support || next.announcement) {
+      if (next.maintenance || next.support || next.announcement || next.emailDotShadowban) {
         requests.push(
           fetch('/api/admin/settings', {
             method: 'PATCH',
@@ -62,6 +63,7 @@ export default function AdminSettingsPage() {
               maintenance: next.maintenance,
               support: next.support,
               announcement: next.announcement,
+              emailDotShadowban: next.emailDotShadowban,
               actor: 'admin',
             }),
           })
@@ -119,6 +121,7 @@ export default function AdminSettingsPage() {
   const support = settings.config.support;
   const announcement = settings.config.announcement;
   const reportDelivery = reportConfig.config;
+  const emailDotShadowban = settings.config.emailDotShadowban;
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--bg)', color: 'var(--text)' }}>
@@ -146,6 +149,7 @@ export default function AdminSettingsPage() {
             { label: 'Maintenance', value: maintenance.enabled ? 'On' : 'Off', sub: maintenance.message || 'No message set', color: maintenance.enabled ? '#f59e0b' : 'var(--accent)' },
             { label: 'Support Email', value: support.email, sub: 'customer contact channel', color: 'var(--text)' },
             { label: 'Announcements', value: announcement.enabled ? 'Active' : 'Hidden', sub: announcement.message || 'No announcement set', color: announcement.enabled ? 'var(--text)' : 'var(--muted)' },
+            { label: 'Dot Shadowban', value: emailDotShadowban.enabled ? 'Enabled' : 'Disabled', sub: 'email alias signup guardrail', color: emailDotShadowban.enabled ? '#f59e0b' : 'var(--muted)' },
             { label: 'Report Delivery', value: reportDelivery.enabled ? 'Enabled' : 'Paused', sub: reportDelivery.pausedBy ? `paused by ${reportDelivery.pausedBy}` : 'auto delivery status', color: reportDelivery.enabled ? 'var(--accent)' : '#ef4444' },
           ].map((card) => (
             <div key={card.label} className="dash-stat">
@@ -279,6 +283,31 @@ export default function AdminSettingsPage() {
               </p>
             </div>
 
+            {/* Signup Guardrails Card */}
+            <div className="dash-card mb-0">
+              <div className="dash-card-title">Signup Guardrails</div>
+              <p className="text-13 text-muted mb-16">Control defensive customer-account rules exposed by the settings API.</p>
+
+              <label className="flex-between" style={{ padding: '12px', border: '1px solid var(--border)', background: 'var(--bg)' }}>
+                <div>
+                  <div className="font-600 text-12">Email dot shadowban</div>
+                  <div className="text-11 text-muted" style={{ marginTop: '2px' }}>Flag dot-variant signup abuse without blocking the settings page.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={emailDotShadowban.enabled}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    config: {
+                      ...settings.config,
+                      emailDotShadowban: { ...emailDotShadowban, enabled: e.target.checked },
+                    },
+                  })}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </label>
+            </div>
+
             {/* Scheduled Reports Card */}
             <div className="dash-card mb-0">
               <div className="dash-card-title">Scheduled Reports</div>
@@ -315,6 +344,7 @@ export default function AdminSettingsPage() {
                   maintenance,
                   support,
                   announcement,
+                  emailDotShadowban,
                 })}
                 className="btn-primary w-full"
                 style={{ padding: '12px' }}
