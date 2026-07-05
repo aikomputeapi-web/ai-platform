@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-#  AI Platform — Deploy (pull pre-built images from GHCR)
+#  AI Platform — Deploy (Blue-Green Zero-Downtime)
 # ══════════════════════════════════════════════════════════════════════════════
 #
 #  Called by GitHub Actions CI/CD after images are built & pushed.
-#  Can also be run manually:  IMAGE_TAG=abc123 ./deploy.sh
+#  Can also be run manually:
+#    ./deploy.sh                          # Deploy with default options
+#    IMAGE_TAG=abc123 ./deploy.sh         # Deploy specific image tag
+#    ACTIVE_SLOT=blue ./deploy.sh         # Override slot detection
+#    FORCE=true ./deploy.sh               # Skip health checks (emergency)
+#
+#  This script delegates to scripts/blue-green-switch.sh for the actual
+#  blue-green orchestration. It exists as a thin wrapper so existing CI/CD
+#  pipelines that call ./deploy.sh continue to work unchanged.
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -26,13 +34,14 @@ error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 info()  { echo -e "${BLUE}[i]${NC} $1"; }
 
 echo ""
-echo -e "${CYAN}${BOLD}═══ AI Platform — Deploy ═══${NC}"
+echo -e "${CYAN}${BOLD}═══ AI Platform — Deploy (Blue-Green) ═══${NC}"
 echo ""
 
 # ── Pre-flight checks ──
 [[ -f "${ENV_FILE}" ]] || error ".env not found. Run setup.sh first."
 [[ -f "${COMPOSE_FILE}" ]] || error "docker-compose.unified.yml not found."
 docker compose version &>/dev/null || error "Docker Compose not found."
+sudo nginx -v &>/dev/null || error "Nginx not found."
 
 log "Environment OK"
 
@@ -108,112 +117,31 @@ if [[ -f "./OmniRoute/.env.example" ]] && [[ -f "./OmniRoute/.env" ]]; then
     log "OmniRoute .env synced"
 fi
 
-# ── Image Tagging for Rollbacks ──
+# ── Tag backup images (for emergency recovery) ──
 info "Tagging current images as backup..."
 docker tag ghcr.io/aikomputeapi-web/ai-platform/omniroute:latest omniroute:backup 2>/dev/null || true
 docker tag ghcr.io/aikomputeapi-web/ai-platform/customer-portal:latest customer-portal:backup 2>/dev/null || true
 
-# ── Pull pre-built images from GHCR ──
-info "Pulling images from GHCR (tag: ${IMAGE_TAG})..."
-IMAGE_TAG="${IMAGE_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
-log "Images pulled"
+# ── Delegate to blue-green switch script ──
+# All the heavy lifting (pull, migrate, copy volume, start green, health check,
+# swap nginx, update .env) is handled by the switch script.
+info "Delegating to blue-green switch script..."
+cd "${SCRIPT_DIR}"
 
-# ── Helper: Wait for Healthcheck ──
-wait_for_health() {
-    local container_name="$1"
-    info "Waiting for ${container_name} to be healthy..."
-    local max_attempts=30
-    local attempt=1
-    while [[ $attempt -le $max_attempts ]]; do
-        local status=$(docker inspect --format '{{json .State.Health.Status}}' "${container_name}" 2>/dev/null | tr -d '"')
-        if [[ "${status}" == "healthy" ]]; then
-            log "${container_name} is healthy!"
-            return 0
-        fi
-
-        if [[ -z "${status}" ]]; then
-            local running=$(docker inspect --format '{{.State.Running}}' "${container_name}" 2>/dev/null)
-            if [[ "${running}" != "true" ]]; then
-                error "${container_name} failed to start"
-            fi
-        fi
-        sleep 2
-        attempt=$((attempt + 1))
-    done
-    error "${container_name} did not become healthy within ${max_attempts} attempts"
-}
-
-# ── Helper: Database Migrations ──
-run_migrations() {
-    info "Running database migrations..."
-    if docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js migrate deploy"; then
-        log "Migrations applied"
-        info "Running database seed..."
-        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --no-deps --rm customer-portal sh -c "node node_modules/prisma/build/index.js db seed" || warn "Seed failed (non-fatal)"
-    else
-        warn "Migration failed! Schema may be partially applied — manual inspection required."
-        warn "Continuing deploy to avoid cascading outage; fix migrations manually."
-    fi
-}
-
-# ── Run migrations ──
-run_migrations
-
-# ── Restart services ──
-info "Restarting all services..."
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
-wait_for_health "omniroute"
-wait_for_health "customer-portal"
-wait_for_health "report-deliverer"
-log "All services healthy"
-
-# ── Update nginx config from template ──
-TARGET_NGINX="/etc/nginx/nginx.conf"
-SOURCE_NGINX="${SCRIPT_DIR}/nginx/nginx.conf"
-if [[ -f "${SOURCE_NGINX}" ]]; then
-    DOMAIN=$(grep "^DOMAIN=" "${ENV_FILE}" | cut -d= -f2-)
-    CERT_DOMAIN="${DOMAIN}"
-    if [[ ! -d "/etc/letsencrypt/live/${CERT_DOMAIN}" ]]; then
-        FOUND_CERT=$(find /etc/letsencrypt/live/ -mindepth 1 -maxdepth 1 -type d -not -name "README" 2>/dev/null | sort | head -n 1 || true)
-        if [[ -n "${FOUND_CERT}" ]]; then
-            CERT_DOMAIN=$(basename "${FOUND_CERT}")
-        fi
-    fi
-
-    TEMP_CONF=$(mktemp)
-    cp "${SOURCE_NGINX}" "${TEMP_CONF}"
-    sed -i "s/DOMAIN_PLACEHOLDER/${DOMAIN}/g" "${TEMP_CONF}"
-    sed -i "s/SSL_CERT_NAME_PLACEHOLDER/${CERT_DOMAIN}/g" "${TEMP_CONF}"
-
-    if ! diff -q "${TEMP_CONF}" "${TARGET_NGINX}" &>/dev/null; then
-        info "Nginx config changed — updating..."
-        sudo cp "${TARGET_NGINX}" "${TARGET_NGINX}.bak" 2>/dev/null || true
-        sudo cp "${TEMP_CONF}" "${TARGET_NGINX}"
-        if sudo nginx -t; then
-            sudo systemctl reload nginx
-            log "Nginx reloaded"
-            sudo rm -f "${TARGET_NGINX}.bak"
-        else
-            warn "Nginx config test failed! Restoring backup."
-            sudo cp "${TARGET_NGINX}.bak" "${TARGET_NGINX}" 2>/dev/null || true
-            sudo systemctl reload nginx || true
-        fi
-    else
-        log "Nginx config unchanged"
-    fi
-    rm -f "${TEMP_CONF}"
+if [[ -x "${SCRIPT_DIR}/scripts/blue-green-switch.sh" ]]; then
+    bash "${SCRIPT_DIR}/scripts/blue-green-switch.sh"
+    log "Blue-green deploy complete!"
 else
-    warn "nginx.conf template not found — skipping config update"
+    error "scripts/blue-green-switch.sh not found or not executable"
 fi
-
-# ── Cleanup ──
-info "Cleaning up Docker artifacts..."
-docker image prune -f 2>/dev/null || true
 
 # ── Post-deploy confirmation ──
 echo ""
-docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}"
+docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 echo ""
 
-log "Deploy complete — all containers running and healthy!"
+log "Deploy complete — ${TARGET_SLOT:-new} environment is now serving traffic!"
+echo -e "${YELLOW}${BOLD}NOTE:${NC} Previous environment is still running for rollback."
+echo -e "      Run './scripts/blue-green-rollback.sh' to revert if needed."
+echo -e "      Run './scripts/blue-green-cleanup.sh <slot>' to clean up old environment."
 echo ""

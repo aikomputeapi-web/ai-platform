@@ -19,6 +19,10 @@
 #    update      Pull latest + rebuild
 #    ssl-renew   Force cert renewal
 #    cleanup     Prune old images/logs
+#    bg:status   Blue-green slot status
+#    bg:switch   Perform blue-green deploy (delegate to scripts/blue-green-switch.sh)
+#    bg:rollback Rollback to previous blue-green slot
+#    bg:cleanup  Remove old blue-green environment
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -31,6 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.unified.yml"
 ENV_FILE="${SCRIPT_DIR}/.env"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
+NGINX_CONF="/etc/nginx/nginx.conf"
 
 dc() { docker compose -f "${COMPOSE_FILE}" "$@"; }
 
@@ -237,6 +242,107 @@ cmd_shell() {
 cmd_ssl_renew() { certbot renew --force-renewal --post-hook "systemctl reload nginx"; }
 cmd_cleanup()   { docker image prune -f; docker volume prune -f; docker builder prune -f; find "${SCRIPT_DIR}" -name "*.log" -mtime +30 -delete 2>/dev/null; }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Blue-Green Management Commands
+# ══════════════════════════════════════════════════════════════════════════════
+
+cmd_bg_status() {
+    echo ""
+    echo -e "${CYAN}${BOLD}═══ Blue-Green Status ═══${NC}"
+    echo ""
+
+    # Read active slot from .env
+    local active_slot=""
+    if [[ -f "${ENV_FILE}" ]]; then
+        active_slot=$(grep "^ACTIVE_SLOT=" "${ENV_FILE}" | cut -d= -f2- | tr -d '[:space:]')
+    fi
+    if [[ -z "${active_slot}" ]]; then
+        active_slot="unknown"
+    fi
+    echo -e "${BOLD}Active slot:${NC} ${active_slot^^}"
+    echo ""
+
+    # Get running container names
+    local running_names
+    running_names=$(docker ps --format '{{.Names}}' 2>/dev/null || true)
+
+    # Blue slot
+    echo -e "${BOLD}Blue (ports 20128/20129/3000):${NC}"
+    if echo "${running_names}" | grep -q "^omniroute$" 2>/dev/null; then
+        echo -e "  ${GREEN}●${NC} omniroute — $(docker inspect --format '{{.State.Health.Status}}' omniroute 2>/dev/null || echo 'unknown')"
+    else
+        echo -e "  ${RED}●${NC} omniroute — not running"
+    fi
+    if echo "${running_names}" | grep -q "^customer-portal$" 2>/dev/null; then
+        echo -e "  ${GREEN}●${NC} customer-portal — $(docker inspect --format '{{.State.Health.Status}}' customer-portal 2>/dev/null || echo 'unknown')"
+    else
+        echo -e "  ${RED}●${NC} customer-portal — not running"
+    fi
+    local bc1=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:20128/ 2>/dev/null || echo "000")
+    local bc2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:20129/v1/models 2>/dev/null || echo "000")
+    local bc3=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:3000/api/health 2>/dev/null || echo "000")
+    echo -e "  Dashboard: HTTP ${bc1}  |  API: HTTP ${bc2}  |  Portal: HTTP ${bc3}"
+    echo ""
+
+    # Green slot
+    echo -e "${BOLD}Green (ports 20138/20139/3001):${NC}"
+    if echo "${running_names}" | grep -q "^omniroute-green$" 2>/dev/null; then
+        echo -e "  ${GREEN}●${NC} omniroute-green — $(docker inspect --format '{{.State.Health.Status}}' omniroute-green 2>/dev/null || echo 'unknown')"
+    else
+        echo -e "  ${RED}●${NC} omniroute-green — not running"
+    fi
+    if echo "${running_names}" | grep -q "^customer-portal-green$" 2>/dev/null; then
+        echo -e "  ${GREEN}●${NC} customer-portal-green — $(docker inspect --format '{{.State.Health.Status}}' customer-portal-green 2>/dev/null || echo 'unknown')"
+    else
+        echo -e "  ${RED}●${NC} customer-portal-green — not running"
+    fi
+    local gc1=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:20138/ 2>/dev/null || echo "000")
+    local gc2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:20139/v1/models 2>/dev/null || echo "000")
+    local gc3=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:3001/api/health 2>/dev/null || echo "000")
+    echo -e "  Dashboard: HTTP ${gc1}  |  API: HTTP ${gc2}  |  Portal: HTTP ${gc3}"
+    echo ""
+
+    # Volumes
+    echo -e "${BOLD}Volumes:${NC}"
+    docker volume ls --filter "name=omniroute" --format "  {{.Name}}" 2>/dev/null || echo "  (none)"
+    echo ""
+
+    # Nginx upstream status
+    echo -e "${BOLD}Nginx upstreams:${NC}"
+    sudo grep -n "server 127.0.0.1:" "${NGINX_CONF}" 2>/dev/null || echo "  (unable to read)"
+    echo ""
+}
+
+cmd_bg_switch() {
+    echo -e "${BLUE}[i]${NC} Starting blue-green deploy..."
+    if [[ ! -x "${SCRIPT_DIR}/scripts/blue-green-switch.sh" ]]; then
+        error "scripts/blue-green-switch.sh not found or not executable"
+    fi
+    bash "${SCRIPT_DIR}/scripts/blue-green-switch.sh"
+}
+
+cmd_bg_rollback() {
+    echo -e "${BLUE}[i]${NC} Starting blue-green rollback..."
+    if [[ ! -x "${SCRIPT_DIR}/scripts/blue-green-rollback.sh" ]]; then
+        error "scripts/blue-green-rollback.sh not found or not executable"
+    fi
+    bash "${SCRIPT_DIR}/scripts/blue-green-rollback.sh"
+}
+
+cmd_bg_cleanup() {
+    local target="${1:-}"
+    if [[ -z "${target}" ]]; then
+        echo -e "${YELLOW}Usage:${NC} ./manage.sh bg:cleanup <blue|green>"
+        echo "  Specify which environment to clean up."
+        return 1
+    fi
+    echo -e "${BLUE}[i]${NC} Cleaning up ${target^^} environment..."
+    if [[ ! -x "${SCRIPT_DIR}/scripts/blue-green-cleanup.sh" ]]; then
+        error "scripts/blue-green-cleanup.sh not found or not executable"
+    fi
+    bash "${SCRIPT_DIR}/scripts/blue-green-cleanup.sh" "${target}"
+}
+
 cmd_help() {
     echo -e "\n${BOLD}AI Platform Management${NC}\n"
     echo "  status          Service health + resources"
@@ -251,6 +357,12 @@ cmd_help() {
     echo "  update          Pull + rebuild"
     echo "  ssl-renew       Force SSL renewal"
     echo "  cleanup         Prune old data"
+    echo ""
+    echo -e "${CYAN}Blue-Green Deployment:${NC}"
+    echo "  bg:status       Show blue-green slot status"
+    echo "  bg:switch       Perform blue-green deploy (zero-downtime)"
+    echo "  bg:rollback     Rollback to previous slot"
+    echo "  bg:cleanup <s>  Remove old environment (blue|green)"
     echo ""
 }
 
@@ -268,5 +380,9 @@ case "${1:-help}" in
     ssl-renew)  cmd_ssl_renew ;;
     update)     cmd_update ;;
     cleanup)    cmd_cleanup ;;
+    bg:status)  cmd_bg_status ;;
+    bg:switch)  cmd_bg_switch ;;
+    bg:rollback) cmd_bg_rollback ;;
+    bg:cleanup) shift; cmd_bg_cleanup "$@" ;;
     *)          cmd_help ;;
 esac
