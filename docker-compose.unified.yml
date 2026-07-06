@@ -1,8 +1,18 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  AI Platform — Docker Compose (Unified Stack)
+#  AI Platform — Docker Compose (Unified Stack, Blue-Green)
 # ══════════════════════════════════════════════════════════════════════════════
 #
-#  Dual-instance rolling-deployment config for zero downtime.
+#  Blue-green single-VPS deployment for near-zero downtime.
+#
+#  Blue  = active slot (default): `docker compose up -d`
+#          → omniroute :20128/:20129, customer-portal :3000, volume ai-omniroute-data
+#
+#  Green = standby slot (started only during a deploy via the "green" profile):
+#          `docker compose --profile green up -d omniroute-green customer-portal-green`
+#          → omniroute :20138/:20139, customer-portal :3001, volume ai-omniroute-data-green
+#
+#  Only ONE slot ever serves traffic (nginx upstream swap) and only ONE slot ever
+#  has the OmniRoute SQLite volume mounted. See scripts/blue-green-switch.sh.
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -190,6 +200,30 @@ services:
       - "127.0.0.1:20129:20129"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # OmniRoute GREEN — standby slot. Started only during a blue-green deploy.
+  #   • Alternate host ports (20138/20139) so it can run alongside blue briefly
+  #   • Separate volume (ai-omniroute-data-green) — a COPY of blue's SQLite data,
+  #     never the same volume, so the two slots never open one SQLite file at once
+  #   • Shares the "omniroute" network alias so internal service references keep
+  #     working after the swap (safe: only one slot serves traffic at a time)
+  # ─────────────────────────────────────────────────────────────────────────
+  omniroute-green:
+    <<: *omniroute-base
+    container_name: omniroute-green
+    profiles: ["green"]
+    ports:
+      - "127.0.0.1:20138:20128"
+      - "127.0.0.1:20139:20129"
+    volumes:
+      - omniroute_data_green:/app/data
+      - ./OmniRoute/proxy_scraper_data:/app/proxy_scraper_data:ro
+    networks:
+      ai-network:
+        aliases:
+          - omniroute
+          - omniroute-green
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Customer Portal — Self-service for customers. Single instance.
   # ─────────────────────────────────────────────────────────────────────────
   customer-portal:
@@ -197,6 +231,25 @@ services:
     container_name: customer-portal
     ports:
       - "127.0.0.1:3000:3000"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Customer Portal GREEN — standby slot. Stateless (Cloud SQL + Redis are
+  # external), so no volume handoff needed. Started only during a deploy.
+  # ─────────────────────────────────────────────────────────────────────────
+  customer-portal-green:
+    <<: *portal-base
+    container_name: customer-portal-green
+    profiles: ["green"]
+    depends_on:
+      omniroute-green:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks:
+      ai-network:
+        aliases:
+          - customer-portal
+          - customer-portal-green
 
   # ─────────────────────────────────────────────────────────────────────────
   # Scheduled Report Deliverer — polls the portal and sends due reports
@@ -224,6 +277,40 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - ai-network
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # API Key Reconciler — keeps the Customer Portal (PostgreSQL) and OmniRoute
+  # (SQLite) API key stores in sync. OmniRoute is the single source of truth
+  # that issues keys; the portal mirrors them. This worker polls the portal's
+  # /api/admin/keys/reconcile endpoint every 5 minutes so drift (from blue-green
+  # rollbacks, keys made directly in the OmniRoute dashboard, or auto-created
+  # CLI/service keys) is corrected automatically — no operator intervention.
+  # See docs/API-KEY-SYSTEM-DIAGNOSIS.md §6.
+  # ─────────────────────────────────────────────────────────────────────────
+  api-key-reconciler:
+    image: ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${IMAGE_TAG:-latest}
+    container_name: api-key-reconciler
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 256m
+    memswap_limit: 256m
+    depends_on:
+      customer-portal:
+        condition: service_healthy
+    command: ["node", "scripts/reconcile-api-keys-worker.mjs"]
+    environment:
+      PORTAL_INTERNAL_URL: http://customer-portal:3000
+      ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
+      RECONCILE_INTERVAL_SECONDS: 300
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('fs'); try{const s=fs.statSync('/tmp/healthy'); process.exit(Date.now()-s.mtimeMs<600000?0:1)}catch{process.exit(1)}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - ai-network
 
@@ -258,6 +345,8 @@ volumes:
 #    name: ai-redis-data
   omniroute_data:
     name: ai-omniroute-data
+  omniroute_data_green:
+    name: ai-omniroute-data-green
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Network
