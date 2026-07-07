@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, Database, Play, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { Activity, Database, Play, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   DEFAULT_PROXY_SETTINGS,
   type ProxyControlSource,
@@ -14,24 +14,24 @@ import {
 
 type Snapshot = ProxyControlSnapshot;
 
-const TIER_TABS: Array<{ id: ProxyTier; label: string; title: string; empty: string }> = [
+const TIER_CONFIG: Array<{ id: ProxyTier; label: string; title: string; empty: string }> = [
   {
     id: 'tier1',
     label: 'Tier 1 Intake',
     title: 'Tier 1 Intake / Free Pool',
-    empty: 'No Tier 1 free proxy intake rows. The owning free-proxy service is either empty or unreachable.',
+    empty: 'No Tier 1 free proxy intake rows.',
   },
   {
     id: 'tier2',
     label: 'Tier 2 Candidates',
     title: 'Tier 2 Verified Candidates',
-    empty: 'No Tier 2 verified candidate rows. Candidates are produced by the check tick on the owning free-proxy service.',
+    empty: 'No Tier 2 verified candidate rows.',
   },
   {
     id: 'tier3',
-    label: 'Tier 3 Global Pool',
+    label: 'Tier 3 Active Pool',
     title: 'Tier 3 Active Global Proxy Pool',
-    empty: 'No active global proxy rows. The global pool is populated by promotion of Tier 2 candidates.',
+    empty: 'No active global proxy rows.',
   },
 ];
 
@@ -68,26 +68,28 @@ const EMPTY_SNAPSHOT: Snapshot = {
 };
 
 function ProxyTierTable({
+  tierLabel,
   rows,
   selectedKeys,
   onToggleRow,
-  onToggleAll,
+  onToggleAllInTier,
   emptyText,
 }: {
+  tierLabel: string;
   rows: ProxyPoolRow[];
   selectedKeys: Set<string>;
   onToggleRow: (selectionKey: string) => void;
-  onToggleAll: (rows: ProxyPoolRow[]) => void;
+  onToggleAllInTier: (rows: ProxyPoolRow[]) => void;
   emptyText: string;
 }) {
-  const selectedCount = rows.filter((row) => selectedKeys.has(row.selectionKey)).length;
-  const allSelected = rows.length > 0 && selectedCount === rows.length;
+  const selectedInTier = rows.filter((row) => selectedKeys.has(row.selectionKey)).length;
+  const allSelected = rows.length > 0 && selectedInTier === rows.length;
 
   return (
-    <div className="dash-card mb-0 p-0 overflow-hidden">
-      <div className="dash-card-title flex-between" style={{ padding: '24px 24px 0 24px' }}>
-        <span>Pool Rows</span>
-        <span className="badge badge-accent">{selectedCount} selected</span>
+    <div className="dash-card mb-12 p-0 overflow-hidden">
+      <div className="dash-card-title flex-between" style={{ padding: '12px 24px' }}>
+        <span className="font-600 text-14">{tierLabel}</span>
+        <span className="badge badge-accent">{selectedInTier}/{rows.length} selected</span>
       </div>
       <div className="overflow-x-auto">
         <table className="dash-table">
@@ -96,10 +98,10 @@ function ProxyTierTable({
               <th style={{ width: '48px', paddingLeft: '24px' }}>
                 <input
                   type="checkbox"
-                  aria-label="Select all proxy rows"
+                  aria-label={`Select all in ${tierLabel}`}
                   checked={allSelected}
                   disabled={rows.length === 0}
-                  onChange={() => onToggleAll(rows)}
+                  onChange={() => onToggleAllInTier(rows)}
                   style={{ width: '16px', height: '16px', cursor: rows.length > 0 ? 'pointer' : 'not-allowed' }}
                 />
               </th>
@@ -139,7 +141,7 @@ function ProxyTierTable({
               </tr>
             )) : (
               <tr>
-                <td colSpan={8} className="text-center text-muted" style={{ padding: '32px 24px' }}>{emptyText}</td>
+                <td colSpan={8} className="text-center text-muted" style={{ padding: '24px' }}>{emptyText}</td>
               </tr>
             )}
           </tbody>
@@ -152,7 +154,6 @@ function ProxyTierTable({
 type AsyncState = 'idle' | 'pending' | 'ok' | 'error';
 
 export default function ProxyControlCenterTab() {
-  const [activeTier, setActiveTier] = useState<ProxyTier>('tier1');
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [snapshot, setSnapshot] = useState<Snapshot>(() => EMPTY_SNAPSHOT);
   const [loadState, setLoadState] = useState<AsyncState>('idle');
@@ -176,8 +177,13 @@ export default function ProxyControlCenterTab() {
     }),
     [snapshot],
   );
-  const activeRows = rowsByTier[activeTier];
-  const currentTier = TIER_TABS.find((tab) => tab.id === activeTier) || TIER_TABS[0];
+
+  // Flatten all rows across tiers for the global select-all.
+  const allRows = useMemo(
+    () => [...snapshot.tiers.tier1, ...snapshot.tiers.tier2, ...snapshot.tiers.tier3],
+    [snapshot],
+  );
+
   const activeProviders = Object.values(settings.providers).filter(Boolean).length;
 
   const fetchSnapshot = useCallback(async () => {
@@ -215,11 +221,7 @@ export default function ProxyControlCenterTab() {
   // stale `tier:sourceId` pairs to the actions endpoint.
   useEffect(() => {
     if (selectedKeys.size === 0) return;
-    const valid = new Set(
-      [...snapshot.tiers.tier1, ...snapshot.tiers.tier2, ...snapshot.tiers.tier3].map(
-        (row) => row.selectionKey,
-      ),
-    );
+    const valid = new Set(allRows.map((row) => row.selectionKey));
     const pruned = new Set<string>();
     let changed = false;
     for (const key of selectedKeys) {
@@ -232,7 +234,7 @@ export default function ProxyControlCenterTab() {
     if (changed) setSelectedKeys(pruned);
     // Depends only on the underlying row identities, not the selection object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot.tiers.tier1, snapshot.tiers.tier2, snapshot.tiers.tier3, selectedKeys.size]);
+  }, [allRows, selectedKeys.size]);
 
   function toggleRow(selectionKey: string) {
     setSelectedKeys((current) => {
@@ -246,7 +248,7 @@ export default function ProxyControlCenterTab() {
     });
   }
 
-  function toggleAll(rows: ProxyPoolRow[]) {
+  function toggleAllInTier(rows: ProxyPoolRow[]) {
     setSelectedKeys((current) => {
       const next = new Set(current);
       const allSelected = rows.length > 0 && rows.every((row) => next.has(row.selectionKey));
@@ -257,6 +259,21 @@ export default function ProxyControlCenterTab() {
           next.add(row.selectionKey);
         }
       });
+      return next;
+    });
+  }
+
+  /** Global select-all that spans every tier. */
+  function toggleSelectAll() {
+    setSelectedKeys((current) => {
+      const allSelected =
+        allRows.length > 0 && allRows.every((row) => current.has(row.selectionKey));
+      const next = new Set(current);
+      if (allSelected) {
+        allRows.forEach((row) => next.delete(row.selectionKey));
+      } else {
+        allRows.forEach((row) => next.add(row.selectionKey));
+      }
       return next;
     });
   }
@@ -284,7 +301,7 @@ export default function ProxyControlCenterTab() {
       }
       const summary = `Applied ${body.applied ?? 0}, skipped ${body.skipped ?? 0}`;
       setActionState({ active: false, last: summary });
-      // Mirror the operations/routing pattern: refresh state after any mtu.
+      // Mirror the operations/routing pattern: refresh state after any mutation.
       await fetchSnapshot();
     } catch {
       setActionState({ active: false, last: 'Network error' });
@@ -344,11 +361,13 @@ export default function ProxyControlCenterTab() {
   }
 
   const loading = loadState === 'pending';
-  const tierSelectedCount = activeRows.filter((row) => selectedKeys.has(row.selectionKey)).length;
+  const totalSelected = selectedKeys.size;
+  const globalAllSelected = allRows.length > 0 && totalSelected === allRows.length;
   const source = snapshot.source || 'unavailable';
 
   return (
     <div>
+      {/* ── Page Header ── */}
       <div className="dash-page-header flex flex-wrap gap-20" style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div className="badge badge-accent mb-8" style={{ fontSize: '9px' }}>Proxy System</div>
@@ -396,11 +415,13 @@ export default function ProxyControlCenterTab() {
         </div>
       )}
 
+      {/* ── Stats Cards ── */}
       <div className="dash-stats-grid mb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         {[
           { label: 'Tier 1 Intake', value: snapshot.counts.tier1.toLocaleString(), sub: 'free pool rows', color: 'var(--text)' },
           { label: 'Tier 2 Candidates', value: snapshot.counts.tier2.toLocaleString(), sub: 'verified candidates', color: '#f59e0b' },
           { label: 'Tier 3 Active Pool', value: snapshot.counts.tier3.toLocaleString(), sub: 'global proxy rows', color: 'var(--accent)' },
+          { label: 'Selected', value: totalSelected.toLocaleString(), sub: 'across all tiers', color: '#3b82f6' },
           {
             label: 'Backend State',
             value: source === 'omniroute' ? 'Live' : 'Unavailable',
@@ -416,106 +437,83 @@ export default function ProxyControlCenterTab() {
         ))}
       </div>
 
-      <div className="dash-grid-2 mb-24">
-        <div className="dash-card mb-0">
-          <div className="dash-card-title flex-between">
-            <span>Tier Workflow</span>
-            <span className={`badge ${sourceBadge(source)}`}>{sourceLabel(source)}</span>
+      {/* ── Global Select + Actions Toolbar ── */}
+      <div className="dash-card mb-12" style={{ padding: '12px 24px' }}>
+        <div className="flex flex-wrap gap-12" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="flex gap-12" style={{ alignItems: 'center' }}>
+            <label className="flex gap-6" style={{ alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                aria-label="Select all proxies across all tiers"
+                checked={globalAllSelected}
+                disabled={allRows.length === 0}
+                onChange={toggleSelectAll}
+                style={{ width: '18px', height: '18px', cursor: allRows.length > 0 ? 'pointer' : 'not-allowed' }}
+              />
+              <span className="text-12 font-600">Select all</span>
+            </label>
+            <span className="text-10 text-muted">
+              {totalSelected} / {allRows.length} selected
+            </span>
           </div>
-          <div className="dash-tabs" style={{ marginBottom: '20px', overflowX: 'auto' }}>
-            {TIER_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTier(tab.id)}
-                className={`dash-tab ${activeTier === tab.id ? 'active' : ''}`}
-                style={{ whiteSpace: 'nowrap' }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="dash-params-grid">
-            <div className="dash-param">
-              <div className="dash-param-label">Current Tier</div>
-              <div className="dash-param-value">{currentTier.title}</div>
-            </div>
-            <div className="dash-param">
-              <div className="dash-param-label">Rows Loaded</div>
-              <div className="dash-param-value">{activeRows.length.toLocaleString()}</div>
-            </div>
-            <div className="dash-param">
-              <div className="dash-param-label">Selected</div>
-              <div className="dash-param-value">{tierSelectedCount.toLocaleString()}</div>
-            </div>
-          </div>
-        </div>
 
-        <div className="dash-card mb-0">
-          <div className="dash-card-title flex-between">
-            <span>Manual Actions</span>
-            <Activity size={14} className="text-accent" />
-          </div>
-          <div className="dash-stack">
+          <div className="flex gap-8 flex-wrap">
             <button
-              key="promote"
               type="button"
-              className="btn-outline w-full"
+              className="btn-outline btn-small"
               disabled={actionState.active || selectedKeys.size === 0}
               onClick={() => void runAction('promote')}
               title="Promote selected rows toward the global pool"
-              style={{ padding: '10px 12px', textAlign: 'left' }}
             >
-              Promote selected
+              Promote
             </button>
             <button
-              key="demote"
               type="button"
-              className="btn-outline w-full"
+              className="btn-outline btn-small"
               disabled={actionState.active || selectedKeys.size === 0}
               onClick={() => void runAction('demote')}
               title="Demote selected rows back to review"
-              style={{ padding: '10px 12px', textAlign: 'left' }}
             >
-              Demote selected
+              Demote
             </button>
             <button
-              key="quarantine"
               type="button"
-              className="btn-outline w-full"
+              className="btn-outline btn-small"
               disabled={actionState.active || selectedKeys.size === 0}
               onClick={() => void runAction('quarantine')}
               title="Quarantine selected rows (best-effort)"
-              style={{ padding: '10px 12px', textAlign: 'left' }}
             >
-              Quarantine selected
+              Quarantine
             </button>
             <button
-              key="remove"
               type="button"
-              className="btn-outline w-full"
+              className="btn-danger-sm inline-flex items-center gap-4"
               disabled={actionState.active || selectedKeys.size === 0}
               onClick={() => void runAction('remove')}
-              title="Remove selected rows from the pool"
-              style={{ padding: '10px 12px', textAlign: 'left' }}
+              title="Delete selected rows from the pool"
             >
-              Remove dead rows
+              <Trash2 size={12} />
+              Delete selected
             </button>
           </div>
         </div>
       </div>
 
-      <div className="mb-24">
+      {/* ── Three Tier Tables ── */}
+      {TIER_CONFIG.map((cfg) => (
         <ProxyTierTable
-          rows={activeRows}
+          key={cfg.id}
+          tierLabel={cfg.label}
+          rows={rowsByTier[cfg.id]}
           selectedKeys={selectedKeys}
           onToggleRow={toggleRow}
-          onToggleAll={toggleAll}
-          emptyText={currentTier.empty}
+          onToggleAllInTier={toggleAllInTier}
+          emptyText={cfg.empty}
         />
-      </div>
+      ))}
 
-      <div className="dash-grid-2">
+      {/* ── Settings Section ── */}
+      <div className="dash-grid-2" style={{ marginTop: '24px' }}>
         <div className="dash-card mb-0">
           <div className="dash-card-title flex-between">
             <span>System Settings</span>
@@ -559,6 +557,20 @@ export default function ProxyControlCenterTab() {
               <label>
                 <span className="auth-label">Min tests</span>
                 <input className="input-field" type="number" min={0} value={settings.minTests} onChange={(event) => setSettings({ ...settings, minTests: Number(event.target.value) })} />
+              </label>
+            </div>
+            <div className="dash-grid-3" style={{ gap: '12px' }}>
+              <label>
+                <span className="auth-label">Tier 1 → 2 threshold</span>
+                <input className="input-field" type="number" min={1} value={settings.tier1PromoteThreshold} onChange={(event) => setSettings({ ...settings, tier1PromoteThreshold: Number(event.target.value) })} title="Consecutive successes before a Tier 1 proxy is promoted to Tier 2" />
+              </label>
+              <label>
+                <span className="auth-label">Tier 2 → 3 threshold</span>
+                <input className="input-field" type="number" min={1} value={settings.tier2PromoteThreshold} onChange={(event) => setSettings({ ...settings, tier2PromoteThreshold: Number(event.target.value) })} title="Consecutive successes before a Tier 2 proxy is promoted to Tier 3 (active pool)" />
+              </label>
+              <label>
+                <span className="auth-label">Tier 2 demote threshold</span>
+                <input className="input-field" type="number" min={1} value={settings.tier2DemoteThreshold} onChange={(event) => setSettings({ ...settings, tier2DemoteThreshold: Number(event.target.value) })} title="Consecutive failures before a Tier 2 proxy is demoted back to Tier 1" />
               </label>
             </div>
             <div className="dash-grid-1-1" style={{ gap: '12px' }}>

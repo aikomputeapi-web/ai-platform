@@ -17,6 +17,7 @@ function createNoopDb(): DbAdapter {
     async resetCounters() {},
     async delete() {},
     async demoteFromGlobalPool() {},
+    async demoteFromGlobalPoolToTier() {},
     async promoteToGlobalCandidate() {},
     async deleteNonMatchingCountry() { return 0; },
   };

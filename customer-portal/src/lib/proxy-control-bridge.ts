@@ -224,6 +224,7 @@ function normalizeSettings(payload: unknown): ProxySettings {
     autoElevate: s.autoElevate === true,
     autoRemoveDead: s.autoRemoveDead === true,
     tier1PromoteThreshold: asNumber(s.tier1PromoteThreshold ?? s.tier1_promote_threshold, DEFAULT_PROXY_SETTINGS.tier1PromoteThreshold),
+    tier2PromoteThreshold: asNumber(s.tier2PromoteThreshold ?? s.tier2_promote_threshold, DEFAULT_PROXY_SETTINGS.tier2PromoteThreshold),
     tier2DemoteThreshold: asNumber(s.tier2DemoteThreshold ?? s.tier2_demote_threshold, DEFAULT_PROXY_SETTINGS.tier2DemoteThreshold),
     liveFailThreshold: asNumber(s.liveFailThreshold ?? s.live_fail_threshold, DEFAULT_PROXY_SETTINGS.liveFailThreshold),
     autoDistribute: s.autoDistribute === true,

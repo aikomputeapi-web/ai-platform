@@ -43,7 +43,7 @@ const SECTIONS = [
 const SNIPPETS_PYTHON = `from openai import OpenAI
 
 client = OpenAI(
-    api_key="ork_YOUR_API_KEY",
+    api_key="API_KEY",
     base_url="https://api.aikompute.com/v1"
 )
 
@@ -110,10 +110,10 @@ export default function DocsPage() {
             <div className="docs-eyebrow">Authentication</div>
             <h2 className="text-20 font-600 mb-16">Authorization</h2>
             <p className="p-muted mb-16">
-              Include your API key in the Authorization header. Keys are generated from the dashboard and start with <code className="mono text-12 text-bright">ork_</code>.
+              Include your API key in the Authorization header. Keys are generated from the dashboard and start with <code className="mono text-12 text-bright">sk-</code>.
             </p>
             <div className="dash-code text-13">
-              <span className="text-accent">Authorization:</span> Bearer ork_YOUR_API_KEY
+              <span className="text-accent">Authorization:</span> Bearer API_KEY
             </div>
           </div>
 
@@ -168,7 +168,7 @@ export default function DocsPage() {
                 <div className="tdot g" />
               </div>
               <pre className="mono text-12 text-muted overflow-x-auto" style={{ padding: '16px', lineHeight: 1.8, margin: 0 }}>{`curl -X POST https://api.aikompute.com/v1/chat/completions \\
-  -H "Authorization: Bearer ork_YOUR_API_KEY" \\
+  -H "Authorization: Bearer API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "claude-sonnet-4-5",
@@ -239,7 +239,7 @@ data: [DONE]`}</pre>
               Returns a list of all available models. View the <Link href="/models" className="text-accent no-underline">live catalog</Link> for performance metrics and pricing.
             </p>
             <div className="bg-surface border-bright overflow-hidden">
-              <pre className="mono text-12 text-muted overflow-x-auto" style={{ padding: '16px', lineHeight: 1.8, margin: 0 }}>{`curl -H "Authorization: Bearer ork_YOUR_API_KEY" \\
+              <pre className="mono text-12 text-muted overflow-x-auto" style={{ padding: '16px', lineHeight: 1.8, margin: 0 }}>{`curl -H "Authorization: Bearer API_KEY" \\
   https://api.aikompute.com/v1/models`}</pre>
             </div>
           </div>
@@ -256,7 +256,7 @@ data: [DONE]`}</pre>
             </p>
             <div className="bg-surface border-bright overflow-hidden">
               <pre className="mono text-12 text-muted overflow-x-auto" style={{ padding: '16px', lineHeight: 1.8, margin: 0 }}>{`curl -X POST https://api.aikompute.com/v1/messages \\
-  -H "Authorization: Bearer ork_YOUR_API_KEY" \\
+  -H "Authorization: Bearer API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "anthropic-version: 2023-06-01" \\
   -d '{

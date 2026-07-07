@@ -85,20 +85,20 @@ info "Swapping nginx upstream to ${ROLLBACK_SLOT^^}..."
 
 if [[ "${ROLLBACK_SLOT}" == "green" ]]; then
     # Blue → down, Green → up (Green becomes active)
-    sudo sed -i 's/server 127.0.0.1:20128;/server 127.0.0.1:20128 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20138 down;/server 127.0.0.1:20138;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20129;/server 127.0.0.1:20129 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20139 down;/server 127.0.0.1:20139;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:3000;/server 127.0.0.1:3000 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:3001 down;/server 127.0.0.1:3001;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\) down;/\1;/' "${NGINX_CONF}"
 else
     # Green → down, Blue → up (Blue becomes active)
-    sudo sed -i 's/server 127.0.0.1:20138;/server 127.0.0.1:20138 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20128 down;/server 127.0.0.1:20128;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20139;/server 127.0.0.1:20139 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:20129 down;/server 127.0.0.1:20129;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:3001;/server 127.0.0.1:3001 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/server 127.0.0.1:3000 down;/server 127.0.0.1:3000;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\);/\1 down;/' "${NGINX_CONF}"
+    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\) down;/\1;/' "${NGINX_CONF}"
 fi
 
 # Test nginx config

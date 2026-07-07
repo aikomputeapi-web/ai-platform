@@ -19,9 +19,19 @@ pool.stop();
 ## Architecture
 
 Three-tier proxy pool:
-- **Tier 1** — freshly scraped, untested. Failure → delete, 5 consecutive successes → Tier 2.
-- **Tier 2** — verified-working. Failure streak → Tier 1. High quality + low latency → Tier 3.
-- **Tier 3** — global pool (proxy_registry). Any failure → Tier 2.
+- **Tier 1** — intake / entry point for all successful proxies found during scraping or
+  checking. **5 consecutive successful tests** → promoted to Tier 2. **5 consecutive
+  failures** → deleted.
+- **Tier 2** — verified-working pool where proxies wait until needed or until they
+  prove 100% solid. **10 more consecutive successful tests** → promoted to Tier 3
+  (active pool). **3 consecutive failures** → demoted back to Tier 1 and starts the
+  testing process over.
+- **Tier 3** — active/in-use global pool (proxy_registry). **Any single failure**
+  → moved to Tier 2. If that proxy **immediately fails again** (next scheduled check
+  in Tier 2), it is demoted to Tier 1.
+
+Automatic liveness testing runs every **5 minutes** (configurable via
+`checkIntervalMinutes`) across all three tiers.
 
 ## Adapter Reference
 

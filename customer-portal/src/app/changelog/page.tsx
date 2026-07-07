@@ -4,6 +4,14 @@ import Footer from '@/components/Footer';
 
 const ENTRIES = [
   {
+    date: 'June 29, 2026',
+    version: 'v1.0.4',
+    changes: [
+      { type: 'feature', text: 'AI coding tool setup guides: Cursor, Windsurf, Trae, Cline, Kilocode, Open Hands, Zoo Code, Continue, Aider, CodeGPT, Claude Code, Codex at /guides' },
+      { type: 'feature', text: 'Fixed dashboard docs Base URL from aikompute.com to api.aikompute.com' },
+    ],
+  },
+  {
     date: 'June 25, 2026',
     version: 'v1.0.3',
     changes: [

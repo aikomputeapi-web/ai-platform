@@ -157,8 +157,8 @@ export const STATIC_MODEL_METRICS: ModelMetric[] = [
     available: true,
   },
   {
-    id: 'gemini-3-flash',
-    name: 'Gemini 3 Flash',
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
     provider: 'Google',
     color: '#4285f4',
     intelligenceScore: 40,
@@ -166,7 +166,7 @@ export const STATIC_MODEL_METRICS: ModelMetric[] = [
     ttft: 0.4,
     blendedPrice: 0.75,
     contextWindow: 1048576,
-    aaUrl: 'https://artificialanalysis.ai/models/gemini-3-flash',
+    aaUrl: 'https://artificialanalysis.ai/models/gemini-3.5-flash',
     available: true,
   },
   {

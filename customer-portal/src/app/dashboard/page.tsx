@@ -72,14 +72,14 @@ export default function DashboardOverview() {
           <div>
             <div className="auth-label">Base URL for all API calls:</div>
             <div className="dash-code">
-              {typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, '') : 'https://yourdomain.com'}/v1
+              {typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, '') : 'https://aikompute.com'}/v1
             </div>
           </div>
           <div>
             <div className="auth-label">Example request:</div>
             <pre className="dash-code dash-code-wrap">
 {`curl -X POST /v1/chat/completions \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Authorization: Bearer API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "gpt-4o",

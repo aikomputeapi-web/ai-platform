@@ -11,7 +11,7 @@
  * the proxy pool SQLite database (see `src/app/api/admin/proxy-control/*`).
  *
  * Field reference:
- * - `enabled`              → JobSettings.enabled
+ * - `enabled`               → JobSettings.enabled
  * - `checkIntervalMinutes`  → JobSettings.checkIntervalMs   (ms/60000)
  * - `syncIntervalMinutes`   → JobSettings.syncIntervalMs     (ms/60000)
  * - `countryFilter`         → JobSettings.countryFilter
@@ -21,8 +21,9 @@
  * - `poolSize`              → JobSettings.poolSize
  * - `autoElevate`           → JobSettings.autoElevate
  * - `autoRemoveDead`        → JobSettings.autoRemoveDead
- * - `tier1PromoteThreshold` → JobSettings.tier1PromoteThreshold
- * - `tier2DemoteThreshold`  → JobSettings.tier2DemoteThreshold
+ * - `tier1PromoteThreshold` → JobSettings.tier1PromoteThreshold (5 successes → Tier 2)
+ * - `tier2PromoteThreshold` → JobSettings.tier2PromoteThreshold (10 successes → Tier 3)
+ * - `tier2DemoteThreshold`  → JobSettings.tier2DemoteThreshold  (3 failures → Tier 1)
  * - `liveFailThreshold`     → JobSettings.liveFailThreshold
  * - `autoDistribute`        → JobSettings.autoDistribute
  *
@@ -71,7 +72,11 @@ export interface ProxySettings {
   poolSize: number;
   autoElevate: boolean;
   autoRemoveDead: boolean;
+  /** Consecutive successful Tier 1 tests before promotion to Tier 2. */
   tier1PromoteThreshold: number;
+  /** Consecutive successful Tier 2 tests before promotion to Tier 3 (active pool). */
+  tier2PromoteThreshold: number;
+  /** Consecutive failed Tier 2 tests before demotion back to Tier 1. */
   tier2DemoteThreshold: number;
   liveFailThreshold: number;
   autoDistribute: boolean;
@@ -112,7 +117,8 @@ export interface ProxyActionResult {
 
 export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   enabled: false,
-  checkIntervalMinutes: 10,
+  // Automatic testing of every proxy (all three tiers) runs on this interval.
+  checkIntervalMinutes: 5,
   syncIntervalMinutes: 30,
   countryFilter: 'US',
   minQuality: 40,
@@ -121,8 +127,12 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   poolSize: 20,
   autoElevate: true,
   autoRemoveDead: true,
+  // Tier 1 (intake) → 5 consecutive successes → Tier 2 (verified/waiting).
   tier1PromoteThreshold: 5,
-  tier2DemoteThreshold: 2,
+  // Tier 2 → 10 consecutive successes → Tier 3 (active/in-use).
+  tier2PromoteThreshold: 10,
+  // Tier 2 → 3 consecutive failures → back to Tier 1 (restart testing).
+  tier2DemoteThreshold: 3,
   liveFailThreshold: 3,
   autoDistribute: false,
   providers: {

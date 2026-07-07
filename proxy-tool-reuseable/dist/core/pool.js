@@ -83,6 +83,7 @@ export function createFreeProxyPool(options) {
                 countryFilter: jobSettings.countryFilter,
                 minQuality: jobSettings.minQuality,
                 tier1PromoteThreshold: jobSettings.tier1PromoteThreshold,
+                tier2PromoteThreshold: jobSettings.tier2PromoteThreshold,
                 tier2DemoteThreshold: jobSettings.tier2DemoteThreshold,
             }, "Scheduling 3-tier proxy check & sync background jobs");
             void runCheckTickWithGuard().catch((err) => log.warn({ err }, "Initial free proxy check failed"));

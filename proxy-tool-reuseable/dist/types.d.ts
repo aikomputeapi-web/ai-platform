@@ -39,7 +39,20 @@ export interface JobSettings {
     autoElevate: boolean;
     poolSize: number;
     autoRemoveDead: boolean;
+    /**
+     * Consecutive successful tests a Tier 1 proxy must accumulate before it is
+     * promoted to Tier 2 (the verified/waiting pool). Default: 5.
+     */
     tier1PromoteThreshold: number;
+    /**
+     * Consecutive successful tests a Tier 2 proxy must accumulate before it is
+     * promoted to Tier 3 (the active global pool). Default: 10.
+     */
+    tier2PromoteThreshold: number;
+    /**
+     * Consecutive failed tests a Tier 2 proxy may accumulate before it is
+     * demoted back to Tier 1. Default: 3.
+     */
     tier2DemoteThreshold: number;
     liveFailThreshold: number;
     autoDistribute: boolean;
@@ -51,6 +64,12 @@ export type ProxyPoolAlert = {
     port: number;
     reason: string;
     failures?: number;
+} | {
+    type: "proxy.promoted";
+    tier: Tier;
+    host: string;
+    port: number;
+    reason: string;
 } | {
     type: "proxy.pool-low";
     liveCount: number;

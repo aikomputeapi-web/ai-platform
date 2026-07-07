@@ -1,5 +1,5 @@
 export default function DocsPage() {
-  const baseUrl = 'https://yourdomain.com';
+  const baseUrl = 'https://api.aikompute.com';
   return (
     <div>
       <div className="dash-page-header">
@@ -15,7 +15,7 @@ export default function DocsPage() {
       <div className="dash-card">
         <div className="dash-card-title">Authentication</div>
         <p className="text-13 text-muted mb-12">Include your API key in the Authorization header:</p>
-        <div className="dash-code">Authorization: Bearer YOUR_API_KEY</div>
+        <div className="dash-code">Authorization: Bearer API_KEY</div>
       </div>
 
       <div className="dash-card">

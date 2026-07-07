@@ -114,7 +114,7 @@ node test-pooling.mjs
 
 # Send test request
 curl -X POST http://localhost:20128/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer API_KEY" \
   -H "x-session-id: test-session-1" \
   -H "Content-Type: application/json" \
   -d '{

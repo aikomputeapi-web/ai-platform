@@ -12,7 +12,7 @@ const STEPS = [
   {
     num: '02',
     title: 'Get your API key',
-    desc: 'Once logged in, generate an API key from the dashboard. Your key starts with "ork_".',
+    desc: 'Once logged in, generate an API key from the dashboard. Your key starts with "sk-".',
     code: '# Navigate to Dashboard → API Keys → Create Key',
   },
   {
@@ -20,7 +20,7 @@ const STEPS = [
     title: 'Make your first request',
     desc: 'Use your API key with any OpenAI-compatible client. Just swap the baseURL.',
     code: `curl -X POST https://api.aikompute.com/v1/chat/completions \\
-  -H "Authorization: Bearer ork_YOUR_API_KEY" \\
+  -H "Authorization: Bearer API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "claude-sonnet-4-5",
@@ -43,7 +43,7 @@ const SNIPPETS = [
     code: `from openai import OpenAI
 
 client = OpenAI(
-  api_key="ork_YOUR_API_KEY",
+  api_key="API_KEY",
   base_url="https://api.aikompute.com/v1"
 )
 
@@ -58,7 +58,7 @@ print(response.choices[0].message.content)`,
     code: `import OpenAI from 'openai';
 
 const client = new OpenAI({
-  apiKey: 'ork_YOUR_API_KEY',
+  apiKey: 'API_KEY',
   baseURL: 'https://api.aikompute.com/v1',
 });
 
@@ -71,7 +71,7 @@ console.log(res.choices[0].message.content);`,
   {
     lang: 'cURL',
     code: `curl -X POST https://api.aikompute.com/v1/chat/completions \\
-  -H "Authorization: Bearer ork_YOUR_API_KEY" \\
+  -H "Authorization: Bearer API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "claude-sonnet-4-5",
@@ -99,7 +99,7 @@ func main() {
   req, _ := http.NewRequest("POST",
     "https://api.aikompute.com/v1/chat/completions",
     bytes.NewReader(body))
-  req.Header.Set("Authorization", "Bearer ork_YOUR_API_KEY")
+  req.Header.Set("Authorization", "Bearer API_KEY")
   req.Header.Set("Content-Type", "application/json")
   // send request...
 }`,

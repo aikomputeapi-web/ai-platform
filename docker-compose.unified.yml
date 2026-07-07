@@ -220,7 +220,10 @@ services:
     networks:
       ai-network:
         aliases:
-          - omniroute
+          # NOTE: Do NOT add "omniroute" here — that alias belongs to the BLUE
+          # container only. Adding it here causes Docker DNS to round-robin
+          # between BLUE and GREEN, so portal key-creation calls randomly hit
+          # the inactive slot's database (split-brain). See API-KEY-SYSTEM-DIAGNOSIS.md.
           - omniroute-green
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -248,7 +251,8 @@ services:
     networks:
       ai-network:
         aliases:
-          - customer-portal
+          # NOTE: Do NOT add "customer-portal" here — same split-brain reason
+          # as the omniroute-green alias above.
           - customer-portal-green
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -300,6 +304,10 @@ services:
       customer-portal:
         condition: service_healthy
     command: ["node", "scripts/reconcile-api-keys-worker.mjs"]
+    volumes:
+      # Bind-mount scripts so the worker runs even if the image predates the
+      # script files (avoids needing an image rebuild just for the reconciler).
+      - ./customer-portal/scripts:/app/scripts:ro
     environment:
       PORTAL_INTERNAL_URL: http://customer-portal:3000
       ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}

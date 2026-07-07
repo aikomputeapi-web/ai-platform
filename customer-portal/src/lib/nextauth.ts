@@ -19,41 +19,7 @@ async function isEmailDotShadowbanEnabled(): Promise<boolean> {
 const baseAdapter = PrismaAdapter(prisma);
 const customAdapter = {
   ...baseAdapter,
-  getUser: async (id: string) => {
-    console.log('[NextAuth Adapter] getUser called with:', id);
-    try {
-      const res = await baseAdapter.getUser!(id);
-      console.log('[NextAuth Adapter] getUser returned:', JSON.stringify(res));
-      return res;
-    } catch (e) {
-      console.error('[NextAuth Adapter] getUser error:', e);
-      throw e;
-    }
-  },
-  getUserByEmail: async (email: string) => {
-    console.log('[NextAuth Adapter] getUserByEmail called with:', email);
-    try {
-      const res = await baseAdapter.getUserByEmail!(email);
-      console.log('[NextAuth Adapter] getUserByEmail returned:', JSON.stringify(res));
-      return res;
-    } catch (e) {
-      console.error('[NextAuth Adapter] getUserByEmail error:', e);
-      throw e;
-    }
-  },
-  getUserByAccount: async (provider_providerAccountId: any) => {
-    console.log('[NextAuth Adapter] getUserByAccount called with:', JSON.stringify(provider_providerAccountId));
-    try {
-      const res = await baseAdapter.getUserByAccount!(provider_providerAccountId);
-      console.log('[NextAuth Adapter] getUserByAccount returned:', JSON.stringify(res));
-      return res;
-    } catch (e) {
-      console.error('[NextAuth Adapter] getUserByAccount error:', e);
-      throw e;
-    }
-  },
   createUser: async (data: any) => {
-    console.log('[NextAuth Adapter] createUser called with:', JSON.stringify(data));
     try {
       const { image, emailVerified, ...rest } = data;
       const email = data.email || '';
@@ -81,7 +47,6 @@ const customAdapter = {
         isShadowBanned,
         adminNote,
       } as any);
-      console.log('[NextAuth Adapter] createUser returned:', JSON.stringify(res));
       return res;
     } catch (e) {
       console.error('[NextAuth Adapter] createUser error:', e);
@@ -89,7 +54,6 @@ const customAdapter = {
     }
   },
   updateUser: async (data: any) => {
-    console.log('[NextAuth Adapter] updateUser called with:', JSON.stringify(data));
     try {
       const { image, emailVerified, ...rest } = data;
       const updateData: any = { ...rest };
@@ -97,21 +61,9 @@ const customAdapter = {
         updateData.emailVerified = emailVerified !== null;
       }
       const res = await baseAdapter.updateUser!(updateData);
-      console.log('[NextAuth Adapter] updateUser returned:', JSON.stringify(res));
       return res;
     } catch (e) {
       console.error('[NextAuth Adapter] updateUser error:', e);
-      throw e;
-    }
-  },
-  linkAccount: async (account: any) => {
-    console.log('[NextAuth Adapter] linkAccount called with:', JSON.stringify(account));
-    try {
-      const res = await baseAdapter.linkAccount!(account);
-      console.log('[NextAuth Adapter] linkAccount returned:', JSON.stringify(res));
-      return res;
-    } catch (e) {
-      console.error('[NextAuth Adapter] linkAccount error:', e);
       throw e;
     }
   },
@@ -210,16 +162,13 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  debug: true, // Enable debug for troubleshooting
+  debug: false,
   logger: {
     error(code, metadata) {
       console.error('[NextAuth Error]', code, metadata);
     },
     warn(code) {
       console.warn('[NextAuth Warn]', code);
-    },
-    debug(code, metadata) {
-      console.log('[NextAuth Debug]', code, metadata);
     },
   },
 };

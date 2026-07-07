@@ -15,6 +15,14 @@ export interface DbAdapter {
     resetCounters(id: string): Promise<void>;
     delete(id: string): Promise<void>;
     demoteFromGlobalPool(registryId: string, host: string): Promise<void>;
+    /**
+     * Demote a Tier 3 (global pool) proxy back into the free_proxies table at
+     * the given target tier (2 = verified, 1 = intake) instead of hard-deleting
+     * it. Counters are reset, with an optional `failureHeadStart` setting
+     * `consecutive_failures` so the proxy drops further on its next failure
+     * (used by the "Tier 3 fails once → Tier 2; fails again → Tier 1" rule).
+     */
+    demoteFromGlobalPoolToTier(registryId: string, host: string, targetTier: 1 | 2, failureHeadStart?: number): Promise<void>;
     promoteToGlobalCandidate(candidate: PromotionCandidate, country: string, poolSize: number, namePrefix: string): Promise<void>;
     deleteNonMatchingCountry(country: string): Promise<number>;
 }

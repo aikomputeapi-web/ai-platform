@@ -27,7 +27,7 @@ test.describe('Scenario 7: API Key Management', () => {
 
       // Check if there are existing keys or empty state
       const emptyState = page.locator('text=No API keys yet');
-      const keyList = page.locator('text=ork_');
+      const keyList = page.locator('text=sk-');
 
       if (await emptyState.isVisible({ timeout: 2000 }).catch(() => false)) {
         await expect(emptyState).toBeVisible();

@@ -160,6 +160,31 @@ export function createSqliteAdapter(
     },
 
     async demoteFromGlobalPool(registryId: string, host: string): Promise<void> {
+      // Legacy behaviour: hard drop to Tier 1. Kept for back-compat with any
+      // caller that still expects the old contract. New tier-aware callers
+      // should use `demoteFromGlobalPoolToTier`.
+      db.prepare("DELETE FROM proxy_assignments WHERE proxy_id = ?").run(registryId);
+      db.prepare("DELETE FROM proxy_registry WHERE id = ?").run(registryId);
+
+      const freeProxy = db
+        .prepare("SELECT id FROM free_proxies WHERE pool_proxy_id = ?")
+        .get(registryId) as { id?: string } | undefined;
+      if (freeProxy?.id) {
+        db.prepare(
+          "UPDATE free_proxies SET tier = 1, in_pool = 0, pool_proxy_id = NULL, consecutive_successes = 0, consecutive_failures = 0, updated_at = ? WHERE id = ?"
+        ).run(now(), freeProxy.id);
+        log.info({ host }, "Demoted Tier 3 proxy to Tier 1");
+      } else {
+        log.info({ host, registryId }, "Removed Tier 3 proxy (no free_proxies record to demote)");
+      }
+    },
+
+    async demoteFromGlobalPoolToTier(
+      registryId: string,
+      host: string,
+      targetTier: 1 | 2,
+      failureHeadStart: number = 0
+    ): Promise<void> {
       const freeProxy = db
         .prepare("SELECT id FROM free_proxies WHERE pool_proxy_id = ?")
         .get(registryId) as { id?: string } | undefined;
@@ -168,11 +193,21 @@ export function createSqliteAdapter(
       db.prepare("DELETE FROM proxy_registry WHERE id = ?").run(registryId);
 
       if (freeProxy?.id) {
+        const headStartClamped = Math.max(0, Math.floor(failureHeadStart));
         db.prepare(
-          "UPDATE free_proxies SET tier = 1, in_pool = 0, pool_proxy_id = NULL, consecutive_successes = 0, consecutive_failures = 0, updated_at = ? WHERE id = ?"
-        ).run(now(), freeProxy.id);
-        log.info({ host }, "Demoted Tier 3 proxy to Tier 1");
+          `UPDATE free_proxies
+             SET tier = ?, in_pool = 0, pool_proxy_id = NULL,
+                 consecutive_successes = 0,
+                 consecutive_failures = ?,
+                 updated_at = ?
+           WHERE id = ?`
+        ).run(targetTier, headStartClamped, now(), freeProxy.id);
+        log.info(
+          { host, targetTier, failureHeadStart: headStartClamped },
+          `Demoted Tier 3 proxy to Tier ${targetTier}`
+        );
       } else {
+        // Orphan global pool entry with no free_proxies row — just remove it.
         log.info({ host, registryId }, "Removed Tier 3 proxy (no free_proxies record to demote)");
       }
     },

@@ -9,11 +9,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const cookieStore = await cookies();
-  console.log('DEBUG /api/auth/me COOKIES:', cookieStore.getAll().map(c => ({ name: c.name, value: c.value.substring(0, 15) + '...' })));
-  
+
   // Try NextAuth session first (for OAuth users)
   const session = await getServerSession(authOptions);
-  console.log('DEBUG /api/auth/me SESSION:', JSON.stringify(session));
 
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({

@@ -145,7 +145,7 @@ export default function ApiKeysPage() {
               <tr key={key.id}>
                 <td className="font-600">{key.name}</td>
                 <td className="text-12 text-muted mono">
-                  ork_•••• {key.lastFour || '????'}
+                  sk-•••• {key.lastFour || '????'}
                 </td>
                 <td>
                   <span className={`badge ${key.isActive ? 'badge-active' : 'badge-revoked'}`}>

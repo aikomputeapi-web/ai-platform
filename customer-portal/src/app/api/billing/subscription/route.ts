@@ -9,14 +9,17 @@ export const dynamic = 'force-dynamic';
 export async function DELETE(_req: NextRequest) {
   try {
     const user = await requireAuth();
-    
+
     if (!user.stripeCustomerId) {
       return NextResponse.json({ error: 'No billing account found' }, { status: 400 });
     }
 
-    // Get the user's subscription ID from the database
-    const userWithSubscription = user as typeof user & { stripeSubscriptionId: string | null };
-    const subscriptionId = userWithSubscription.stripeSubscriptionId;
+    // Refresh the user record to ensure we have the latest subscription state
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, stripeSubscriptionId: true },
+    });
+    const subscriptionId = dbUser?.stripeSubscriptionId;
     if (!subscriptionId) {
       return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
     }
@@ -29,7 +32,7 @@ export async function DELETE(_req: NextRequest) {
     if (freePlan) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { 
+        data: {
           planId: freePlan.id,
           stripeSubscriptionId: null,
         },

@@ -1,5 +1,5 @@
 import { testProxyMultiTarget } from "./probe.js";
-import { promoteProxyToGlobal } from "./promoteDemote.js";
+import { promoteProxyToGlobal, demoteTier3Proxy } from "./promoteDemote.js";
 const DEFAULT_LIVE_FAIL_THRESHOLD = 3;
 const LIVE_FAIL_WINDOW_MS = 5 * 60 * 1000;
 const LOW_POOL_THRESHOLD = 3;
@@ -41,18 +41,26 @@ export async function runFreeProxyCheckTick(deps, settings) {
     }
     const liveFailThreshold = settings?.liveFailThreshold ?? DEFAULT_LIVE_FAIL_THRESHOLD;
     const countryFilter = settings?.countryFilter ?? "US";
-    // Tier 3 (global pool) — any failure = demote to Tier 1
+    // Tier 2 demote threshold, used to pre-seed consecutive_failures when
+    // demoting a Tier 3 proxy to Tier 2 so that the very next failure in Tier 2
+    // trips the Tier 2 → Tier 1 rule ("if it immediately fails again → Tier 1").
+    const tier2DemoteThreshold = settings?.tier2DemoteThreshold ?? 3;
+    // Seeds Tier 2 consecutive_failures to (threshold - 1); one more failure → demote.
+    const tier3DemoteFailureHeadStart = Math.max(0, tier2DemoteThreshold - 1);
+    // Tier 3 (global pool / active proxies) — a single failure demotes the
+    // proxy to Tier 2, with consecutive_failures pre-seeded so that another
+    // failure on its next scheduled Tier 2 check drops it to Tier 1.
     try {
         const poolProxies = await deps.db.listGlobalPool();
         if (poolProxies.length > 0) {
-            log.info({ count: poolProxies.length }, "Testing Tier 3 (global pool) proxies");
+            log.info({ count: poolProxies.length }, "Testing Tier 3 (active global pool) proxies");
             const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, i * size + size));
             const chunks = chunk(poolProxies, 50);
             for (const batch of chunks) {
                 await Promise.all(batch.map(async (pp) => {
                     const key = `${pp.host}:${pp.port}`;
                     if ((liveFailures.get(key) ?? 0) >= liveFailThreshold) {
-                        await deps.db.demoteFromGlobalPool(pp.registryId, pp.host);
+                        await demoteTier3Proxy(deps.db, log, pp.registryId, pp.host, 2, tier3DemoteFailureHeadStart);
                         await deps.alerts.emit({
                             type: "proxy.demoted",
                             tier: 3,
@@ -67,7 +75,7 @@ export async function runFreeProxyCheckTick(deps, settings) {
                         const url = `${pp.type}://${pp.host}:${pp.port}`;
                         const { ok } = await testProxyMultiTarget(deps.probe, url, 5000);
                         if (!ok) {
-                            await deps.db.demoteFromGlobalPool(pp.registryId, pp.host);
+                            await demoteTier3Proxy(deps.db, log, pp.registryId, pp.host, 2, tier3DemoteFailureHeadStart);
                             await deps.alerts.emit({
                                 type: "proxy.demoted",
                                 tier: 3,
@@ -78,7 +86,7 @@ export async function runFreeProxyCheckTick(deps, settings) {
                         }
                     }
                     catch {
-                        await deps.db.demoteFromGlobalPool(pp.registryId, pp.host);
+                        await demoteTier3Proxy(deps.db, log, pp.registryId, pp.host, 2, tier3DemoteFailureHeadStart);
                     }
                 }));
             }
@@ -101,7 +109,14 @@ export async function runFreeProxyCheckTick(deps, settings) {
     try {
         const tier2Proxies = await deps.db.listTier(2, countryFilter);
         if (tier2Proxies.length > 0) {
-            log.info({ count: tier2Proxies.length }, "Testing Tier 2 (middle pool) proxies");
+            log.info({ count: tier2Proxies.length }, "Testing Tier 2 (verified waiting pool) proxies");
+            const tier2PromoteThreshold = settings?.tier2PromoteThreshold ?? 10;
+            const tier2DemoteThreshold = settings?.tier2DemoteThreshold ?? 3;
+            // Proxies that earned promotion to Tier 3 on this tick. Collected then
+            // promoted sequentially below to avoid concurrent slot races inside
+            // promoteToGlobalCandidate (which re-reads the live pool + allocates a
+            // free global slot).
+            const promotionQueue = [];
             const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, i * size + size));
             const chunks = chunk(tier2Proxies, 50);
             for (const batch of chunks) {
@@ -126,27 +141,79 @@ export async function runFreeProxyCheckTick(deps, settings) {
                         const quality = computeQualityScore(latencyMs);
                         if (ok) {
                             await deps.db.recordTestResult(item.id, true, latencyMs, quality);
+                            const newSuccessCount = item.consecutive_successes + 1;
+                            if (newSuccessCount >= tier2PromoteThreshold) {
+                                // Eligible for promotion to Tier 3 (active global pool).
+                                promotionQueue.push({
+                                    id: item.id,
+                                    type: item.type,
+                                    host: item.host,
+                                    port: item.port,
+                                    quality_score: quality,
+                                    latency_ms: latencyMs,
+                                });
+                            }
                         }
                         else {
                             const newFailCount = item.consecutive_failures + 1;
                             await deps.db.recordTestResult(item.id, false, latencyMs, quality);
-                            if (newFailCount >= (settings?.tier2DemoteThreshold ?? 2)) {
+                            if (newFailCount >= tier2DemoteThreshold) {
                                 await deps.db.setTier(item.id, 1);
                                 await deps.db.resetCounters(item.id);
                                 log.info({ host: item.host }, "Tier 2 proxy demoted to Tier 1 (failure streak)");
+                                await deps.alerts.emit({
+                                    type: "proxy.demoted",
+                                    tier: 2,
+                                    host: item.host,
+                                    port: item.port,
+                                    reason: "failure-streak",
+                                });
                             }
                         }
                     }
                     catch (err) {
                         await deps.db.recordTestResult(item.id, false, null, 0);
                         const newFailCount = item.consecutive_failures + 1;
-                        if (newFailCount >= (settings?.tier2DemoteThreshold ?? 2)) {
+                        if (newFailCount >= tier2DemoteThreshold) {
                             await deps.db.setTier(item.id, 1);
                             await deps.db.resetCounters(item.id);
                             log.info({ host: item.host }, "Tier 2 proxy demoted to Tier 1 (error streak)");
                         }
                     }
                 }));
+            }
+            // Promote accumulated Tier 2 winners to the active global pool (Tier 3).
+            // Capped at poolSize so a large backlog can't overflow the global pool
+            // in a single tick — sync tick keeps topping it up otherwise.
+            const maxPromotions = Math.min(promotionQueue.length, Math.max(1, settings?.poolSize ?? 20));
+            for (let i = 0; i < maxPromotions; i++) {
+                const candidate = promotionQueue[i];
+                try {
+                    // Skip if already in the global pool for this host:port.
+                    const existing = (await deps.db.listGlobalPool()).find((p) => p.host === candidate.host && p.port === candidate.port);
+                    if (existing)
+                        continue;
+                    await promoteProxyToGlobal(deps.db, log, candidate, 
+                    // Prefer the stored country code, else fall back to the country filter.
+                    (() => {
+                        const row = tier2Proxies.find((p) => p.id === candidate.id);
+                        return row?.country_code || settings?.countryFilter || "US";
+                    })(), settings?.poolSize ?? 20, PROXY_NAME_PREFIX);
+                    await deps.db.resetCounters(candidate.id);
+                    await deps.alerts.emit({
+                        type: "proxy.promoted",
+                        tier: 3,
+                        host: candidate.host,
+                        port: candidate.port,
+                        reason: "consecutive-successes",
+                    });
+                }
+                catch (err) {
+                    log.warn({ err, host: candidate.host }, "Tier 2 → Tier 3 promotion failed (non-fatal)");
+                }
+            }
+            if (promotionQueue.length > 0) {
+                log.info({ eligible: promotionQueue.length, promoted: maxPromotions }, "Tier 2 → Tier 3 promotion pass complete");
             }
         }
     }

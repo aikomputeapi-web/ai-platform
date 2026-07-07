@@ -32,6 +32,7 @@ const KNOWN_NUMBER = [
   'minTests',
   'poolSize',
   'tier1PromoteThreshold',
+  'tier2PromoteThreshold',
   'tier2DemoteThreshold',
   'liveFailThreshold',
 ] as const;

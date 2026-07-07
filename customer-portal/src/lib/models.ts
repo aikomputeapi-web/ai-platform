@@ -29,8 +29,8 @@ export const MODELS = {
 
   GOOGLE_PRO:            'Gemini 3.1 Pro',
   GOOGLE_PRO_ID:         'gemini-3-1-pro',
-  GOOGLE_FLASH:          'Gemini 3 Flash',
-  GOOGLE_FLASH_ID:       'gemini-3-flash',
+  GOOGLE_FLASH:          'Gemini 3.5 Flash',
+  GOOGLE_FLASH_ID:       'gemini-3.5-flash',
   GOOGLE_FLASH_LITE:     'Gemini 3.1 Flash-Lite',
   GOOGLE_FLASH_LITE_ID:  'gemini-3-1-flash-lite',
 

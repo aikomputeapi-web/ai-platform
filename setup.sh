@@ -10,8 +10,10 @@
 #    sudo ./setup.sh
 #
 #  What you get:
-#    yourdomain.com       → Your admin dashboard (add all accounts here)
-#    yourdomain.com/v1    → OpenAI-compatible API (users connect here)
+#    yourdomain.com           → Customer Portal (landing, signup, user dashboard)
+#    yourdomain.com/v1        → OpenAI-compatible API (users connect here)
+#    admin.yourdomain.com     → OmniRoute Dashboard
+#    dashboard.yourdomain.com → Customer Portal Admin (login, admin panel)
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -217,8 +219,8 @@ if [[ "${SKIP_SSL,,}" == "y" ]]; then
 else
     systemctl stop nginx 2>/dev/null || true
     certbot certonly --standalone --non-interactive --agree-tos \
-        --email "${CERT_EMAIL}" -d "${DOMAIN}" -d "admin.${DOMAIN}" 2>/dev/null || {
-        warn "Let's Encrypt failed. Is an A record for ${DOMAIN} and admin.${DOMAIN} pointing to ${PUBLIC_IP}?"
+        --email "${CERT_EMAIL}" -d "${DOMAIN}" -d "admin.${DOMAIN}" -d "dashboard.${DOMAIN}" 2>/dev/null || {
+        warn "Let's Encrypt failed. Is an A record for ${DOMAIN}, admin.${DOMAIN}, and dashboard.${DOMAIN} pointing to ${PUBLIC_IP}?"
         warn "Falling back to self-signed cert."
         CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
         mkdir -p "${CERT_DIR}"
@@ -227,7 +229,7 @@ else
             -out "${CERT_DIR}/fullchain.pem" \
             -subj "/CN=${DOMAIN}" 2>/dev/null
     }
-    log "SSL ready (domain + admin subdomain)"
+    log "SSL ready (domain + admin + dashboard subdomains)"
 
     # Auto-renewal
     { crontab -l 2>/dev/null | grep -v certbot || true; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"; } | crontab -

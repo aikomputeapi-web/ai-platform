@@ -15,6 +15,7 @@ function createNoopDb() {
     resetCounters: async () => {},
     delete: async () => {},
     demoteFromGlobalPool: async () => {},
+    demoteFromGlobalPoolToTier: async () => {},
     promoteToGlobalCandidate: async () => {},
     deleteNonMatchingCountry: async () => 0,
   };
