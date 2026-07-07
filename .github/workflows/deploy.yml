@@ -8,6 +8,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Fired by aikomputeapi-web/OmniRoute on pushes to its main branch
+  # (.github/workflows/trigger-platform-deploy.yml) so OmniRoute changes
+  # rebuild + redeploy without needing a commit here. The build already
+  # clones OmniRoute main fresh via scripts/setup-omniroute.sh.
+  repository_dispatch:
+    types: [omniroute-push]
 
 jobs:
   validate:
