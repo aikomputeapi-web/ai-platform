@@ -113,6 +113,22 @@ jobs:
 
             cd ~/ai-platform
 
+            echo "══ Preserving uncommitted local changes ══"
+            # git reset --hard below wipes tracked modifications. Save them
+            # first: a patch under ~/ai-platform-predeploy-backups/ plus a
+            # git stash entry (recover with `git stash list` / `git stash pop`).
+            # Untracked files are unaffected by reset --hard and left alone.
+            if ! git diff --quiet HEAD 2>/dev/null; then
+              BACKUP_DIR=~/ai-platform-predeploy-backups/$(date +%Y%m%d-%H%M%S)
+              mkdir -p "$BACKUP_DIR"
+              git status --porcelain > "$BACKUP_DIR/status.txt"
+              git diff HEAD > "$BACKUP_DIR/uncommitted.patch"
+              git stash push -m "pre-deploy auto-stash $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "Saved uncommitted changes to stash and $BACKUP_DIR"
+            else
+              echo "Working tree clean — nothing to preserve"
+            fi
+
             echo "══ Pulling latest changes ══"
             git fetch origin main
             git checkout main

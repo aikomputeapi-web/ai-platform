@@ -64,6 +64,20 @@ jobs:
           script: |
             cd ~/ai-platform-staging
 
+            echo "══ Preserving uncommitted local changes ══"
+            # Same guard as deploy.yml: stash + patch-backup tracked
+            # modifications before reset --hard wipes them.
+            if ! git diff --quiet HEAD 2>/dev/null; then
+              BACKUP_DIR=~/ai-platform-staging-predeploy-backups/$(date +%Y%m%d-%H%M%S)
+              mkdir -p "$BACKUP_DIR"
+              git status --porcelain > "$BACKUP_DIR/status.txt"
+              git diff HEAD > "$BACKUP_DIR/uncommitted.patch"
+              git stash push -m "pre-deploy auto-stash $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "Saved uncommitted changes to stash and $BACKUP_DIR"
+            else
+              echo "Working tree clean — nothing to preserve"
+            fi
+
             echo "══ Pulling staging changes ══"
             git fetch origin staging
             git checkout staging
