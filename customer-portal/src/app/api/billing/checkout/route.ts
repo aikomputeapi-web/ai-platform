@@ -8,7 +8,11 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
-    const { planId } = await req.json();
+    const body = await req.json().catch(() => null);
+    const { planId } = body ?? {};
+    if (typeof planId !== 'string' || !planId) {
+      return NextResponse.json({ error: 'Plan required' }, { status: 400 });
+    }
 
     const plan = await prisma.plan.findUnique({ where: { id: planId } });
     if (!plan || !plan.stripePriceId) {
