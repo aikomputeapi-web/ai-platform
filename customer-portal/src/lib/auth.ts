@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import prisma from './db';
@@ -72,10 +73,6 @@ export async function requireAuth() {
 }
 
 export function generateVerifyToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 48; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  // 36 random bytes -> 48 base64url chars, matching the historical token length.
+  return randomBytes(36).toString('base64url');
 }
