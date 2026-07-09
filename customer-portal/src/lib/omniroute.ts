@@ -24,6 +24,11 @@ const TOKEN_CACHE_MS = 60 * 60 * 1000; // 1h
 
 let _adminToken: string | null = null;
 let _tokenExpiry = 0;
+// Single-flight guard: when many requests need a token at once (cold start,
+// hourly expiry, or a burst of 401 retries), only ONE login request goes to
+// OmniRoute and the rest await it. OmniRoute's login endpoint has brute-force
+// lockout, so a login stampede can 429 us and take down every key/usage call.
+let _loginInFlight: Promise<string> | null = null;
 
 /**
  * Log in to OmniRoute and cache the auth_token cookie value.
@@ -70,7 +75,12 @@ async function getAdminToken(): Promise<string> {
   if (_adminToken && Date.now() < _tokenExpiry) {
     return _adminToken;
   }
-  return fetchAdminToken();
+  if (!_loginInFlight) {
+    _loginInFlight = fetchAdminToken().finally(() => {
+      _loginInFlight = null;
+    });
+  }
+  return _loginInFlight;
 }
 
 /**
