@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [profileMsg, setProfileMsg] = useState('');
   const [passwordMsg, setPasswordMsg] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -50,8 +52,13 @@ export default function SettingsPage() {
 
   async function deleteAccount() {
     if (deleteConfirm !== 'DELETE') return;
-    await fetch('/api/account/delete', { method: 'DELETE' });
-    router.push('/');
+    setDeleting(true);
+    setDeleteMsg('');
+    const res = await fetch('/api/account/delete', { method: 'DELETE' }).catch(() => null);
+    if (res?.ok) { router.push('/'); return; }
+    const data = res ? await res.json().catch(() => null) : null;
+    setDeleteMsg(data?.error || 'Failed to delete account. Please try again.');
+    setDeleting(false);
   }
 
   return (
@@ -118,9 +125,10 @@ export default function SettingsPage() {
             placeholder="Type DELETE"
             style={{ maxWidth: '200px' }}
           />
-          <button onClick={deleteAccount} disabled={deleteConfirm !== 'DELETE'} className="btn-danger" style={{ opacity: deleteConfirm !== 'DELETE' ? 0.4 : 1, padding: '10px 24px' }}>
-            Delete Account
+          <button onClick={deleteAccount} disabled={deleteConfirm !== 'DELETE' || deleting} className="btn-danger" style={{ opacity: deleteConfirm !== 'DELETE' || deleting ? 0.4 : 1, padding: '10px 24px' }}>
+            {deleting ? 'Deleting…' : 'Delete Account'}
           </button>
+          {deleteMsg && <span className="text-12 text-danger">{deleteMsg}</span>}
         </div>
       </div>
     </div>
