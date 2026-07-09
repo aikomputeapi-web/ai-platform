@@ -7,7 +7,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
-    const { currentPassword, newPassword } = await req.json();
+    const body = await req.json().catch(() => null);
+    const { currentPassword, newPassword } = body ?? {};
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return NextResponse.json({ error: 'Current and new password required' }, { status: 400 });
+    }
+    if (newPassword.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
 
     // Fetch hash from DB (requireAuth returns cached user, need full record)
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
@@ -20,8 +25,6 @@ export async function POST(req: NextRequest) {
 
     const valid = await verifyPassword(currentPassword, dbUser.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
-
-    if (newPassword.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
 
     await prisma.user.update({
       where: { id: user.id },
