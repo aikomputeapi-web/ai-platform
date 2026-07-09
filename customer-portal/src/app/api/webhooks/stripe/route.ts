@@ -5,6 +5,28 @@ import { updateKeyLimits } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Map a plan row to the OmniRoute key-limit payload. A limit of 0 on the plan
+ * means "unlimited", which OmniRoute expects as null; '*' allowedModels means
+ * "all models", which OmniRoute expects as an empty array. Used by both the
+ * upgrade (checkout.session.completed) and downgrade (customer.subscription.deleted)
+ * paths so the two can't drift apart.
+ */
+function planKeyLimits(plan: {
+  requestsPerDay: number;
+  requestsPerMinute: number;
+  requestsPerMonth?: number;
+  allowedModels: string;
+}) {
+  const monthly = plan.requestsPerMonth ?? 0;
+  return {
+    maxRequestsPerDay: plan.requestsPerDay > 0 ? plan.requestsPerDay : null,
+    maxRequestsPerMinute: plan.requestsPerMinute > 0 ? plan.requestsPerMinute : null,
+    maxRequestsPerMonth: monthly > 0 ? monthly : null,
+    allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
+  };
+}
+
 async function processWebhookEvent(event: any) {
   try {
     switch (event.type) {
@@ -33,7 +55,6 @@ async function processWebhookEvent(event: any) {
           console.warn(`[Webhook] Plan with price ID ${priceId} not found`);
           break;
         }
-        const billedPlan = plan as typeof plan & { requestsPerMonth?: number };
 
         // Update user plan and store subscription ID
         await prisma.user.update({
@@ -50,12 +71,7 @@ async function processWebhookEvent(event: any) {
         });
 
         for (const key of userKeys) {
-          await updateKeyLimits(key.omnirouteKeyId, {
-            maxRequestsPerDay: plan.requestsPerDay > 0 ? plan.requestsPerDay : null,
-            maxRequestsPerMinute: plan.requestsPerMinute > 0 ? plan.requestsPerMinute : null,
-            maxRequestsPerMonth: plan.requestsPerMonth > 0 ? plan.requestsPerMonth : null,
-            allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
-          });
+          await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(plan));
         }
 
         // Record payment
@@ -104,17 +120,16 @@ async function processWebhookEvent(event: any) {
           VALUES (${crypto.randomUUID()}, ${user.id}, 'subscription_canceled', 0, ${`Stripe subscription ${sub.id} ended`}, 'applied', 'stripe', NOW())
         `;
 
-        // Reset API key limits to free tier
+        // Reset API key limits (including the model allowlist) to the free tier
         const freePlan = await prisma.plan.findUnique({ where: { id: 'free' } });
-        const freeTier = freePlan as typeof freePlan & { requestsPerMonth?: number };
+        if (!freePlan) {
+          console.error(`[Webhook] Free plan record not found — key limits for ${user.email} left unchanged`);
+          break;
+        }
         const userKeys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
 
         for (const key of userKeys) {
-          await updateKeyLimits(key.omnirouteKeyId, {
-            maxRequestsPerDay: null,
-            maxRequestsPerMinute: freePlan?.requestsPerMinute || 5,
-            maxRequestsPerMonth: freeTier?.requestsPerMonth || 50,
-          });
+          await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(freePlan));
         }
 
         console.log(`[Webhook] User ${user.email} downgraded to Free`);
