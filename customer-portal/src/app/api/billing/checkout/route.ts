@@ -19,15 +19,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    // Create Stripe customer if needed
+    // Create Stripe customer if needed. The webhook resolves users by
+    // stripeCustomerId, so the checkout session must use whichever id is
+    // actually stored — a conditional write guards against concurrent
+    // requests overwriting each other's customer id.
     let stripeCustomerId = user.stripeCustomerId;
     if (!stripeCustomerId) {
       const customer = await createStripeCustomer(user.email, user.name || undefined);
-      stripeCustomerId = customer.id;
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { stripeCustomerId },
+      const claimed = await prisma.user.updateMany({
+        where: { id: user.id, stripeCustomerId: null },
+        data: { stripeCustomerId: customer.id },
       });
+      if (claimed.count > 0) {
+        stripeCustomerId = customer.id;
+      } else {
+        // A concurrent request stored its customer id first; use that one.
+        const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+        stripeCustomerId = fresh?.stripeCustomerId ?? customer.id;
+      }
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
