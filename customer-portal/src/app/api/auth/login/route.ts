@@ -5,9 +5,10 @@ import { verifyPassword, createSessionToken } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json().catch(() => null);
+    const { email, password } = body ?? {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || !email || typeof password !== 'string' || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
