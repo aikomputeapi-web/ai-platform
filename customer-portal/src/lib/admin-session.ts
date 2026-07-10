@@ -31,9 +31,25 @@ export function getAdminSecret(): string {
   return secret;
 }
 
+// Constant-time string comparison, safe on both Node and Edge runtimes
+// (no node:crypto). Always scans to the longer input so timing does not
+// reveal how many leading characters match; only the secret's length can
+// influence duration, never its contents.
+export function timingSafeEqualStrings(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+  let diff = aBytes.length ^ bBytes.length;
+  const len = Math.max(aBytes.length, bBytes.length);
+  for (let i = 0; i < len; i++) {
+    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+  return diff === 0;
+}
+
 // Verify admin password
 export function verifyAdminPassword(password: string): boolean {
-  return password === getAdminSecret();
+  return timingSafeEqualStrings(password, getAdminSecret());
 }
 
 // Create admin session token

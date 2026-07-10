@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAdminSession } from './src/lib/admin-session';
+import { timingSafeEqualStrings, verifyAdminSession } from './src/lib/admin-session';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
     // Allow access with valid Bearer token API secret (for worker scripts and cron jobs)
     const authHeader = request.headers.get('authorization');
     const adminSecret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
-    if (authHeader?.startsWith('Bearer ') && authHeader.slice(7) === adminSecret) {
+    if (authHeader?.startsWith('Bearer ') && timingSafeEqualStrings(authHeader.slice(7), adminSecret)) {
       return NextResponse.next();
     }
 
