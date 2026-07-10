@@ -17,10 +17,31 @@ async function isEmailDotShadowbanEnabled(): Promise<boolean> {
 export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { email, password, name } = ((body ?? {}) as Record<string, unknown>) as {
+      email?: unknown;
+      password?: unknown;
+      name?: unknown;
+    };
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || !email || typeof password !== 'string' || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    }
+
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
+    if (name !== undefined && name !== null && typeof name !== 'string') {
+      return NextResponse.json({ error: 'Name must be a string' }, { status: 400 });
+    }
+    if (typeof name === 'string' && name.length > 100) {
+      return NextResponse.json({ error: 'Name must be 100 characters or less' }, { status: 400 });
     }
 
     if (password.length < 8) {
@@ -69,18 +90,29 @@ export async function POST(req: NextRequest) {
       adminNote = `Automatically shadow banned: Gmail account with ${dotCount} dots in email local part.`;
     }
 
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        passwordHash,
-        name: name || null,
-        verifyToken,
-        planId: 'free',
-        isShadowLocked,
-        isShadowBanned,
-        adminNote,
-      },
-    });
+    // The findUnique check above races with concurrent signups for the same
+    // email — the loser hits the unique constraint on users.email, which must
+    // surface as 409 (like the pre-check), not a generic 500.
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          passwordHash,
+          name: name || null,
+          verifyToken,
+          planId: 'free',
+          isShadowLocked,
+          isShadowBanned,
+          adminNote,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      }
+      throw err;
+    }
 
     await recordAdminAction({
       action: 'user.signed_up',
