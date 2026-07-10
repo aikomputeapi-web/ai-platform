@@ -3,10 +3,10 @@ import { verifyAdminPassword, setAdminSessionCookie } from '@/lib/admin-session'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { password } = body;
+    const body = await req.json().catch(() => null);
+    const { password } = body ?? {};
 
-    if (!password) {
+    if (typeof password !== 'string' || !password) {
       return NextResponse.json(
         { error: 'Password is required' },
         { status: 400 }
