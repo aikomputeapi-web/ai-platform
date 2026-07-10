@@ -445,7 +445,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           return NextResponse.json({ error: 'User is already verified' }, { status: 400 });
         }
 
-        const verifyToken = user.verifyToken || generateVerifyToken();
+        // Always rotate: reusing user.verifyToken would keep alive tokens
+        // minted before the crypto.randomBytes fix (predictable Math.random
+        // values) and any previously emailed link.
+        const verifyToken = generateVerifyToken();
         const updated = await prisma.user.update({
           where: { id },
           data: { verifyToken } as never,
