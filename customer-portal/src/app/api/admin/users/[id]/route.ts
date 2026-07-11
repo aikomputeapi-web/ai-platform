@@ -40,6 +40,17 @@ function formatRange(range: string | null) {
   return range || '30d';
 }
 
+// Credential columns must never leave the server, even in admin responses.
+function stripSensitiveUserFields(user: object | null) {
+  if (!user) return user;
+  const safe = { ...user } as Record<string, unknown>;
+  delete safe.passwordHash;
+  delete safe.verifyToken;
+  delete safe.resetToken;
+  delete safe.resetTokenExp;
+  return safe;
+}
+
 function normalizeUsageLookupKey(value: string | null | undefined) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
@@ -282,7 +293,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserEmail: user.email,
           metadata: body?.note ? { note: body.note } : null,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'unlock': {
@@ -311,7 +322,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserId: user.id,
           targetUserEmail: user.email,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'shadowBan': {
@@ -342,7 +353,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserId: user.id,
           targetUserEmail: user.email,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'shadowLock': {
@@ -373,7 +384,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserId: user.id,
           targetUserEmail: user.email,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'plan': {
@@ -397,7 +408,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserEmail: user.email,
           metadata: { planId, planName: plan.name },
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'note': {
@@ -414,7 +425,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserEmail: user.email,
           metadata: note ? { note } : null,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'revokeKeys': {
@@ -437,7 +448,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserEmail: user.email,
           metadata: { revokedKeys: activeKeys.length },
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'resendVerification': {
@@ -461,7 +472,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserId: user.id,
           targetUserEmail: user.email,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'resetPassword': {
@@ -481,7 +492,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           targetUserId: user.id,
           targetUserEmail: user.email,
         });
-        response = { user: updated };
+        response = { user: stripSensitiveUserFields(updated) };
         break;
       }
       case 'impersonate': {
