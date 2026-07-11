@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { deleteOmniRouteKey } from '@/lib/omniroute';
+import { ensureSubscriptionCanceled } from '@/lib/stripe';
 import prisma from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,25 @@ export async function DELETE() {
         { error: 'Failed to revoke API keys. Your account was not deleted — please try again.' },
         { status: 502 }
       );
+    }
+
+    // Cancel any active Stripe subscription before deleting the user — the
+    // row holds the only stripeSubscriptionId mapping, so deleting first
+    // would leave the subscription billing with nothing able to cancel it.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { stripeSubscriptionId: true },
+    });
+    if (dbUser?.stripeSubscriptionId) {
+      try {
+        await ensureSubscriptionCanceled(dbUser.stripeSubscriptionId);
+      } catch (e) {
+        console.error('Account deletion: failed to cancel Stripe subscription:', e);
+        return NextResponse.json(
+          { error: 'Failed to cancel your subscription. Your account was not deleted — please try again.' },
+          { status: 502 }
+        );
+      }
     }
 
     // Delete user and cascade (keys, payments deleted via FK cascade)

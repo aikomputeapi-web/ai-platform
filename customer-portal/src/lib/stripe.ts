@@ -53,3 +53,21 @@ export async function cancelSubscription(subscriptionId: string) {
 export async function getSubscription(subscriptionId: string) {
   return getStripe().subscriptions.retrieve(subscriptionId);
 }
+
+// Cancel a subscription, resolving once it is no longer billing: cancels a
+// live subscription, and treats already-terminal ('canceled' /
+// 'incomplete_expired') or missing subscriptions as success so callers can
+// safely retry. Anything else (auth, network, rate limit) rethrows.
+export async function ensureSubscriptionCanceled(subscriptionId: string) {
+  try {
+    const sub = await getStripe().subscriptions.retrieve(subscriptionId);
+    if (sub.status !== 'canceled' && sub.status !== 'incomplete_expired') {
+      await getStripe().subscriptions.cancel(subscriptionId);
+    }
+  } catch (e) {
+    if (e instanceof Stripe.errors.StripeInvalidRequestError && e.code === 'resource_missing') {
+      return;
+    }
+    throw e;
+  }
+}
