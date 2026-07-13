@@ -243,39 +243,93 @@ sudo cp "${NGINX_CONF}" "${NGINX_CONF}.pre-deploy" 2>/dev/null || true
 # The nginx config format is:
 #   server 127.0.0.1:PORT max_fails=3 fail_timeout=10s;                 # active
 #   server 127.0.0.1:PORT max_fails=3 fail_timeout=10s down;            # standby
-# We capture everything between the port and semicolon to handle any
-# extra parameters (max_fails, fail_timeout, etc.) generically.
+#
+# `set_upstream_state` is IDEMPOTENT: it first strips every `down` token for the
+# port (including a doubled `down down` left by an interrupted/retried earlier
+# deploy) and then re-adds exactly one only when the slot must be standby.
+#
+# The previous implementation used two non-idempotent seds per port:
+#   add:    s/\(server ...PORT[^;]*\);/\1 down;/     ← greedy [^;]* re-appended
+#           ` down` even when already present  → produced `down down`
+#   remove: s/\(server ...PORT[^;]*\) down;/\1;/     ← stripped only ONE `down`
+# Across the 3 cancelled + 1 real retry of a single deploy that left EVERY
+# upstream marked `down` (active slot included) → nginx "no live upstreams" →
+# the whole site 502'd (2026-07-13). Strip-then-set makes the toggle safe to run
+# any number of times from any prior state.
+set_upstream_state() {
+    local port="$1" state="$2"   # state: up | down
+    # Anchor on the fixed `max_fails=N fail_timeout=Ns` prefix (deterministic —
+    # unlike the old greedy [^;]* which mis-captured the trailing ` down`).
+    local prefix="server 127\\.0\\.0\\.1:${port} max_fails=[0-9]\\+ fail_timeout=[0-9]\\+s"
+    # 1) strip zero-or-more ` down` tokens
+    sudo sed -i "s/\\(${prefix}\\)\\( down\\)*;/\\1;/" "${NGINX_CONF}"
+    # 2) add exactly one when standby
+    if [[ "${state}" == "down" ]]; then
+        sudo sed -i "s/\\(${prefix}\\);/\\1 down;/" "${NGINX_CONF}"
+    fi
+}
+
+# Ports per slot: <web> <api> <portal>. TARGET goes up, the old ACTIVE goes down.
 if [[ "${TARGET_SLOT}" == "green" ]]; then
-    # Blue → down, Green → up
-    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    TARGET_PORTS_ARR=(20138 20139 3001); STANDBY_PORTS_ARR=(20128 20129 3000)
 else
-    # Green → down, Blue → up
-    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\) down;/\1;/' "${NGINX_CONF}"
+    TARGET_PORTS_ARR=(20128 20129 3000); STANDBY_PORTS_ARR=(20138 20139 3001)
+fi
+for _p in "${TARGET_PORTS_ARR[@]}";  do set_upstream_state "${_p}" up;   done
+for _p in "${STANDBY_PORTS_ARR[@]}"; do set_upstream_state "${_p}" down; done
+
+# Guard: at least one server per upstream must be live (no stray `down`).
+if sudo grep -Eq "server 127\\.0\\.0\\.1:(${TARGET_PORTS_ARR[0]}|${TARGET_PORTS_ARR[1]}|${TARGET_PORTS_ARR[2]})[^;]* down;" "${NGINX_CONF}"; then
+    warn "Target slot still has a 'down' marker after toggle — restoring pre-deploy config"
+    [[ -f "${NGINX_CONF}.pre-deploy" ]] && sudo cp "${NGINX_CONF}.pre-deploy" "${NGINX_CONF}"
+    sudo nginx -t && sudo systemctl reload nginx || true
+    sudo rm -f "${NGINX_CONF}.pre-deploy"
+    error "Upstream toggle produced an all-down target — deploy aborted, previous config restored."
 fi
 
-# Test nginx config
-if sudo nginx -t; then
-    sudo systemctl reload nginx
-    log "Nginx reloaded — traffic now routed to ${TARGET_SLOT^^}"
-    sudo rm -f "${NGINX_CONF}.pre-deploy"
-else
-    warn "Nginx config test FAILED! Restoring pre-deploy config..."
+# ── Test config, reload, then SMOKE-CHECK through nginx ──
+# `nginx -t` only proves syntax — it does NOT prove traffic is served (an
+# all-`down` upstream still passes `nginx -t` but returns 502). So after reload
+# we hit the public front door THROUGH nginx and auto-revert if it does not serve.
+SMOKE_HOST="${SMOKE_HOST:-aikompute.com}"
+smoke_check() {
+    local code
+    code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 \
+        -H "Host: ${SMOKE_HOST}" "https://127.0.0.1/" 2>/dev/null || echo 000)
+    info "Smoke check (Host: ${SMOKE_HOST}) → HTTP ${code}"
+    # Non-5xx (200/301/302/307/401/403…) = nginx reached a live backend.
+    # 000 / 5xx = the swap did not actually route traffic.
+    [[ "${code}" =~ ^[234][0-9][0-9]$ ]]
+}
+
+revert_nginx() {
     if [[ -f "${NGINX_CONF}.pre-deploy" ]]; then
         sudo cp "${NGINX_CONF}.pre-deploy" "${NGINX_CONF}"
         sudo nginx -t && sudo systemctl reload nginx || true
         sudo rm -f "${NGINX_CONF}.pre-deploy"
     fi
-    error "Nginx swap failed — deploy aborted. Previous config restored."
+}
+
+if ! sudo nginx -t; then
+    warn "Nginx config test FAILED! Restoring pre-deploy config..."
+    revert_nginx
+    error "Nginx swap failed (config test) — deploy aborted. Previous config restored."
+fi
+
+sudo systemctl reload nginx
+sleep 1
+if smoke_check; then
+    log "Nginx reloaded and smoke check passed — traffic now routed to ${TARGET_SLOT^^}"
+    sudo rm -f "${NGINX_CONF}.pre-deploy"
+else
+    warn "Smoke check FAILED after swap — site not serving. Reverting to pre-deploy config..."
+    revert_nginx
+    if smoke_check; then
+        warn "Reverted to previous slot — it is serving again."
+    else
+        warn "Revert did not restore serving — MANUAL INTERVENTION NEEDED."
+    fi
+    error "Blue-green swap did not serve traffic — deploy aborted, reverted to previous slot."
 fi
 
 # ── Step 7: Update ACTIVE_SLOT in .env ──

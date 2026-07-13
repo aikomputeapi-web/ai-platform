@@ -83,37 +83,61 @@ sudo cp "${NGINX_CONF}" "${NGINX_CONF}.pre-rollback" 2>/dev/null || true
 # ── Swap nginx upstream back to rollback slot ──
 info "Swapping nginx upstream to ${ROLLBACK_SLOT^^}..."
 
-if [[ "${ROLLBACK_SLOT}" == "green" ]]; then
-    # Blue → down, Green → up (Green becomes active)
-    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\) down;/\1;/' "${NGINX_CONF}"
-else
-    # Green → down, Blue → up (Blue becomes active)
-    sudo sed -i 's/\(server 127.0.0.1:20138[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20128[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20139[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:20129[^;]*\) down;/\1;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3001[^;]*\);/\1 down;/' "${NGINX_CONF}"
-    sudo sed -i 's/\(server 127.0.0.1:3000[^;]*\) down;/\1;/' "${NGINX_CONF}"
-fi
+# Idempotent upstream toggle — strips any/all `down` tokens (recovering from a
+# doubled `down down` left by an interrupted deploy) then re-adds exactly one to
+# the standby slot. Mirrors scripts/blue-green-switch.sh::set_upstream_state; see
+# that file for the full rationale (the old greedy [^;]* toggle left every
+# upstream `down` and 502'd the site on 2026-07-13).
+set_upstream_state() {
+    local port="$1" state="$2"   # state: up | down
+    local prefix="server 127\\.0\\.0\\.1:${port} max_fails=[0-9]\\+ fail_timeout=[0-9]\\+s"
+    sudo sed -i "s/\\(${prefix}\\)\\( down\\)*;/\\1;/" "${NGINX_CONF}"
+    if [[ "${state}" == "down" ]]; then
+        sudo sed -i "s/\\(${prefix}\\);/\\1 down;/" "${NGINX_CONF}"
+    fi
+}
 
-# Test nginx config
-if sudo nginx -t; then
-    sudo systemctl reload nginx
-    log "Nginx reloaded — traffic now routed to ${ROLLBACK_SLOT^^}"
-    sudo rm -f "${NGINX_CONF}.pre-rollback"
+# Rollback target goes up; the other slot goes down.
+if [[ "${ROLLBACK_SLOT}" == "green" ]]; then
+    UP_PORTS_ARR=(20138 20139 3001); DOWN_PORTS_ARR=(20128 20129 3000)
 else
-    warn "Nginx config test FAILED! Restoring pre-rollback config..."
+    UP_PORTS_ARR=(20128 20129 3000); DOWN_PORTS_ARR=(20138 20139 3001)
+fi
+for _p in "${UP_PORTS_ARR[@]}";   do set_upstream_state "${_p}" up;   done
+for _p in "${DOWN_PORTS_ARR[@]}"; do set_upstream_state "${_p}" down; done
+
+# ── Test config, reload, then SMOKE-CHECK through nginx ──
+SMOKE_HOST="${SMOKE_HOST:-aikompute.com}"
+smoke_check() {
+    local code
+    code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 \
+        -H "Host: ${SMOKE_HOST}" "https://127.0.0.1/" 2>/dev/null || echo 000)
+    info "Smoke check (Host: ${SMOKE_HOST}) → HTTP ${code}"
+    [[ "${code}" =~ ^[234][0-9][0-9]$ ]]
+}
+revert_nginx() {
     if [[ -f "${NGINX_CONF}.pre-rollback" ]]; then
         sudo cp "${NGINX_CONF}.pre-rollback" "${NGINX_CONF}"
         sudo nginx -t && sudo systemctl reload nginx || true
         sudo rm -f "${NGINX_CONF}.pre-rollback"
     fi
-    error "Nginx swap failed — rollback aborted. Previous config restored."
+}
+
+if ! sudo nginx -t; then
+    warn "Nginx config test FAILED! Restoring pre-rollback config..."
+    revert_nginx
+    error "Nginx swap failed (config test) — rollback aborted. Previous config restored."
+fi
+
+sudo systemctl reload nginx
+sleep 1
+if smoke_check; then
+    log "Nginx reloaded and smoke check passed — traffic now routed to ${ROLLBACK_SLOT^^}"
+    sudo rm -f "${NGINX_CONF}.pre-rollback"
+else
+    warn "Smoke check FAILED after rollback swap — site not serving. Reverting..."
+    revert_nginx
+    error "Rollback swap did not serve traffic — aborted, previous config restored."
 fi
 
 # ── Update ACTIVE_SLOT in .env ──
