@@ -6,7 +6,8 @@
  * Uses Next.js ISR: data is regenerated in the background every hour,
  * so charts always reflect current AA rankings without manual updates.
  *
- * Falls back to MODEL_CATALOGUE static data if the AA API is unreachable.
+ * Falls back to MODEL_CATALOGUE static data if the AA API is unreachable
+ * or AA_API_KEY is not set.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -43,7 +44,8 @@ export interface LeaderboardEntry extends ModelMetric {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const AA_API_BASE = 'https://api.artificialanalysis.ai/v1';
-const AA_API_KEY = process.env.AA_API_KEY ?? 'aa_srqASlMVpwDcuNrBEHnbKZkejYwsPltX';
+// Empty string (e.g. compose's `AA_API_KEY: ${AA_API_KEY:-}`) counts as unset.
+const AA_API_KEY = process.env.AA_API_KEY || undefined;
 
 // ISR revalidation: 1 hour
 const REVALIDATE_SECONDS = 3600;
@@ -220,6 +222,11 @@ interface AARawModel {
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function fetchAA(path: string): Promise<AARawModel[]> {
+  if (!AA_API_KEY) {
+    // Callers catch and serve STATIC_MODEL_METRICS; skip the doomed request.
+    throw new Error('AA_API_KEY is not configured');
+  }
+
   const res = await fetch(`${AA_API_BASE}${path}`, {
     headers: {
       Authorization: `Bearer ${AA_API_KEY}`,
