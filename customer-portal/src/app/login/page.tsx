@@ -23,7 +23,14 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Invalid email or password'); return; }
+      if (!res.ok) {
+        if (data.requiresVerification) {
+          router.push(`/verify-pending?email=${encodeURIComponent(email)}`);
+          return;
+        }
+        setError(data.error || 'Invalid email or password');
+        return;
+      }
       router.push('/dashboard');
       router.refresh();
     } catch {
