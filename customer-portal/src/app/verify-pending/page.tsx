@@ -2,11 +2,27 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 function VerifyPendingContent() {
   const params = useSearchParams();
   const email = params.get('email');
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  async function handleResend() {
+    if (!email || resendState === 'sending') return;
+    setResendState('sending');
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      setResendState(res.ok ? 'sent' : 'error');
+    } catch {
+      setResendState('error');
+    }
+  }
 
   return (
     <div className="auth-centered">
@@ -33,6 +49,25 @@ function VerifyPendingContent() {
           <div className="info-box">
             <strong>Didn&apos;t receive the email?</strong><br />
             Check your spam folder or wait a few minutes for it to arrive.
+            {email && (
+              <>
+                <br />
+                {resendState === 'sent' ? (
+                  <span>A new link is on its way — check your inbox.</span>
+                ) : resendState === 'error' ? (
+                  <span>Something went wrong. Please try again in a minute.</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={handleResend}
+                    disabled={resendState === 'sending'}
+                  >
+                    {resendState === 'sending' ? 'Sending…' : 'Resend verification email'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           <Link href="/login" className="btn-border block text-center mb-16">
