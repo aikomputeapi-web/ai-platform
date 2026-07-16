@@ -65,13 +65,25 @@ async function processWebhookEvent(event: any) {
           },
         });
 
-        // Update all user's API keys with new limits
+        // Update the user's active API keys with new limits. Inactive
+        // mappings point at OmniRoute keys that no longer exist (revoked or
+        // reconciled), so PATCHing them is a guaranteed 404 — and a throw
+        // here would skip the remaining keys AND the payment record below.
+        // One key failing must not block the others or the payment history,
+        // so each update is non-fatal (same policy as key creation).
         const userKeys = await prisma.userApiKey.findMany({
-          where: { userId: user.id },
+          where: { userId: user.id, isActive: true },
         });
 
         for (const key of userKeys) {
-          await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(plan));
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(plan));
+          } catch (err) {
+            console.error(
+              `[Webhook] Failed to apply ${plan.id} limits to key ${key.omnirouteKeyId} for ${user.email} (needs manual sync):`,
+              err
+            );
+          }
         }
 
         // Record payment
@@ -126,10 +138,22 @@ async function processWebhookEvent(event: any) {
           console.error(`[Webhook] Free plan record not found — key limits for ${user.email} left unchanged`);
           break;
         }
-        const userKeys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
+        // Per-key non-fatal for the same reason as the upgrade path: one
+        // stale mapping throwing would leave the REMAINING keys at paid-tier
+        // limits, and Stripe already got its 200 so nothing would retry.
+        const userKeys = await prisma.userApiKey.findMany({
+          where: { userId: user.id, isActive: true },
+        });
 
         for (const key of userKeys) {
-          await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(freePlan));
+          try {
+            await updateKeyLimits(key.omnirouteKeyId, planKeyLimits(freePlan));
+          } catch (err) {
+            console.error(
+              `[Webhook] Failed to reset key ${key.omnirouteKeyId} to free-tier limits for ${user.email} (needs manual sync):`,
+              err
+            );
+          }
         }
 
         console.log(`[Webhook] User ${user.email} downgraded to Free`);
