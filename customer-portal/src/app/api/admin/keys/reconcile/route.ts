@@ -5,6 +5,21 @@ import { listOmniRouteKeys, deleteOmniRouteKey } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
 
+// Key creation is a two-step write (OmniRoute key first, portal mapping
+// second — see app/api/keys/route.ts), and this route snapshots the two
+// stores concurrently. A snapshot taken between the two steps sees the new
+// OmniRoute key as "orphaned" and would delete a credential the user was
+// just issued; the mirror-image race (mapping visible, key not in the omni
+// snapshot yet) would mark a brand-new mapping inactive. Anything younger
+// than this window is skipped and re-checked on the next cycle instead.
+const RECONCILE_GRACE_MS = 10 * 60 * 1000;
+
+function isWithinGracePeriod(createdAt: string | Date | undefined): boolean {
+  if (!createdAt) return false; // unknown age — reconcile as before
+  const t = new Date(createdAt).getTime();
+  return Number.isFinite(t) && t > Date.now() - RECONCILE_GRACE_MS;
+}
+
 /**
  * POST /api/admin/keys/reconcile
  *
@@ -57,6 +72,8 @@ export async function POST(req: NextRequest) {
       orphanedOmniRouteKeys: 0,
       orphanedOmniRouteKeysDeleted: 0,
       orphanedOmniRouteKeyDeleteFailures: 0,
+      skippedRecentPortalMappings: 0,
+      skippedRecentOmniRouteKeys: 0,
       details: {
         deadMappings: [] as Array<{ keyId: string; name: string; omnirouteKeyId: string; email: string | null }>,
         orphanedKeys: [] as Array<{ id: string; name: string; deleted: boolean; error?: string }>,
@@ -71,9 +88,11 @@ export async function POST(req: NextRequest) {
     const omniKeyIds = new Set(omniKeys.map((k) => k.id));
 
     // 1. Portal mappings pointing at a missing OmniRoute key → mark inactive.
-    const deadMappings = portalKeys.filter(
+    const missingKeyMappings = portalKeys.filter(
       (k) => k.isActive && !omniKeyIds.has(k.omnirouteKeyId)
     );
+    const deadMappings = missingKeyMappings.filter((k) => !isWithinGracePeriod(k.createdAt));
+    report.skippedRecentPortalMappings = missingKeyMappings.length - deadMappings.length;
     report.deadPortalMappings = deadMappings.length;
     if (deadMappings.length > 0 && prune) {
       const result = await prisma.userApiKey.updateMany({
@@ -98,7 +117,9 @@ export async function POST(req: NextRequest) {
 
     // 2. OmniRoute keys with no portal mapping → delete (unowned credentials).
     const portalKeyIds = new Set(portalKeys.map((k) => k.omnirouteKeyId));
-    const orphanedOmniKeys = omniKeys.filter((k) => !portalKeyIds.has(k.id));
+    const unmappedOmniKeys = omniKeys.filter((k) => !portalKeyIds.has(k.id));
+    const orphanedOmniKeys = unmappedOmniKeys.filter((k) => !isWithinGracePeriod(k.createdAt));
+    report.skippedRecentOmniRouteKeys = unmappedOmniKeys.length - orphanedOmniKeys.length;
     report.orphanedOmniRouteKeys = orphanedOmniKeys.length;
     if (orphanedOmniKeys.length > 0 && prune) {
       for (const k of orphanedOmniKeys) {
