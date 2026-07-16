@@ -98,7 +98,25 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
-    const { name } = await req.json();
+
+    // Validate before any side effects: a non-string `name` would pass
+    // `name || 'Default Key'`, create the OmniRoute key, then fail the portal
+    // mapping write — a pointless create/rollback round-trip on the
+    // credential store for every malformed request.
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { name } = body as Record<string, unknown>;
+    if (name !== undefined && typeof name !== 'string') {
+      return NextResponse.json({ error: 'Key name must be a string' }, { status: 400 });
+    }
+    if (typeof name === 'string' && name.length > 100) {
+      return NextResponse.json(
+        { error: 'Key name must be 100 characters or less' },
+        { status: 400 }
+      );
+    }
 
     // Enforce key limit based on plan
     const keyCount = await prisma.userApiKey.count({
@@ -240,7 +258,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const user = await requireAuth();
-    const { keyId } = await req.json();
+
+    const body = await req.json().catch(() => null);
+    const keyId = body && typeof body === 'object' ? (body as Record<string, unknown>).keyId : undefined;
+    if (typeof keyId !== 'string' || keyId.length === 0) {
+      return NextResponse.json({ error: 'Key ID required' }, { status: 400 });
+    }
 
     const key = await prisma.userApiKey.findFirst({
       where: { id: keyId, userId: user.id },
