@@ -23,13 +23,19 @@ export async function sendHtmlEmail({ to, subject, html, text }: HtmlEmailOption
   }
 
   try {
-    await getResend().emails.send({
+    // Resend's SDK reports API failures (invalid key, unverified domain,
+    // rate limits) via the `error` field instead of throwing.
+    const { error } = await getResend().emails.send({
       from: `${APP_NAME} <${FROM_ADDRESS}>`,
       to,
       subject,
       html,
       text,
     });
+    if (error) {
+      console.error('[Email] sendHtmlEmail failed:', error);
+      return false;
+    }
     return true;
   } catch (err) {
     console.error('[Email] sendHtmlEmail failed:', err);
@@ -47,7 +53,7 @@ export async function sendVerificationEmail(
   }
 
   try {
-    await sendHtmlEmail({
+    return await sendHtmlEmail({
       to,
       subject: `Verify your email — ${APP_NAME}`,
       html: emailTemplate({
@@ -63,7 +69,6 @@ export async function sendVerificationEmail(
         footer: 'This link expires in 24 hours. If you did not create an account, ignore this email.',
       }),
     });
-    return true;
   } catch (err) {
     console.error('[Email] sendVerificationEmail failed:', err);
     return false;
@@ -80,7 +85,7 @@ export async function sendPasswordResetEmail(
   }
 
   try {
-    await sendHtmlEmail({
+    return await sendHtmlEmail({
       to,
       subject: `Reset your password — ${APP_NAME}`,
       html: emailTemplate({
@@ -100,7 +105,6 @@ export async function sendPasswordResetEmail(
         footer: 'This link expires in 1 hour for your security.',
       }),
     });
-    return true;
   } catch (err) {
     console.error('[Email] sendPasswordResetEmail failed:', err);
     return false;

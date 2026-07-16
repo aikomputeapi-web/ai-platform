@@ -478,7 +478,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           data: { verifyToken } as never,
           include: { plan: true, apiKeys: true, payments: true },
         });
-        await sendVerificationEmail(user.email, verifyToken);
+        // Send failures are reported via the boolean, not exceptions —
+        // ignoring it would tell the admin "sent" when nothing went out.
+        // The token is already rotated, but retrying rotates and resends.
+        const verificationSent = await sendVerificationEmail(user.email, verifyToken);
+        if (!verificationSent) {
+          return NextResponse.json(
+            { error: 'Failed to send the verification email. No email was delivered — please try again.' },
+            { status: 502 }
+          );
+        }
         await recordAdminAction({
           action: 'support.verification_resent',
           req,
@@ -498,7 +507,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           data: { resetToken, resetTokenExp } as never,
           include: { plan: true, apiKeys: true, payments: true },
         });
-        await sendPasswordResetEmail(user.email, resetToken);
+        const resetSent = await sendPasswordResetEmail(user.email, resetToken);
+        if (!resetSent) {
+          return NextResponse.json(
+            { error: 'Failed to send the password reset email. No email was delivered — please try again.' },
+            { status: 502 }
+          );
+        }
         await recordAdminAction({
           action: 'support.password_reset_sent',
           req,
