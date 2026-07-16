@@ -106,7 +106,6 @@ export async function GET(req: NextRequest) {
 
     // 5. Enrich each user with their aggregated usage
     const enrichedUsers = users.map(user => {
-      const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
       const keyUsages = user.apiKeys
         .map((key) =>
           resolvePortalKeyUsage(
@@ -159,10 +158,10 @@ export async function GET(req: NextRequest) {
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified,
-        isLocked: account.isLocked || false,
-        isShadowLocked: (account as any).isShadowLocked || false,
-        isShadowBanned: (account as any).isShadowBanned || false,
-        adminNote: account.adminNote || null,
+        isLocked: user.isLocked,
+        isShadowLocked: user.isShadowLocked,
+        isShadowBanned: user.isShadowBanned,
+        adminNote: user.adminNote,
         plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,

@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
             emailVerified,
             isLocked,
             adminNote,
-          } as never,
+          },
         });
         updated += 1;
       } else {
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
             isShadowLocked,
             isShadowBanned,
             adminNote: finalAdminNote,
-          } as never,
+          },
         });
         created += 1;
       }

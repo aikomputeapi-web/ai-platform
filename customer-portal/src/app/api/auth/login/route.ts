@@ -20,8 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const account = user as typeof user & { isLocked?: boolean };
-    if (account.isLocked) {
+    if (user.isLocked) {
       return NextResponse.json({ error: 'Account locked. Contact support.' }, { status: 403 });
     }
 
