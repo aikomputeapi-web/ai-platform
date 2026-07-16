@@ -78,6 +78,17 @@ export async function POST(req: NextRequest) {
       const delivered = await sendScheduledReportEmail(report);
       if (!delivered) {
         results.failed += 1;
+        // Push the next attempt out instead of leaving next_run_at in the
+        // past: the query above takes the LIMIT oldest due reports, so
+        // reports that fail every run would otherwise fill the batch forever
+        // and starve healthy ones. One hour keeps retries frequent relative
+        // to the daily/weekly/monthly cadences without burning email quota.
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE scheduled_reports
+          SET next_run_at = NOW() + INTERVAL '1 hour',
+              updated_at = NOW()
+          WHERE id = ${report.id}
+        `);
         await recordAdminAction({
           action: 'report.delivery_failed',
           req,
