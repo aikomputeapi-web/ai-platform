@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { timingSafeEqualStrings, verifyAdminSession } from './src/lib/admin-session';
+import { getAdminSecret, timingSafeEqualStrings, verifyAdminSession } from './src/lib/admin-session';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,10 +18,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Allow access with valid Bearer token API secret (for worker scripts and cron jobs)
+    // Allow access with valid Bearer token API secret (for worker scripts and
+    // cron jobs). getAdminSecret throws in production when ADMIN_API_SECRET is
+    // unset, so a misconfigured deployment fails loudly instead of accepting
+    // "Bearer admin"; only Bearer requests hit that path — cookie sessions and
+    // unauthenticated requests are unaffected.
     const authHeader = request.headers.get('authorization');
-    const adminSecret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
-    if (authHeader?.startsWith('Bearer ') && timingSafeEqualStrings(authHeader.slice(7), adminSecret)) {
+    if (authHeader?.startsWith('Bearer ') && timingSafeEqualStrings(authHeader.slice(7), getAdminSecret())) {
       return NextResponse.next();
     }
 
