@@ -32,6 +32,12 @@ function isWithinGracePeriod(createdAt: string | Date | undefined): boolean {
  *      (the user sees "Revoked" instead of a key that 401s on every request).
  *   2. OmniRoute keys with no portal mapping → delete from OmniRoute
  *      (unowned credentials are a security hole and inflate the count).
+ *   3. OmniRoute keys whose portal mappings are all isActive=false → delete
+ *      from OmniRoute. Nothing ever flips a mapping back to active, so the
+ *      user has been shown "Revoked" — but the credential still works on the
+ *      proxy. This state comes from historical revocations that swallowed a
+ *      failed OmniRoute delete (fixed forward in the admin revoke/delete
+ *      guards, but rows written before those fixes can still be live).
  *
  * Auth: admin session OR Bearer ADMIN_API_SECRET (the scheduled worker uses
  * the Bearer form). A `?prune=false` query param runs step 1 only (safe,
@@ -72,11 +78,16 @@ export async function POST(req: NextRequest) {
       orphanedOmniRouteKeys: 0,
       orphanedOmniRouteKeysDeleted: 0,
       orphanedOmniRouteKeyDeleteFailures: 0,
+      revokedButLiveOmniRouteKeys: 0,
+      revokedButLiveOmniRouteKeysDeleted: 0,
+      revokedButLiveOmniRouteKeyDeleteFailures: 0,
       skippedRecentPortalMappings: 0,
       skippedRecentOmniRouteKeys: 0,
+      skippedRecentRevokedOmniRouteKeys: 0,
       details: {
         deadMappings: [] as Array<{ keyId: string; name: string; omnirouteKeyId: string; email: string | null }>,
         orphanedKeys: [] as Array<{ id: string; name: string; deleted: boolean; error?: string }>,
+        revokedLiveKeys: [] as Array<{ id: string; name: string; deleted: boolean; error?: string }>,
       },
     };
 
@@ -144,6 +155,53 @@ export async function POST(req: NextRequest) {
           count: orphanedOmniKeys.length,
           deleted: report.orphanedOmniRouteKeysDeleted,
           failed: report.orphanedOmniRouteKeyDeleteFailures,
+          prune,
+        },
+      });
+    }
+
+    // 3. OmniRoute keys mapped only by inactive portal mappings → delete.
+    //    The portal already shows these as "Revoked" and no code path ever
+    //    reactivates a mapping, so a still-live key here is a credential the
+    //    owner believes is dead. The grace window covers the same
+    //    mid-creation snapshot races as steps 1–2 (a mapping wrongly marked
+    //    inactive by a stale snapshot gets a full cycle to be noticed before
+    //    the key is destroyed).
+    const activePortalKeyIds = new Set(
+      portalKeys.filter((k) => k.isActive).map((k) => k.omnirouteKeyId)
+    );
+    const inactiveMappedOmniKeys = omniKeys.filter(
+      (k) => portalKeyIds.has(k.id) && !activePortalKeyIds.has(k.id)
+    );
+    const revokedLiveOmniKeys = inactiveMappedOmniKeys.filter(
+      (k) => !isWithinGracePeriod(k.createdAt)
+    );
+    report.skippedRecentRevokedOmniRouteKeys =
+      inactiveMappedOmniKeys.length - revokedLiveOmniKeys.length;
+    report.revokedButLiveOmniRouteKeys = revokedLiveOmniKeys.length;
+    if (revokedLiveOmniKeys.length > 0 && prune) {
+      for (const k of revokedLiveOmniKeys) {
+        try {
+          await deleteOmniRouteKey(k.id);
+          report.revokedButLiveOmniRouteKeysDeleted++;
+          report.details.revokedLiveKeys.push({ id: k.id, name: k.name, deleted: true });
+        } catch (err) {
+          report.revokedButLiveOmniRouteKeyDeleteFailures++;
+          report.details.revokedLiveKeys.push({
+            id: k.id,
+            name: k.name,
+            deleted: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      await recordAdminAction({
+        action: 'admin.keys.reconcile.revoked_live_keys',
+        actor: req.headers.get('x-worker') === 'scheduled-reconciler' ? 'system' : 'admin',
+        metadata: {
+          count: revokedLiveOmniKeys.length,
+          deleted: report.revokedButLiveOmniRouteKeysDeleted,
+          failed: report.revokedButLiveOmniRouteKeyDeleteFailures,
           prune,
         },
       });
