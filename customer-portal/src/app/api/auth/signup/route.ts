@@ -125,7 +125,20 @@ export async function POST(req: NextRequest) {
 
     if (hasEmailProvider) {
       // Production: send verification email, don't log in yet
-      await sendVerificationEmail(user.email, verifyToken);
+      const sent = await sendVerificationEmail(user.email, verifyToken);
+      if (!sent) {
+        // The account exists but can't be verified (and since login requires
+        // verification, can't be used) until the email goes out. Don't claim
+        // "check your email" — tell the user delivery failed. There is no
+        // self-serve resend yet, so support is the only recovery path.
+        return NextResponse.json(
+          {
+            error:
+              'Your account was created, but we could not send the verification email. Please contact support to get a new verification link.',
+          },
+          { status: 502 }
+        );
+      }
       return NextResponse.json({
         success: true,
         requiresVerification: true,
