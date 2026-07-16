@@ -429,11 +429,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         break;
       }
       case 'revokeKeys': {
-        // Only mark keys inactive once OmniRoute confirms revocation — the
-        // reconciler never sweeps mappings that still exist but are inactive,
-        // so a swallowed failure here leaves the key live on the proxy while
-        // the portal shows it revoked. (deleteOmniRouteKey treats 404 as
-        // success, so retrying after a partial failure converges.)
+        // Only mark keys inactive once OmniRoute confirms revocation — a
+        // swallowed failure here leaves the key live on the proxy while the
+        // portal shows it revoked, until the reconciler's inactive-mapping
+        // sweep catches it on a later cycle. (deleteOmniRouteKey treats 404
+        // as success, so retrying after a partial failure converges.)
         const activeKeys = user.apiKeys.filter((key) => key.isActive);
         const revocations = await Promise.allSettled(
           activeKeys.map((key) => deleteOmniRouteKey(key.omnirouteKeyId))
@@ -558,9 +558,10 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     }
 
     // Abort the soft-delete if any revocation fails: the anonymized row keeps
-    // its key mappings but flips them inactive, a state the reconciler never
-    // sweeps — so an ignored failure leaves the key live on the proxy
-    // indefinitely. 404 counts as success, so retries converge.
+    // its key mappings but flips them inactive — an ignored failure leaves
+    // the key live on the proxy until the reconciler's inactive-mapping
+    // sweep catches it on a later cycle. 404 counts as success, so retries
+    // converge.
     const revocations = await Promise.allSettled(
       user.apiKeys.map((key) => deleteOmniRouteKey(key.omnirouteKeyId))
     );
