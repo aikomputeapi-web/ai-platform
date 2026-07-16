@@ -6,14 +6,25 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { token } = await req.json();
-    if (!token) {
+    const body = await req.json().catch(() => null);
+    const { token } = body ?? {};
+    // The string guard is load-bearing: Prisma also accepts filter objects
+    // here, so a JSON body like {"token":{"not":null}} would otherwise match
+    // an arbitrary user's pending token and issue a session for that account.
+    if (typeof token !== 'string' || !token) {
       return NextResponse.json({ error: 'Token required' }, { status: 400 });
     }
 
     const user = await prisma.user.findFirst({ where: { verifyToken: token } });
     if (!user) {
       return NextResponse.json({ error: 'Invalid or already-used verification link' }, { status: 400 });
+    }
+
+    // Login and reset-password refuse locked accounts; the verify flow must
+    // not hand out a session for one either. Checked after token validation
+    // so lock status is only revealed to whoever controls the inbox.
+    if (user.isLocked) {
+      return NextResponse.json({ error: 'Account locked. Contact support.' }, { status: 403 });
     }
 
     await prisma.user.update({
