@@ -35,6 +35,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
+    // Signup withholds the session until the email is verified (only when an
+    // email provider is configured — same carve-out as signup's dev mode).
+    // Without this gate, logging in right after signup bypasses verification.
+    // Checked after password validation so unverified status is only revealed
+    // to someone who already has valid credentials.
+    if (!user.emailVerified && process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        {
+          error: 'Please verify your email before signing in. Check your inbox for the verification link.',
+          requiresVerification: true,
+        },
+        { status: 403 }
+      );
+    }
+
     const token = await createSessionToken(user.id);
 
     const response = NextResponse.json({
