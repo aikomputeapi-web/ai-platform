@@ -2,27 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { generateVerifyToken } from '@/lib/auth';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { createCooldown } from '@/lib/cooldown';
 
 export const dynamic = 'force-dynamic';
 
-// Per-email cooldown so this endpoint can't be used to flood an inbox or
-// burn through the email-send quota. In-memory, so it's per-instance and
-// resets on deploy — a courtesy limit, not a security boundary.
-const RESET_COOLDOWN_MS = 60 * 1000;
-const lastRequestAt = new Map<string, number>();
-
-function underCooldown(email: string): boolean {
-  const now = Date.now();
-  if (lastRequestAt.size > 1000) {
-    for (const [key, at] of lastRequestAt) {
-      if (now - at >= RESET_COOLDOWN_MS) lastRequestAt.delete(key);
-    }
-  }
-  const last = lastRequestAt.get(email);
-  if (last !== undefined && now - last < RESET_COOLDOWN_MS) return true;
-  lastRequestAt.set(email, now);
-  return false;
-}
+// Per-email courtesy cooldown — see lib/cooldown.ts for the caveats.
+const underCooldown = createCooldown(60 * 1000);
 
 export async function POST(req: NextRequest) {
   try {
