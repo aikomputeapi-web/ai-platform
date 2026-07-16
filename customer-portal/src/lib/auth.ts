@@ -8,20 +8,37 @@ import { hashPassword, verifyPassword } from './password';
 
 export { hashPassword, verifyPassword };
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-secret-change-me');
 const TOKEN_EXPIRY = '30d';
+
+// Resolved lazily (not at module load) so a missing env var fails at first
+// use in production instead of silently signing sessions with a public
+// default, and so builds without runtime env vars still succeed.
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production');
+    }
+    console.warn('[auth] WARNING: JWT_SECRET is not set. Using insecure default — set this env var before deploying.');
+    return new TextEncoder().encode('dev-secret-change-me');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 export async function createSessionToken(userId: string): Promise<string> {
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime(TOKEN_EXPIRY)
     .setIssuedAt()
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifySessionToken(token: string): Promise<{ userId: string } | null> {
+  // Resolve the secret outside the try so a production misconfiguration
+  // surfaces as an error rather than being swallowed as "invalid token".
+  const secret = getJwtSecret();
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
     return { userId: payload.userId as string };
   } catch {
     return null;
