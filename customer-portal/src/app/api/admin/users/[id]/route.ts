@@ -429,10 +429,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         break;
       }
       case 'revokeKeys': {
+        // Only mark keys inactive once OmniRoute confirms revocation — the
+        // reconciler never sweeps mappings that still exist but are inactive,
+        // so a swallowed failure here leaves the key live on the proxy while
+        // the portal shows it revoked. (deleteOmniRouteKey treats 404 as
+        // success, so retrying after a partial failure converges.)
         const activeKeys = user.apiKeys.filter((key) => key.isActive);
-        await Promise.allSettled(
+        const revocations = await Promise.allSettled(
           activeKeys.map((key) => deleteOmniRouteKey(key.omnirouteKeyId))
         );
+        const failed = revocations.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+        if (failed.length > 0) {
+          for (const f of failed) console.error('Admin revokeKeys: failed to revoke OmniRoute key:', f.reason);
+          return NextResponse.json(
+            { error: `Failed to revoke ${failed.length} of ${activeKeys.length} keys in OmniRoute. No keys were marked revoked — please try again.` },
+            { status: 502 }
+          );
+        }
         await prisma.userApiKey.updateMany({
           where: { userId: id },
           data: { isActive: false },
@@ -544,9 +557,21 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    await Promise.allSettled(
+    // Abort the soft-delete if any revocation fails: the anonymized row keeps
+    // its key mappings but flips them inactive, a state the reconciler never
+    // sweeps — so an ignored failure leaves the key live on the proxy
+    // indefinitely. 404 counts as success, so retries converge.
+    const revocations = await Promise.allSettled(
       user.apiKeys.map((key) => deleteOmniRouteKey(key.omnirouteKeyId))
     );
+    const failed = revocations.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failed.length > 0) {
+      for (const f of failed) console.error('Admin user delete: failed to revoke OmniRoute key:', f.reason);
+      return NextResponse.json(
+        { error: `Failed to revoke ${failed.length} of ${user.apiKeys.length} keys in OmniRoute. The user was not deleted — please try again.` },
+        { status: 502 }
+      );
+    }
 
     await prisma.$transaction([
       prisma.userApiKey.updateMany({
