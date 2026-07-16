@@ -2,23 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
 import { listOmniRouteKeys, deleteOmniRouteKey } from '@/lib/omniroute';
+import { isWithinGracePeriod } from '@/lib/reconcile';
 
 export const dynamic = 'force-dynamic';
-
-// Key creation is a two-step write (OmniRoute key first, portal mapping
-// second — see app/api/keys/route.ts), and this route snapshots the two
-// stores concurrently. A snapshot taken between the two steps sees the new
-// OmniRoute key as "orphaned" and would delete a credential the user was
-// just issued; the mirror-image race (mapping visible, key not in the omni
-// snapshot yet) would mark a brand-new mapping inactive. Anything younger
-// than this window is skipped and re-checked on the next cycle instead.
-const RECONCILE_GRACE_MS = 10 * 60 * 1000;
-
-function isWithinGracePeriod(createdAt: string | Date | undefined): boolean {
-  if (!createdAt) return false; // unknown age — reconcile as before
-  const t = new Date(createdAt).getTime();
-  return Number.isFinite(t) && t > Date.now() - RECONCILE_GRACE_MS;
-}
 
 /**
  * POST /api/admin/keys/reconcile

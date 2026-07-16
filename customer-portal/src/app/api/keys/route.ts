@@ -8,6 +8,7 @@ import {
 } from '@/lib/omniroute';
 import prisma from '@/lib/db';
 import { recordAdminAction } from '@/lib/admin';
+import { isWithinGracePeriod } from '@/lib/reconcile';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,10 +43,18 @@ export async function GET() {
     // in OmniRoute. Those keys are dead — the user can't use them. Mark them
     // isActive=false in the portal so the UI shows "Revoked" and the user is
     // prompted to create a new one, instead of handing them a key that 401s.
+    //
+    // Mappings inside the grace window are skipped: a snapshot racing key
+    // creation can miss a brand-new key, and wrongly marking its mapping
+    // inactive gets the real credential deleted by the admin reconciler's
+    // revoked-key sweep. See lib/reconcile.ts.
     if (omniKeys) {
       const omniKeyIds = new Set(omniKeys.map((k) => k.id));
       const stale = portalKeys.filter(
-        (k) => k.isActive && !omniKeyIds.has(k.omnirouteKeyId)
+        (k) =>
+          k.isActive &&
+          !omniKeyIds.has(k.omnirouteKeyId) &&
+          !isWithinGracePeriod(k.createdAt)
       );
       if (stale.length > 0) {
         await prisma.userApiKey.updateMany({
