@@ -51,11 +51,11 @@ export async function POST(req: NextRequest) {
       const email = String(rawRow?.email || '').trim().toLowerCase();
       if (!email) continue;
 
-      const name = rawRow?.name ? String(rawRow.name).trim() : null;
+      const name = rawRow?.name ? String(rawRow.name).trim() || null : null;
       const planId = rawRow?.planId && planIds.has(rawRow.planId) ? rawRow.planId : 'free';
       const emailVerified = !!rawRow?.emailVerified;
       const isLocked = !!rawRow?.isLocked;
-      const adminNote = rawRow?.adminNote ? String(rawRow.adminNote).trim() : null;
+      const adminNote = rawRow?.adminNote ? String(rawRow.adminNote).trim() || null : null;
 
       const existing = await prisma.user.findUnique({
         where: { email },
