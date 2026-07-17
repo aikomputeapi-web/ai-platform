@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         requestsPerMonth: 50,
         allowedModels: '*',
         sortOrder: 0,
-      } as never,
+      },
     });
 
     const passwordHash = await hashPassword(password);

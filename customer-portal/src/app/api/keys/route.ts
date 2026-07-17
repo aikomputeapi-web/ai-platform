@@ -141,15 +141,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine if user has shadowban/shadowlock active
-    const userWithShadow = user as typeof user & {
-      isShadowLocked?: boolean;
-      isShadowBanned?: boolean;
-    };
     const scopes: string[] = [];
-    if (userWithShadow.isShadowLocked) {
+    if (user.isShadowLocked) {
       scopes.push('shadow_lock');
     }
-    if (userWithShadow.isShadowBanned) {
+    if (user.isShadowBanned) {
       scopes.push('shadow_ban');
     }
 

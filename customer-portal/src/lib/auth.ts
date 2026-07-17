@@ -54,9 +54,8 @@ export async function getCurrentUser() {
       include: { plan: true, apiKeys: true },
     });
 
-    const account = user as typeof user & { isLocked?: boolean };
-    if (account && !account.isLocked) {
-      return account;
+    if (user && !user.isLocked) {
+      return user;
     }
   }
 
@@ -73,12 +72,11 @@ export async function getCurrentUser() {
     include: { plan: true, apiKeys: true },
   });
 
-  const account = user as typeof user & { isLocked?: boolean };
-  if (!account || account.isLocked) {
+  if (!user || user.isLocked) {
     return null;
   }
 
-  return account;
+  return user;
 }
 
 export async function requireAuth() {

@@ -41,7 +41,6 @@ export async function GET() {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  const account = user as typeof user & { isLocked?: boolean };
   return NextResponse.json({
     authenticated: true,
     impersonating: !!cookieStore.get('portal_impersonation_session')?.value,
@@ -49,7 +48,7 @@ export async function GET() {
       id: user.id,
       email: user.email,
       name: user.name,
-      isLocked: account.isLocked || false,
+      isLocked: user.isLocked,
       plan: user.plan,
       apiKeys: user.apiKeys.length,
     },

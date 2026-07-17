@@ -103,7 +103,6 @@ async function buildUserDetail(userId: string, range: string) {
   if (!user) {
     return null;
   }
-  const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
 
   const keyIds = user.apiKeys.map((key) => key.omnirouteKeyId).filter(Boolean);
   const analytics = keyIds.length > 0 ? await getUsageAnalytics(range, keyIds) : null;
@@ -184,10 +183,10 @@ async function buildUserDetail(userId: string, range: string) {
     email: user.email,
     name: user.name,
     emailVerified: user.emailVerified,
-    isLocked: account.isLocked || false,
-    isShadowLocked: (account as any).isShadowLocked || false,
-    isShadowBanned: (account as any).isShadowBanned || false,
-    adminNote: account.adminNote || null,
+    isLocked: user.isLocked,
+    isShadowLocked: user.isShadowLocked,
+    isShadowBanned: user.isShadowBanned,
+    adminNote: user.adminNote,
     stripeCustomerId: user.stripeCustomerId,
     plan: user.plan,
     createdAt: user.createdAt,
@@ -271,7 +270,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    const account = user as typeof user & { isLocked?: boolean; adminNote?: string | null };
 
     let response: Record<string, unknown> = {};
     let impersonationToken: string | null = null;
@@ -282,8 +280,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           where: { id },
           data: {
             isLocked: true,
-            adminNote: body?.note?.trim() || account.adminNote,
-          } as never,
+            adminNote: body?.note?.trim() || user.adminNote,
+          },
           include: { plan: true, apiKeys: true, payments: true },
         });
         await recordAdminAction({
@@ -303,7 +301,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             isLocked: false,
             isShadowLocked: false,
             isShadowBanned: false,
-          } as never,
+          },
           include: { plan: true, apiKeys: true, payments: true },
         });
 
@@ -331,7 +329,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           where: { id },
           data: {
             isShadowBanned: active,
-          } as never,
+          },
           include: { plan: true, apiKeys: true, payments: true },
         });
 
@@ -362,7 +360,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           where: { id },
           data: {
             isShadowLocked: active,
-          } as never,
+          },
           include: { plan: true, apiKeys: true, payments: true },
         });
 
@@ -415,7 +413,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         const note = String(body?.note || '').trim();
         const updated = await prisma.user.update({
           where: { id },
-          data: { adminNote: note || null } as never,
+          data: { adminNote: note || null },
           include: { plan: true, apiKeys: true, payments: true },
         });
         await recordAdminAction({
@@ -475,7 +473,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         const verifyToken = generateVerifyToken();
         const updated = await prisma.user.update({
           where: { id },
-          data: { verifyToken } as never,
+          data: { verifyToken },
           include: { plan: true, apiKeys: true, payments: true },
         });
         // Send failures are reported via the boolean, not exceptions —
@@ -504,7 +502,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
         const updated = await prisma.user.update({
           where: { id },
-          data: { resetToken, resetTokenExp } as never,
+          data: { resetToken, resetTokenExp },
           include: { plan: true, apiKeys: true, payments: true },
         });
         const resetSent = await sendPasswordResetEmail(user.email, resetToken);
@@ -608,7 +606,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
           resetTokenExp: null,
           stripeCustomerId: null,
           planId: 'free',
-        } as never,
+        },
       }),
     ]);
 
