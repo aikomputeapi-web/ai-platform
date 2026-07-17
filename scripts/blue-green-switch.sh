@@ -3,17 +3,22 @@
 #  AI Platform — Blue-Green Zero-Downtime Switch
 # ══════════════════════════════════════════════════════════════════════════════
 #
-#  Orchestrates a blue-green deployment:
+#  Orchestrates a blue-green deployment (ZERO DATA LOSS — see Step 6):
 #    1. Detect active slot (BLUE or GREEN) from .env or nginx config
-#    2. Pull latest images from GHCR
-#    3. Run database migrations (idempotent, backward-compatible)
-#    4. Copy SQLite data from active volume to target volume
-#    5. Start target environment containers (on alternate ports)
-#    6. Wait for health checks on target containers
-#    7. Verify target endpoints respond correctly
+#    2. Verify portal→OmniRoute slot wiring in the compose config
+#    3. Pull latest images from GHCR
+#    4. Run database migrations (idempotent, backward-compatible)
+#    5. WARM-copy SQLite data from active volume to target volume (live copy,
+#       possibly missing the newest writes — used only to pre-validate target)
+#    6. Start target containers, wait for health, verify endpoints
+#    7. FINAL HANDOFF: stop BOTH OmniRoutes, re-copy the SQLite files
+#       (authoritative, no writer running → nothing can be lost), restart
+#       target. Brief /v1 outage (~15-30s); any failure restarts active.
 #    8. Swap nginx upstream (sed + nginx -t + systemctl reload nginx)
-#    9. Update ACTIVE_SLOT in .env
-#   10. Leave old environment running for instant rollback
+#    9. Update ACTIVE_SLOT in .env + deploy-state/active-slot (workers read it)
+#   10. Old portal stays up for rollback; old OmniRoute stays STOPPED so its
+#       now-stale database can never take another write. Roll back with
+#       ./scripts/blue-green-rollback.sh (does the same handoff in reverse).
 #
 #  Usage:
 #    ./scripts/blue-green-switch.sh                          # Default deploy
@@ -97,6 +102,32 @@ fi
 info "Active slot: ${ACTIVE_SLOT^^} (${ACTIVE_OMNI}, ${ACTIVE_PORTAL})"
 info "Target slot: ${TARGET_SLOT^^} (${TARGET_OMNI}, ${TARGET_PORTAL})"
 
+# ── Verify portal→OmniRoute slot wiring ──
+# Guards against reintroducing the 2026-07-17 split-brain: customer-portal-green
+# inheriting blue's OMNIROUTE_INTERNAL_URL meant keys created while GREEN was
+# live landed in BLUE's SQLite — invisible to the live slot and destroyed by the
+# next deploy's volume copy. Each portal MUST target its own slot's OmniRoute.
+# This check runs before anything is pulled, copied, or stopped.
+info "Verifying portal→OmniRoute slot wiring..."
+WIRING_ERR="$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" --profile green config --format json 2>/dev/null | python3 -c "
+import json, sys
+services = json.load(sys.stdin)['services']
+expected = {
+    'customer-portal': 'http://omniroute:20128',
+    'customer-portal-green': 'http://omniroute-green:20128',
+}
+errs = []
+for svc, want in expected.items():
+    got = services.get(svc, {}).get('environment', {}).get('OMNIROUTE_INTERNAL_URL')
+    if got != want:
+        errs.append(f'{svc} has OMNIROUTE_INTERNAL_URL={got!r}, expected {want!r}')
+print('; '.join(errs))
+")" || error "Could not render compose config for the slot-wiring check"
+if [[ -n "${WIRING_ERR}" ]]; then
+    error "Slot wiring broken — ${WIRING_ERR}. Fix docker-compose.unified.yml before deploying (see the customer-portal-green environment override)."
+fi
+log "Slot wiring verified — each portal targets its own slot's OmniRoute"
+
 # ── Pull pre-built images from GHCR ──
 info "Pulling images from GHCR (tag: ${IMAGE_TAG})..."
 IMAGE_TAG="${IMAGE_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
@@ -136,11 +167,14 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${TARGET_OMNI}$"; the
     log "Stopped and removed ${TARGET_SLOT^^} OmniRoute"
 fi
 
-# ── Step 2: Copy SQLite data from ACTIVE to TARGET volume ──
-# This is the critical step that prevents concurrent SQLite access.
-# We copy while active is still running (read-only is safe),
-# then stop active OmniRoute before starting target.
-info "Copying SQLite data from ${ACTIVE_SLOT^^} to ${TARGET_SLOT^^}..."
+# ── Step 2: WARM copy of data from ACTIVE to TARGET volume ──
+# This copy runs while ACTIVE is still serving writes, so it can be missing the
+# newest writes (and a live WAL-mode SQLite copied this way is not even
+# guaranteed consistent). It exists ONLY to (a) move the bulk data (logs,
+# caches) outside the outage window and (b) let the target boot and prove the
+# new image works before we touch the live slot. The AUTHORITATIVE copy happens
+# in the final handoff below, with both OmniRoutes stopped.
+info "Warm-copying data from ${ACTIVE_SLOT^^} to ${TARGET_SLOT^^}..."
 
 if [[ "${ACTIVE_SLOT}" == "blue" ]]; then
     VOLUME_SRC="ai-omniroute-data"
@@ -155,7 +189,7 @@ docker run --rm \
     -v "${VOLUME_SRC}:/src:ro" \
     -v "${VOLUME_DST}:/dst" \
     alpine sh -c "rm -rf /dst/* && cp -a /src/. /dst/" || error "Volume copy failed"
-log "SQLite data copied from ${VOLUME_SRC} to ${VOLUME_DST}"
+log "Warm copy done (${VOLUME_SRC} → ${VOLUME_DST})"
 
 # ── Step 3: Start TARGET environment ──
 info "Starting ${TARGET_SLOT^^} environment..."
@@ -232,6 +266,64 @@ else
     verify_endpoint 20129 "/v1/models" "OmniRoute API (Blue)"
     verify_endpoint 3000 "/api/health" "Customer Portal (Blue)"
 fi
+
+# ── Step 5.5: FINAL SQLite handoff — the zero-loss step ──
+# Everything up to here ran against a WARM copy that may be missing writes made
+# during the deploy (an API key issued mid-deploy is exactly what got destroyed
+# on 2026-07-17). Now do the authoritative copy with NO writer running:
+#
+#   1. Pause the api-key-reconciler (it must not reconcile against a
+#      transitional state while the two stores are being swapped).
+#   2. Stop ACTIVE OmniRoute  → writes stop; /v1 502s until the flip (~15-30s).
+#   3. Stop TARGET OmniRoute  → it was only validating the warm copy.
+#   4. Re-copy the SQLite files (db + WAL + SHM, forced) and update-copy the
+#      rest of the data dir. Both writers are stopped, so this copy is
+#      complete and consistent — nothing written before this point can be lost.
+#   5. Restart TARGET on the authoritative data and wait for health.
+#
+# Any failure from here until the nginx smoke check passes restarts ACTIVE
+# OmniRoute (its volume is untouched) via the EXIT trap below, so an aborted
+# deploy always leaves the site serving from the slot it started on.
+info "Pausing api-key-reconciler for the handoff..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop api-key-reconciler 2>/dev/null || true
+
+HANDOFF_COMPLETE=false
+restore_active_on_failure() {
+    if [[ "${HANDOFF_COMPLETE}" != "true" ]]; then
+        warn "Deploy failed mid-handoff — restarting ${ACTIVE_SLOT^^} OmniRoute (its data is intact)..."
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d "${ACTIVE_OMNI}" || \
+            warn "Could not restart ${ACTIVE_OMNI} — MANUAL INTERVENTION NEEDED"
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api-key-reconciler || true
+    fi
+}
+trap restore_active_on_failure EXIT
+
+info "Stopping ${ACTIVE_SLOT^^} OmniRoute for the final handoff (brief /v1 outage begins)..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop "${ACTIVE_OMNI}"
+info "Stopping ${TARGET_SLOT^^} OmniRoute to receive the authoritative data..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop "${TARGET_OMNI}"
+
+info "Authoritative SQLite copy (${VOLUME_SRC} → ${VOLUME_DST})..."
+# Force-copy the SQLite trio (removing stale WAL/SHM in dst when src has none —
+# a leftover WAL from the warm copy would corrupt the db), then update-copy any
+# other files that changed since the warm copy (call logs etc.).
+docker run --rm \
+    -v "${VOLUME_SRC}:/src:ro" \
+    -v "${VOLUME_DST}:/dst" \
+    alpine sh -c '
+        set -e
+        rm -f /dst/storage.sqlite /dst/storage.sqlite-wal /dst/storage.sqlite-shm
+        cp -a /src/storage.sqlite /dst/
+        for f in storage.sqlite-wal storage.sqlite-shm; do
+            [ -f "/src/$f" ] && cp -a "/src/$f" /dst/
+        done
+        cp -au /src/. /dst/ 2>/dev/null || true
+    ' || error "Authoritative SQLite copy failed"
+log "Authoritative copy done — no writer was running, nothing can be lost"
+
+info "Restarting ${TARGET_SLOT^^} OmniRoute on the authoritative data..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d "${TARGET_OMNI}"
+wait_for_health "${TARGET_OMNI}" 45
 
 # ── Step 6: Swap nginx upstream to TARGET ──
 info "Swapping nginx upstream to ${TARGET_SLOT^^}..."
@@ -319,6 +411,7 @@ fi
 sudo systemctl reload nginx
 sleep 1
 if smoke_check; then
+    HANDOFF_COMPLETE=true
     log "Nginx reloaded and smoke check passed — traffic now routed to ${TARGET_SLOT^^}"
     sudo rm -f "${NGINX_CONF}.pre-deploy"
 else
@@ -340,6 +433,54 @@ else
 fi
 log "ACTIVE_SLOT updated to ${TARGET_SLOT^^} in .env"
 
+# Publish the live slot for the always-on workers (api-key-reconciler,
+# report-deliverer). They re-read this file every cycle so they always talk to
+# the LIVE portal — reconciling via the standby portal compares Postgres
+# against the standby's stale SQLite and revokes/deletes live keys.
+mkdir -p "${SCRIPT_DIR}/deploy-state"
+echo "${TARGET_SLOT}" > "${SCRIPT_DIR}/deploy-state/active-slot"
+log "deploy-state/active-slot → ${TARGET_SLOT}"
+
+# Resume the reconciler now that both stores are consistent again.
+# --no-deps is REQUIRED: the reconciler's dependency chain reaches the BLUE
+# portal and BLUE OmniRoute, and without it compose restarts the stale slot's
+# OmniRoute we just deliberately stopped.
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api-key-reconciler 2>/dev/null || \
+    warn "Could not restart api-key-reconciler — start it manually"
+
+# ── Post-deploy drift check (read-only) ──
+# Dry-run reconcile through the NEW live portal: proves the portal↔OmniRoute
+# pairing is sane and that no key mappings died in the handoff. Non-fatal —
+# traffic is already flipped — but a non-zero count here means investigate NOW.
+ADMIN_SECRET="$(grep '^ADMIN_API_SECRET=' "${ENV_FILE}" | cut -d= -f2- | tr -d '[:space:]')"
+if [[ -n "${ADMIN_SECRET}" ]]; then
+    PORTAL_PORT=$([[ "${TARGET_SLOT}" == "green" ]] && echo 3001 || echo 3000)
+    DRIFT="$(curl -s --max-time 20 -H "Authorization: Bearer ${ADMIN_SECRET}" \
+        "http://127.0.0.1:${PORTAL_PORT}/api/admin/keys/reconcile" | python3 -c "
+import json, sys
+try:
+    r = json.load(sys.stdin)
+except Exception:
+    print('unreadable'); raise SystemExit
+if not r.get('omniRouteReachable', False):
+    print('portal cannot reach its OmniRoute')
+else:
+    dead = r.get('deadPortalMappings', 0)
+    orphans = r.get('orphanedOmniRouteKeys', 0)
+    if dead or orphans:
+        print(f'{dead} dead mapping(s), {orphans} orphaned key(s)')
+    else:
+        print('')
+" 2>/dev/null || echo 'unreadable')"
+    if [[ -z "${DRIFT}" ]]; then
+        log "Post-deploy drift check: portal and OmniRoute key stores are in sync"
+    else
+        warn "Post-deploy drift check: ${DRIFT} — inspect GET /api/admin/keys/reconcile"
+    fi
+else
+    warn "ADMIN_API_SECRET not found in .env — skipping post-deploy drift check"
+fi
+
 # ── Step 8: Cleanup old Docker artifacts ──
 docker image prune -f 2>/dev/null || true
 
@@ -349,7 +490,9 @@ docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{
 echo ""
 log "Blue-green switch complete! ${TARGET_SLOT^^} is now active."
 echo ""
-echo -e "${YELLOW}${BOLD}NOTE:${NC} The old ${ACTIVE_SLOT^^} environment is still running for rollback."
-echo -e "      Stop it with:  ./scripts/blue-green-cleanup.sh ${ACTIVE_SLOT}"
-echo -e "      Rollback with: ./scripts/blue-green-rollback.sh"
+echo -e "${YELLOW}${BOLD}NOTE:${NC} The old ${ACTIVE_SLOT^^} portal is still running; its OmniRoute is"
+echo -e "      intentionally STOPPED — its database is now stale and must never take"
+echo -e "      another write. Do NOT start it by hand."
+echo -e "      Stop the rest with: ./scripts/blue-green-cleanup.sh ${ACTIVE_SLOT}"
+echo -e "      Rollback with:      ./scripts/blue-green-rollback.sh (zero-loss reverse handoff)"
 echo ""

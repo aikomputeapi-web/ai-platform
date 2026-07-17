@@ -89,6 +89,38 @@ x-omniroute-base: &omniroute-base
     retries: 10
     start_period: 60s
 
+# Shared portal environment. Split out as its own anchor so the GREEN slot can
+# merge it and override OMNIROUTE_INTERNAL_URL — a plain `environment:` key on
+# the green service would REPLACE this whole mapping (YAML merge keys don't
+# deep-merge), silently dropping every other variable.
+x-portal-env: &portal-env
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+  JWT_SECRET: ${PORTAL_JWT_SECRET:?PORTAL_JWT_SECRET is required}
+  OMNIROUTE_INTERNAL_URL: http://omniroute:20128
+  OMNIROUTE_ADMIN_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:?OMNIROUTE_INITIAL_PASSWORD is required}
+  NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:3000}
+  NEXT_PUBLIC_APP_NAME: ${APP_NAME:-AI API Platform}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+  STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+  STRIPE_PRICE_ID_MAX_5X: ${STRIPE_PRICE_ID_MAX_5X:-}
+  STRIPE_PRICE_ID_MAX_20X: ${STRIPE_PRICE_ID_MAX_20X:-}
+  STRIPE_PRICE_ID_PAYG: ${STRIPE_PRICE_ID_PAYG:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+  ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
+  AA_API_KEY: ${AA_API_KEY:-}
+  NODE_ENV: production
+  NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
+  NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+  GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+  APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+  APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+
 x-portal-base: &portal-base
   image: ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${IMAGE_TAG:-latest}
   restart: unless-stopped
@@ -98,33 +130,7 @@ x-portal-base: &portal-base
   depends_on:
     omniroute:
       condition: service_healthy
-  environment:
-    DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-    JWT_SECRET: ${PORTAL_JWT_SECRET:?PORTAL_JWT_SECRET is required}
-    OMNIROUTE_INTERNAL_URL: http://omniroute:20128
-    OMNIROUTE_ADMIN_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:?OMNIROUTE_INITIAL_PASSWORD is required}
-    NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:3000}
-    NEXT_PUBLIC_APP_NAME: ${APP_NAME:-AI API Platform}
-    STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-    STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
-    STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
-    STRIPE_PRICE_ID_MAX_5X: ${STRIPE_PRICE_ID_MAX_5X:-}
-    STRIPE_PRICE_ID_MAX_20X: ${STRIPE_PRICE_ID_MAX_20X:-}
-    STRIPE_PRICE_ID_PAYG: ${STRIPE_PRICE_ID_PAYG:-}
-    RESEND_API_KEY: ${RESEND_API_KEY:-}
-    EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
-    ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
-    AA_API_KEY: ${AA_API_KEY:-}
-    NODE_ENV: production
-    NEXTAUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
-    NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
-    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-    GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-    GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-    APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-    APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+  environment: *portal-env
   networks:
     ai-network:
       aliases:
@@ -204,8 +210,8 @@ services:
   #   • Alternate host ports (20138/20139) so it can run alongside blue briefly
   #   • Separate volume (ai-omniroute-data-green) — a COPY of blue's SQLite data,
   #     never the same volume, so the two slots never open one SQLite file at once
-  #   • Shares the "omniroute" network alias so internal service references keep
-  #     working after the swap (safe: only one slot serves traffic at a time)
+  #   • Reachable only as "omniroute-green" — the "omniroute" alias stays on
+  #     BLUE, and the green portal overrides OMNIROUTE_INTERNAL_URL to match
   # ─────────────────────────────────────────────────────────────────────────
   omniroute-green:
     <<: *omniroute-base
@@ -246,6 +252,13 @@ services:
     depends_on:
       omniroute-green:
         condition: service_healthy
+    environment:
+      <<: *portal-env
+      # GREEN must talk to its OWN OmniRoute. The plain "omniroute" alias
+      # resolves to the BLUE container, so without this override every key
+      # created while GREEN is live lands in BLUE's SQLite — invisible to the
+      # live slot and destroyed by the next deploy's ACTIVE→TARGET volume copy.
+      OMNIROUTE_INTERNAL_URL: http://omniroute-green:20128
     ports:
       - "127.0.0.1:3001:3000"
     networks:
@@ -269,6 +282,13 @@ services:
       customer-portal:
         condition: service_healthy
     command: ["node", "scripts/deliver-scheduled-reports.mjs"]
+    volumes:
+      # Bind-mount scripts so worker fixes apply without an image rebuild, and
+      # deploy-state so the worker follows the LIVE slot (active-slot file is
+      # written by blue-green-switch.sh; without it the worker is pinned to
+      # blue and pulls stale usage while green is serving).
+      - ./customer-portal/scripts:/app/scripts:ro
+      - ./deploy-state:/app/deploy-state:ro
     environment:
       PORTAL_INTERNAL_URL: http://customer-portal:3000
       REPORT_DELIVERY_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
@@ -308,6 +328,11 @@ services:
       # Bind-mount scripts so the worker runs even if the image predates the
       # script files (avoids needing an image rebuild just for the reconciler).
       - ./customer-portal/scripts:/app/scripts:ro
+      # deploy-state/active-slot (written by blue-green-switch.sh) tells the
+      # worker which slot is LIVE. Reconciling via the standby portal compares
+      # Postgres against the standby's stale SQLite and destroys live keys —
+      # this mount is what makes the reconciler slot-safe.
+      - ./deploy-state:/app/deploy-state:ro
     environment:
       PORTAL_INTERNAL_URL: http://customer-portal:3000
       ADMIN_API_SECRET: ${ADMIN_API_SECRET:?ADMIN_API_SECRET is required}
