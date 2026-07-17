@@ -16,7 +16,21 @@ function portalUrl() {
   }
   return DEFAULT_PORTAL_URL;
 }
-const SECRET = process.env.REPORT_DELIVERY_SECRET || process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
+const SECRET = resolveSecret();
+
+// Mirrors getAdminSecret() in src/lib/admin-session.ts: the portal refuses the
+// 'admin' default in production, so a worker falling back to it there would
+// just 401 forever — fail fast instead.
+function resolveSecret() {
+  const secret = process.env.REPORT_DELIVERY_SECRET || process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[scheduled-reports] fatal: REPORT_DELIVERY_SECRET or ADMIN_API_SECRET must be set in production');
+    process.exit(1);
+  }
+  console.warn('[scheduled-reports] WARNING: no secret set. Using insecure dev default "admin".');
+  return 'admin';
+}
 const LIMIT = Math.min(Math.max(Number(process.env.REPORT_DELIVERY_LIMIT || 20) || 20, 1), 100);
 const INTERVAL_SECONDS = Math.max(Number(process.env.REPORT_DELIVERY_INTERVAL_SECONDS || 300) || 300, 30);
 const ONCE = process.argv.includes('--once') || process.env.REPORT_DELIVERY_ONCE === 'true';

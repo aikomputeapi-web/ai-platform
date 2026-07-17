@@ -52,7 +52,21 @@ function portalUrl() {
   }
   return DEFAULT_PORTAL_URL;
 }
-const SECRET = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
+const SECRET = resolveSecret();
+
+// Mirrors getAdminSecret() in src/lib/admin-session.ts: the portal refuses the
+// 'admin' default in production, so a worker falling back to it there would
+// just 401 forever — fail fast instead.
+function resolveSecret() {
+  const secret = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[reconcile] fatal: ADMIN_API_SECRET must be set in production');
+    process.exit(1);
+  }
+  console.warn('[reconcile] WARNING: ADMIN_API_SECRET is not set. Using insecure dev default "admin".');
+  return 'admin';
+}
 const INTERVAL_SECONDS = Math.max(Number(process.env.RECONCILE_INTERVAL_SECONDS || 300) || 300, 60);
 const ONCE = process.argv.includes('--once') || process.env.RECONCILE_ONCE === 'true';
 
