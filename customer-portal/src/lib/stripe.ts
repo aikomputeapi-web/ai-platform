@@ -46,10 +46,6 @@ export async function createPortalSession(customerId: string, returnUrl: string)
   });
 }
 
-export async function cancelSubscription(subscriptionId: string) {
-  return getStripe().subscriptions.cancel(subscriptionId);
-}
-
 export async function getSubscription(subscriptionId: string) {
   return getStripe().subscriptions.retrieve(subscriptionId);
 }
