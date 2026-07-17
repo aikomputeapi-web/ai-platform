@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyPassword, createSessionToken } from '@/lib/auth';
+import { createFailureLimiter } from '@/lib/cooldown';
 
 export const dynamic = 'force-dynamic';
+
+// Per-email failed-login limiter — see lib/cooldown.ts for the caveats.
+// Checked before the DB lookup, and failures are counted for unknown emails
+// too, so the 429 can't be used for user enumeration.
+const loginFailures = createFailureLimiter(15 * 60 * 1000, 10);
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
@@ -12,11 +19,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    const normalized = email.toLowerCase();
+
+    if (loginFailures.isBlocked(normalized)) {
+      return NextResponse.json(
+        { error: 'Too many failed login attempts. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalized },
     });
 
     if (!user) {
+      loginFailures.recordFailure(normalized);
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
@@ -31,8 +48,10 @@ export async function POST(req: NextRequest) {
 
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
+      loginFailures.recordFailure(normalized);
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
+    loginFailures.reset(normalized);
 
     // Signup withholds the session until the email is verified (only when an
     // email provider is configured — same carve-out as signup's dev mode).
