@@ -1,0 +1,50 @@
+name: CI
+
+# Pull requests previously got no CI at all — validation (tsc + eslint) only
+# ran on pushes to main/staging inside the deploy workflows, so a broken PR
+# was first caught after merge, by the production deploy pipeline.
+# This mirrors the deploy workflows' validate job for PRs. Playwright tests
+# are intentionally excluded: they need a running app and real services.
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Codebase
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          cd customer-portal
+          npm install --no-audit --no-fund
+
+      - name: Generate Prisma client
+        run: |
+          cd customer-portal
+          npx prisma generate
+
+      - name: Check types
+        run: |
+          cd customer-portal
+          npx tsc --noEmit
+
+      - name: Lint code
+        run: |
+          cd customer-portal
+          npm run lint
