@@ -75,7 +75,16 @@ export async function POST(req: NextRequest) {
     };
 
     for (const report of dueReports) {
-      const delivered = await sendScheduledReportEmail(report);
+      let delivered = false;
+      try {
+        delivered = await sendScheduledReportEmail(report);
+      } catch (error) {
+        // Report builders query the DB (and upstream analytics) and throw on
+        // failure rather than returning false. Without this catch, one
+        // throwing report aborts the rest of the batch and keeps its past-due
+        // next_run_at, starving every report behind it on each run.
+        console.error(`Scheduled report ${report.id} delivery threw:`, error);
+      }
       if (!delivered) {
         results.failed += 1;
         // Push the next attempt out instead of leaving next_run_at in the
