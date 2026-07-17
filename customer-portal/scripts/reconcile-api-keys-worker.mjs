@@ -29,7 +29,29 @@
 
 import fs from 'fs';
 
-const PORTAL_URL = (process.env.PORTAL_INTERNAL_URL || 'http://customer-portal:3000').replace(/\/$/, '');
+const DEFAULT_PORTAL_URL = (process.env.PORTAL_INTERNAL_URL || 'http://customer-portal:3000').replace(/\/$/, '');
+const SLOT_FILE = process.env.ACTIVE_SLOT_FILE || '/app/deploy-state/active-slot';
+
+/**
+ * Resolve the LIVE portal's URL, re-reading the slot file on every cycle.
+ *
+ * The blue-green switch writes "blue" or "green" to SLOT_FILE (bind-mounted
+ * from deploy-state/ on the host) whenever traffic flips. This worker MUST
+ * follow it: reconciling through the STANDBY portal compares Postgres against
+ * the standby slot's stale SQLite, which marks live keys' mappings dead and
+ * ultimately deletes the keys themselves (that is how a customer key was
+ * destroyed on 2026-07-17). No slot file → single-instance setup → env default.
+ */
+function portalUrl() {
+  try {
+    const slot = fs.readFileSync(SLOT_FILE, 'utf8').trim().toLowerCase();
+    if (slot === 'green') return 'http://customer-portal-green:3000';
+    if (slot === 'blue') return 'http://customer-portal:3000';
+  } catch {
+    // no slot file — fall through to the env default
+  }
+  return DEFAULT_PORTAL_URL;
+}
 const SECRET = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
 const INTERVAL_SECONDS = Math.max(Number(process.env.RECONCILE_INTERVAL_SECONDS || 300) || 300, 60);
 const ONCE = process.argv.includes('--once') || process.env.RECONCILE_ONCE === 'true';
@@ -37,7 +59,7 @@ const ONCE = process.argv.includes('--once') || process.env.RECONCILE_ONCE === '
 let running = false;
 
 async function reconcileOnce() {
-  const res = await fetch(`${PORTAL_URL}/api/admin/keys/reconcile`, {
+  const res = await fetch(`${portalUrl()}/api/admin/keys/reconcile`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${SECRET}`,

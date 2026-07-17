@@ -6,10 +6,21 @@
 #  Reverses the last blue-green switch. Requires both environments to be
 #  running (the old slot was left running by blue-green-switch.sh).
 #
-#  What this does:
+#  What this does (ZERO DATA LOSS — mirrors blue-green-switch.sh's handoff):
 #    1. Reads current ACTIVE_SLOT from .env
-#    2. Swaps nginx upstream back to the previous slot
-#    3. Updates ACTIVE_SLOT in .env
+#    2. Pauses the api-key-reconciler
+#    3. Stops BOTH OmniRoutes and copies the SQLite files from the current
+#       active volume to the rollback volume — the active slot has been taking
+#       writes since the switch, so flipping nginx back WITHOUT this copy
+#       would silently abandon every key/write made since the deploy
+#    4. Starts the rollback OmniRoute on that data and waits for health
+#    5. Swaps nginx upstream back to the previous slot
+#    6. Updates ACTIVE_SLOT in .env + deploy-state/active-slot, resumes the
+#       reconciler
+#
+#  The rollback slot runs the OLD CODE on the CURRENT DATA. If the deploy
+#  corrupted the data itself, restore from db_backups/ instead — set
+#  ROLLBACK_SKIP_DATA=true to flip without copying (accepts data loss).
 #
 #  Usage:
 #    ./scripts/blue-green-rollback.sh
@@ -63,18 +74,75 @@ fi
 info "Current active: ${ACTIVE_SLOT^^}"
 info "Rolling back to: ${ROLLBACK_SLOT^^}"
 
-# ── Verify rollback target containers are running ──
-info "Checking ${ROLLBACK_SLOT^^} containers..."
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${ROLLBACK_OMNI}$"; then
-    log "${ROLLBACK_OMNI} is running"
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.unified.yml"
+ROLLBACK_SKIP_DATA="${ROLLBACK_SKIP_DATA:-false}"
+
+if [[ "${ACTIVE_SLOT}" == "blue" ]]; then
+    VOLUME_SRC="ai-omniroute-data"          # current active — source of truth
+    VOLUME_DST="ai-omniroute-data-green"    # rollback slot
 else
-    warn "${ROLLBACK_OMNI} is NOT running — nginx swap will still proceed, but traffic may 502"
+    VOLUME_SRC="ai-omniroute-data-green"
+    VOLUME_DST="ai-omniroute-data"
 fi
 
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${ROLLBACK_PORTAL}$"; then
-    log "${ROLLBACK_PORTAL} is running"
+# ── Ensure the rollback PORTAL is running (stateless, safe to start early) ──
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps "${ROLLBACK_PORTAL}" 2>/dev/null || \
+    warn "Could not start ${ROLLBACK_PORTAL} — portal traffic may 502 after the flip"
+
+# ── Zero-loss reverse handoff ──
+# The active slot's SQLite is the source of truth (it has every write since the
+# switch). Copy it to the rollback volume with both writers stopped, exactly
+# like the forward deploy's final handoff. Failure restarts the active
+# OmniRoute via the EXIT trap, leaving the site as it was.
+if [[ "${ROLLBACK_SKIP_DATA}" == "true" ]]; then
+    warn "ROLLBACK_SKIP_DATA=true — flipping WITHOUT copying data. Writes made since the last switch will NOT exist on ${ROLLBACK_SLOT^^}."
 else
-    warn "${ROLLBACK_PORTAL} is NOT running — nginx swap will still proceed, but traffic may 502"
+    info "Pausing api-key-reconciler for the handoff..."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop api-key-reconciler 2>/dev/null || true
+
+    HANDOFF_COMPLETE=false
+    restore_active_on_failure() {
+        if [[ "${HANDOFF_COMPLETE}" != "true" ]]; then
+            warn "Rollback failed mid-handoff — restarting ${ACTIVE_SLOT^^} OmniRoute (its data is intact)..."
+            docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d "${ACTIVE_OMNI}" || \
+                warn "Could not restart ${ACTIVE_OMNI} — MANUAL INTERVENTION NEEDED"
+            docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api-key-reconciler || true
+        fi
+    }
+    trap restore_active_on_failure EXIT
+
+    info "Stopping ${ACTIVE_SLOT^^} OmniRoute for the handoff (brief /v1 outage begins)..."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop "${ACTIVE_OMNI}" 2>/dev/null || true
+    info "Stopping ${ROLLBACK_SLOT^^} OmniRoute (if running)..."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop "${ROLLBACK_OMNI}" 2>/dev/null || true
+
+    info "Copying SQLite data (${VOLUME_SRC} → ${VOLUME_DST})..."
+    docker run --rm \
+        -v "${VOLUME_SRC}:/src:ro" \
+        -v "${VOLUME_DST}:/dst" \
+        alpine sh -c '
+            set -e
+            rm -f /dst/storage.sqlite /dst/storage.sqlite-wal /dst/storage.sqlite-shm
+            cp -a /src/storage.sqlite /dst/
+            for f in storage.sqlite-wal storage.sqlite-shm; do
+                [ -f "/src/$f" ] && cp -a "/src/$f" /dst/
+            done
+            cp -au /src/. /dst/ 2>/dev/null || true
+        ' || error "SQLite copy failed — active slot will be restarted"
+    log "Data handed off to ${ROLLBACK_SLOT^^}"
+
+    info "Starting ${ROLLBACK_SLOT^^} OmniRoute..."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d "${ROLLBACK_OMNI}"
+    attempt=1
+    while [[ $attempt -le 45 ]]; do
+        status="$(docker inspect --format '{{json .State.Health.Status}}' "${ROLLBACK_OMNI}" 2>/dev/null | tr -d '"' || echo '')"
+        [[ "${status}" == "healthy" ]] && break
+        [[ "${status}" == "unhealthy" ]] && error "${ROLLBACK_OMNI} is UNHEALTHY — aborting rollback"
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    [[ "${status}" == "healthy" ]] || error "${ROLLBACK_OMNI} not healthy in time — aborting rollback"
+    log "${ROLLBACK_OMNI} is healthy on the handed-off data"
 fi
 
 # ── Backup current nginx config ──
@@ -132,6 +200,7 @@ fi
 sudo systemctl reload nginx
 sleep 1
 if smoke_check; then
+    HANDOFF_COMPLETE=true
     log "Nginx reloaded and smoke check passed — traffic now routed to ${ROLLBACK_SLOT^^}"
     sudo rm -f "${NGINX_CONF}.pre-rollback"
 else
@@ -148,9 +217,18 @@ else
 fi
 log "ACTIVE_SLOT updated to ${ROLLBACK_SLOT^^} in .env"
 
+# Publish the live slot for the always-on workers (see blue-green-switch.sh).
+mkdir -p "${SCRIPT_DIR}/deploy-state"
+echo "${ROLLBACK_SLOT}" > "${SCRIPT_DIR}/deploy-state/active-slot"
+log "deploy-state/active-slot → ${ROLLBACK_SLOT}"
+
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api-key-reconciler 2>/dev/null || \
+    warn "Could not restart api-key-reconciler — start it manually"
+
 echo ""
 log "Rollback complete! ${ROLLBACK_SLOT^^} is now active."
 echo ""
-echo -e "${YELLOW}${BOLD}NOTE:${NC} The ${ACTIVE_SLOT^^} environment is still running."
-echo -e "      Stop it with:  ./scripts/blue-green-cleanup.sh ${ACTIVE_SLOT}"
+echo -e "${YELLOW}${BOLD}NOTE:${NC} The ${ACTIVE_SLOT^^} portal is still running; its OmniRoute is"
+echo -e "      intentionally STOPPED (stale data — must never take another write)."
+echo -e "      Stop the rest with: ./scripts/blue-green-cleanup.sh ${ACTIVE_SLOT}"
 echo ""

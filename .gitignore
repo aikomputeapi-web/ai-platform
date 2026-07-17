@@ -48,3 +48,4 @@ kiro-cli.deb
 # NOT submodules. Keep them out of the parent repo's index.
 /OmniRoute/
 /scratch/
+deploy-state/active-slot
