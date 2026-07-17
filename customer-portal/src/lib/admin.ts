@@ -1,27 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from './db';
-
-export const ADMIN_SECRET = process.env.ADMIN_API_SECRET || process.env.OMNIROUTE_INITIAL_PASSWORD || 'admin';
-
-export function getAdminSecret(): string {
-  return ADMIN_SECRET;
-}
+import { getAdminSecret, timingSafeEqualStrings, verifyAdminSession } from './admin-session';
 
 export async function verifyAdminAccess(req: NextRequest): Promise<boolean> {
   // Check for session cookie (new session-based auth)
   const sessionToken = req.cookies.get('admin_session')?.value;
   if (sessionToken) {
-    const { verifyAdminSession } = await import('./admin-session');
     return await verifyAdminSession(sessionToken);
   }
-  
-  // Fallback to old Bearer token auth for backwards compatibility
+
+  // Fallback to old Bearer token auth for backwards compatibility.
+  // getAdminSecret throws in production when ADMIN_API_SECRET is unset, so a
+  // misconfigured deployment fails loudly instead of accepting "Bearer admin".
   const authHeader = req.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice(7) === ADMIN_SECRET;
+    return timingSafeEqualStrings(authHeader.slice(7), getAdminSecret());
   }
-  
+
   return false;
 }
 
