@@ -46,10 +46,6 @@ export async function createPortalSession(customerId: string, returnUrl: string)
   });
 }
 
-export async function getSubscription(subscriptionId: string) {
-  return getStripe().subscriptions.retrieve(subscriptionId);
-}
-
 // Cancel a subscription, resolving once it is no longer billing: cancels a
 // live subscription, and treats already-terminal ('canceled' /
 // 'incomplete_expired') or missing subscriptions as success so callers can
