@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { adminForbidden, recordAdminAction, verifyAdminAccess } from '@/lib/admin';
+import { timingSafeEqualStrings } from '@/lib/admin-session';
 import { getNextRunAt, sendScheduledReportEmail, type ScheduledReportRecord } from '@/lib/scheduled-reports';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,8 @@ async function verifyDeliveryAccess(req: NextRequest) {
   if (!cronSecret) return false;
 
   const headerSecret = req.headers.get('x-cron-secret') || req.headers.get('x-scheduler-secret');
-  return headerSecret === cronSecret;
+  if (!headerSecret) return false;
+  return timingSafeEqualStrings(headerSecret, cronSecret);
 }
 
 async function isDeliveryEnabled() {
