@@ -209,8 +209,11 @@ export async function POST(req: NextRequest) {
     if (!['credit', 'refund'].includes(action)) {
       return NextResponse.json({ error: 'Unsupported billing action' }, { status: 400 });
     }
-    if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ error: 'amountCents must be a positive number' }, { status: 400 });
+    // amount_cents is a Postgres INTEGER: fractional values would be silently
+    // rounded on insert (diverging from the audit log) and values past int4
+    // range would fail the raw insert with a 500.
+    if (!Number.isInteger(amountCents) || amountCents <= 0 || amountCents > 2_147_483_647) {
+      return NextResponse.json({ error: 'amountCents must be a positive integer' }, { status: 400 });
     }
     if (!reason) {
       return NextResponse.json({ error: 'reason is required' }, { status: 400 });
