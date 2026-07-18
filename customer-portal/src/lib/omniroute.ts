@@ -181,6 +181,28 @@ export async function deleteOmniRouteKey(keyId: string): Promise<boolean> {
 }
 
 /**
+ * Map a plan row to the OmniRoute key-limit payload. A limit of 0 on the plan
+ * means "unlimited", which OmniRoute expects as null; '*' allowedModels means
+ * "all models", which OmniRoute expects as an empty array. Shared by key
+ * creation and the Stripe webhook's upgrade/downgrade paths so the mappings
+ * can't drift apart.
+ */
+export function planKeyLimits(plan: {
+  requestsPerDay: number;
+  requestsPerMinute: number;
+  requestsPerMonth?: number;
+  allowedModels: string;
+}) {
+  const monthly = plan.requestsPerMonth ?? 0;
+  return {
+    maxRequestsPerDay: plan.requestsPerDay > 0 ? plan.requestsPerDay : null,
+    maxRequestsPerMinute: plan.requestsPerMinute > 0 ? plan.requestsPerMinute : null,
+    maxRequestsPerMonth: monthly > 0 ? monthly : null,
+    allowedModels: plan.allowedModels === '*' ? [] : (JSON.parse(plan.allowedModels) as string[]),
+  };
+}
+
+/**
  * Update a key's limits/permissions in OmniRoute. Throws on non-2xx so the
  * caller knows the limits weren't applied (the key still works, just without
  * the plan's rate caps — better to surface this than silently swallow it).

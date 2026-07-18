@@ -1,31 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import prisma from '@/lib/db';
-import { updateKeyLimits } from '@/lib/omniroute';
+import { planKeyLimits, updateKeyLimits } from '@/lib/omniroute';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Map a plan row to the OmniRoute key-limit payload. A limit of 0 on the plan
- * means "unlimited", which OmniRoute expects as null; '*' allowedModels means
- * "all models", which OmniRoute expects as an empty array. Used by both the
- * upgrade (checkout.session.completed) and downgrade (customer.subscription.deleted)
- * paths so the two can't drift apart.
- */
-function planKeyLimits(plan: {
-  requestsPerDay: number;
-  requestsPerMinute: number;
-  requestsPerMonth?: number;
-  allowedModels: string;
-}) {
-  const monthly = plan.requestsPerMonth ?? 0;
-  return {
-    maxRequestsPerDay: plan.requestsPerDay > 0 ? plan.requestsPerDay : null,
-    maxRequestsPerMinute: plan.requestsPerMinute > 0 ? plan.requestsPerMinute : null,
-    maxRequestsPerMonth: monthly > 0 ? monthly : null,
-    allowedModels: plan.allowedModels === '*' ? [] : JSON.parse(plan.allowedModels),
-  };
-}
 
 async function processWebhookEvent(event: any) {
   try {

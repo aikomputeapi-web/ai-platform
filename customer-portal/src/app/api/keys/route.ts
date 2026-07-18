@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import {
   createOmniRouteKey,
   deleteOmniRouteKey,
+  planKeyLimits,
   updateKeyLimits,
   listOmniRouteKeys,
 } from '@/lib/omniroute';
@@ -204,22 +205,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (userWithPlan?.plan) {
-        await updateKeyLimits(omniKey.id, {
-          maxRequestsPerDay:
-            userWithPlan.plan.requestsPerDay > 0 ? userWithPlan.plan.requestsPerDay : null,
-          maxRequestsPerMinute:
-            userWithPlan.plan.requestsPerMinute > 0
-              ? userWithPlan.plan.requestsPerMinute
-              : null,
-          maxRequestsPerMonth:
-            userWithPlan.plan.requestsPerMonth > 0
-              ? userWithPlan.plan.requestsPerMonth
-              : null,
-          allowedModels:
-            userWithPlan.plan.allowedModels === '*'
-              ? []
-              : JSON.parse(userWithPlan.plan.allowedModels),
-        });
+        await updateKeyLimits(omniKey.id, planKeyLimits(userWithPlan.plan));
       }
     } catch (err) {
       // Non-fatal — key is created and usable, just uncapped.
