@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { signIn, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -11,6 +11,33 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [alreadyAuthAs, setAlreadyAuthAs] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if already authenticated
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated && data.user?.email) {
+          setAlreadyAuthAs(data.user.email);
+        }
+      })
+      .catch(() => {});
+
+    // Display OAuth error from URL params (NextAuth redirects to /login?error=...)
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get('error');
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        OAuthAccountNotLinked: 'This email is already associated with another account. Please sign in with the original provider.',
+        OAuthCallback: 'OAuth sign-in failed. Please try again.',
+        AccessDenied: 'Access denied.',
+        Configuration: 'Authentication configuration error. Please contact support.',
+        Verification: 'The sign-in link is no longer valid. It may have been used already or it has expired.',
+      };
+      setError(errorMessages[errorParam] || 'An authentication error occurred. Please try again.');
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +71,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      // Clear any existing session before starting a new OAuth flow.
+      // Without this, if the user is already logged in as account A and
+      // picks account B in Google's picker, a failed/incomplete OAuth
+      // callback would leave them logged in as A. Clearing first ensures
+      // a clean slate — either they log into the account they pick, or
+      // they end up logged out (never silently logged into the wrong account).
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      await signOut({ redirect: false }).catch(() => {});
       await signIn(provider, { callbackUrl: '/dashboard' });
     } catch {
       setError('OAuth sign-in failed. Please try again.');
@@ -86,6 +121,26 @@ export default function LoginPage() {
         {/* Right panel — form */}
         <div className="auth-panel-right">
           <h2 className="auth-form-title">Sign In</h2>
+
+          {alreadyAuthAs && (
+            <div className="auth-error" style={{ marginBottom: '1rem' }}>
+              You are already signed in as {alreadyAuthAs}.{' '}
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  await signOut({ callbackUrl: '/login', redirect: true });
+                }}
+                style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+              >
+                Sign out
+              </button>{' '}
+              or{' '}
+              <Link href="/dashboard" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                go to dashboard
+              </Link>.
+            </div>
+          )}
 
           {error && <div className="auth-error">{error}</div>}
 
