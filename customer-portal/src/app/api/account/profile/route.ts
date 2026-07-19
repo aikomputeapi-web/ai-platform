@@ -19,11 +19,14 @@ export async function PATCH(req: NextRequest) {
     if (typeof name !== 'string') {
       return NextResponse.json({ error: 'Name must be a string' }, { status: 400 });
     }
-    if (name.length > 100) {
+    // Whitespace-only names are truthy and would defeat every `name || fallback`
+    // downstream (dashboard greeting, billing customerName) — store null instead.
+    const trimmedName = name.trim();
+    if (trimmedName.length > 100) {
       return NextResponse.json({ error: 'Name must be 100 characters or less' }, { status: 400 });
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: { name } });
+    await prisma.user.update({ where: { id: user.id }, data: { name: trimmedName || null } });
     return NextResponse.json({ success: true });
   } catch (e) {
     if (e instanceof Error && e.message === 'UNAUTHORIZED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
