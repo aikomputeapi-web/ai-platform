@@ -17,6 +17,7 @@ import {
   recordAdminAction,
   verifyAdminAccess,
 } from "@/lib/admin";
+import { ensureSubscriptionCanceled } from "@/lib/stripe";
 import { calculateOfficialCost } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
@@ -714,6 +715,28 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
 
+    // Cancel any active Stripe subscription before anonymizing — the update
+    // below nulls stripeCustomerId, the only field the webhook resolves users
+    // by, so a surviving subscription would keep billing with no way to map
+    // its events back. Same guard as the self-serve account delete route.
+    if (user.stripeSubscriptionId) {
+      try {
+        await ensureSubscriptionCanceled(user.stripeSubscriptionId);
+      } catch (e) {
+        console.error(
+          "Admin user delete: failed to cancel Stripe subscription:",
+          e,
+        );
+        return NextResponse.json(
+          {
+            error:
+              "Failed to cancel the user's Stripe subscription. The user was not deleted — please try again.",
+          },
+          { status: 502 },
+        );
+      }
+    }
+
     await prisma.$transaction([
       prisma.userApiKey.updateMany({
         where: { userId: id },
@@ -732,6 +755,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
           resetToken: null,
           resetTokenExp: null,
           stripeCustomerId: null,
+          stripeSubscriptionId: null,
           planId: "free",
         },
       }),
