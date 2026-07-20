@@ -120,6 +120,14 @@ x-portal-env: &portal-env
   GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
   APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
   APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+  # AI Chat Feature — S3 storage and credential encryption
+  CHAT_S3_BUCKET: ${CHAT_S3_BUCKET:-aikompute-chat-attachments}
+  CHAT_S3_REGION: ${CHAT_S3_REGION:-us-east-1}
+  CHAT_S3_ENDPOINT: ${CHAT_S3_ENDPOINT:-}
+  CHAT_S3_FORCE_PATH_STYLE: ${CHAT_S3_FORCE_PATH_STYLE:-false}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  CHAT_KEY_ENCRYPTION_KEY: ${CHAT_KEY_ENCRYPTION_KEY:?CHAT_KEY_ENCRYPTION_KEY is required}
 
 x-portal-base: &portal-base
   image: ghcr.io/aikomputeapi-web/ai-platform/customer-portal:${IMAGE_TAG:-latest}
