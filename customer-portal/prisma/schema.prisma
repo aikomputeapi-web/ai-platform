@@ -35,6 +35,10 @@ model User {
   plan               Plan               @relation(fields: [planId], references: [id])
   accounts           Account[]
   sessions           Session[]
+  chatConversations  ChatConversation[]
+  chatMessages       ChatMessage[]
+  chatAttachments    ChatAttachment[]
+  chatCredential     ChatCredential?
 
   @@map("users")
 }
@@ -201,6 +205,83 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+model ChatConversation {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  title      String   @default("New Conversation")
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, isArchived, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id               String   @id @default(uuid())
+  conversationId   String   @map("conversation_id")
+  userId           String   @map("user_id")
+  role             String
+  content          String
+  status           String   @default("complete")
+  selectedModel    String?  @map("selected_model")
+  routedProvider   String?  @map("routed_provider")
+  routedModel      String?  @map("routed_model")
+  promptTokens     Int?     @map("prompt_tokens")
+  completionTokens Int?     @map("completion_tokens")
+  totalTokens      Int?     @map("total_tokens")
+  errorMessage     String?  @map("error_message")
+  seq              Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments  ChatAttachment[]
+
+  @@index([conversationId, seq])
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id              String   @id @default(uuid())
+  messageId       String   @map("message_id")
+  userId          String   @map("user_id")
+  filename        String
+  mimeType        String   @map("mime_type")
+  bytes           Int
+  storageKey      String   @map("storage_key")
+  kind            String
+  extractedText   String?  @map("extracted_text")
+  extractionStatus String   @default("pending") @map("extraction_status")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([userId])
+  @@map("chat_attachments")
+}
+
+model ChatCredential {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  omnirouteKeyId String   @map("omniroute_key_id")
+  encryptedKey   String   @map("encrypted_key")
+  keyVersion     Int      @default(1) @map("key_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_credentials")
 }
 
 model VerificationToken {

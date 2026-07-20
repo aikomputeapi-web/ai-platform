@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
-import prisma from '@/lib/db';
-import { planKeyLimits, updateKeyLimits } from '@/lib/omniroute';
+import { NextRequest, NextResponse } from "next/server";
+import { stripe } from "@/lib/stripe";
+import prisma from "@/lib/db";
+import { planKeyLimits, updateKeyLimits } from "@/lib/omniroute";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 async function processWebhookEvent(event: any) {
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case "checkout.session.completed": {
         const session = event.data.object;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
@@ -18,14 +18,18 @@ async function processWebhookEvent(event: any) {
           where: { stripeCustomerId: customerId },
         });
         if (!user) {
-          console.warn(`[Webhook] User with customer ID ${customerId} not found`);
+          console.warn(
+            `[Webhook] User with customer ID ${customerId} not found`,
+          );
           break;
         }
 
         // Determine plan from line items
-        const lineItems = await stripe().checkout.sessions.listLineItems(session.id);
+        const lineItems = await stripe().checkout.sessions.listLineItems(
+          session.id,
+        );
         const priceId = lineItems.data[0]?.price?.id;
-        
+
         const plan = await prisma.plan.findFirst({
           where: { stripePriceId: priceId },
         });
@@ -59,9 +63,20 @@ async function processWebhookEvent(event: any) {
           } catch (err) {
             console.error(
               `[Webhook] Failed to apply ${plan.id} limits to key ${key.omnirouteKeyId} for ${user.email} (needs manual sync):`,
-              err
+              err,
             );
           }
+        }
+
+        // Sync hidden chat key limits to the new plan
+        try {
+          const { syncChatKeyLimits } = await import("@/lib/chatCredential");
+          await syncChatKeyLimits(user.id, plan);
+        } catch (err) {
+          console.error(
+            `[Webhook] Failed to sync chat key limits for ${user.email} (non-fatal):`,
+            err,
+          );
         }
 
         // Record payment
@@ -71,7 +86,7 @@ async function processWebhookEvent(event: any) {
             stripePaymentId: session.payment_intent as string,
             amountCents: session.amount_total || 0,
             planId: plan.id,
-            status: 'completed',
+            status: "completed",
           },
         });
 
@@ -84,7 +99,7 @@ async function processWebhookEvent(event: any) {
         break;
       }
 
-      case 'customer.subscription.deleted': {
+      case "customer.subscription.deleted": {
         const sub = event.data.object;
         const customerId = sub.customer as string;
 
@@ -92,7 +107,9 @@ async function processWebhookEvent(event: any) {
           where: { stripeCustomerId: customerId },
         });
         if (!user) {
-          console.warn(`[Webhook] User with customer ID ${customerId} not found`);
+          console.warn(
+            `[Webhook] User with customer ID ${customerId} not found`,
+          );
           break;
         }
 
@@ -100,7 +117,7 @@ async function processWebhookEvent(event: any) {
         await prisma.user.update({
           where: { id: user.id },
           data: {
-            planId: 'free',
+            planId: "free",
             stripeSubscriptionId: null,
           },
         });
@@ -111,9 +128,13 @@ async function processWebhookEvent(event: any) {
         `;
 
         // Reset API key limits (including the model allowlist) to the free tier
-        const freePlan = await prisma.plan.findUnique({ where: { id: 'free' } });
+        const freePlan = await prisma.plan.findUnique({
+          where: { id: "free" },
+        });
         if (!freePlan) {
-          console.error(`[Webhook] Free plan record not found — key limits for ${user.email} left unchanged`);
+          console.error(
+            `[Webhook] Free plan record not found — key limits for ${user.email} left unchanged`,
+          );
           break;
         }
         // Per-key non-fatal for the same reason as the upgrade path: one
@@ -129,9 +150,20 @@ async function processWebhookEvent(event: any) {
           } catch (err) {
             console.error(
               `[Webhook] Failed to reset key ${key.omnirouteKeyId} to free-tier limits for ${user.email} (needs manual sync):`,
-              err
+              err,
             );
           }
+        }
+
+        // Sync hidden chat key limits to free tier
+        try {
+          const { syncChatKeyLimits } = await import("@/lib/chatCredential");
+          await syncChatKeyLimits(user.id, freePlan);
+        } catch (err) {
+          console.error(
+            `[Webhook] Failed to sync chat key limits for ${user.email} (non-fatal):`,
+            err,
+          );
         }
 
         console.log(`[Webhook] User ${user.email} downgraded to Free`);
@@ -139,30 +171,33 @@ async function processWebhookEvent(event: any) {
       }
     }
   } catch (error) {
-    console.error('[Webhook Processor Error] failed to process stripe webhook event:', error);
+    console.error(
+      "[Webhook Processor Error] failed to process stripe webhook event:",
+      error,
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
-  const sig = req.headers.get('stripe-signature');
+  const sig = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
-    return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   let event;
   try {
     event = stripe().webhooks.constructEvent(body, sig, webhookSecret);
   } catch {
-    console.error('Webhook signature verification failed');
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    console.error("Webhook signature verification failed");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   // Process event in the background to return 200 OK immediately and avoid timeouts
   processWebhookEvent(event).catch((err) => {
-    console.error('[Webhook Async Handler Error]', err);
+    console.error("[Webhook Async Handler Error]", err);
   });
 
   return NextResponse.json({ received: true });

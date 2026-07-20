@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { deleteOmniRouteKey } from '@/lib/omniroute';
-import { ensureSubscriptionCanceled } from '@/lib/stripe';
-import prisma from '@/lib/db';
+import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { deleteOmniRouteKey } from "@/lib/omniroute";
+import { ensureSubscriptionCanceled } from "@/lib/stripe";
+import { revokeChatCredential } from "@/lib/chatCredential";
+import prisma from "@/lib/db";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function DELETE() {
   try {
@@ -14,14 +15,37 @@ export async function DELETE() {
     // deleting the user — the cascade would erase the omnirouteKeyId
     // mappings, leaving live keys on the proxy that nothing can find or
     // revoke later. (deleteOmniRouteKey treats 404 as success.)
-    const keys = await prisma.userApiKey.findMany({ where: { userId: user.id } });
-    const results = await Promise.allSettled(keys.map(k => deleteOmniRouteKey(k.omnirouteKeyId)));
-    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    const keys = await prisma.userApiKey.findMany({
+      where: { userId: user.id },
+    });
+    const results = await Promise.allSettled(
+      keys.map((k) => deleteOmniRouteKey(k.omnirouteKeyId)),
+    );
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    );
     if (failures.length > 0) {
-      for (const f of failures) console.error('Account deletion: failed to revoke OmniRoute key:', f.reason);
+      for (const f of failures)
+        console.error(
+          "Account deletion: failed to revoke OmniRoute key:",
+          f.reason,
+        );
       return NextResponse.json(
-        { error: 'Failed to revoke API keys. Your account was not deleted — please try again.' },
-        { status: 502 }
+        {
+          error:
+            "Failed to revoke API keys. Your account was not deleted — please try again.",
+        },
+        { status: 502 },
+      );
+    }
+
+    // Revoke hidden chat credential (best-effort — the user is being deleted anyway)
+    try {
+      await revokeChatCredential(user.id);
+    } catch (err) {
+      console.error(
+        "Account deletion: failed to revoke chat credential (non-fatal):",
+        err,
       );
     }
 
@@ -36,10 +60,16 @@ export async function DELETE() {
       try {
         await ensureSubscriptionCanceled(dbUser.stripeSubscriptionId);
       } catch (e) {
-        console.error('Account deletion: failed to cancel Stripe subscription:', e);
+        console.error(
+          "Account deletion: failed to cancel Stripe subscription:",
+          e,
+        );
         return NextResponse.json(
-          { error: 'Failed to cancel your subscription. Your account was not deleted — please try again.' },
-          { status: 502 }
+          {
+            error:
+              "Failed to cancel your subscription. Your account was not deleted — please try again.",
+          },
+          { status: 502 },
         );
       }
     }
@@ -48,11 +78,19 @@ export async function DELETE() {
     await prisma.user.delete({ where: { id: user.id } });
 
     const response = NextResponse.json({ success: true });
-    response.cookies.set('portal_session', '', { httpOnly: true, path: '/', maxAge: 0 });
+    response.cookies.set("portal_session", "", {
+      httpOnly: true,
+      path: "/",
+      maxAge: 0,
+    });
     return response;
   } catch (e) {
-    if (e instanceof Error && e.message === 'UNAUTHORIZED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    console.error('Account deletion error:', e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (e instanceof Error && e.message === "UNAUTHORIZED")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.error("Account deletion error:", e);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
