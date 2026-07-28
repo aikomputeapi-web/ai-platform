@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
     if (name !== undefined && name !== null && typeof name !== 'string') {
       return NextResponse.json({ error: 'Name must be a string' }, { status: 400 });
     }
-    if (typeof name === 'string' && name.length > 100) {
+    // Trim and collapse empty/whitespace-only names to null so downstream
+    // `name || fallback` consumers (welcome email, dashboard) work as intended.
+    const trimmedName = typeof name === 'string' ? name.trim() || null : null;
+    if (trimmedName && trimmedName.length > 100) {
       return NextResponse.json({ error: 'Name must be 100 characters or less' }, { status: 400 });
     }
 
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
         data: {
           email: email.toLowerCase(),
           passwordHash,
-          name: name || null,
+          name: trimmedName,
           verifyToken,
           planId: 'free',
           isShadowLocked,
@@ -154,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     const token = await createSessionToken(user.id);
     // Fire welcome email async — don't block signup
-    sendWelcomeEmail(user.email, name || undefined).catch(() => {});
+    sendWelcomeEmail(user.email, trimmedName || undefined).catch(() => {});
 
     const response = NextResponse.json({
       success: true,
