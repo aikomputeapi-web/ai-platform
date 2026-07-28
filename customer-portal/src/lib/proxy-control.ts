@@ -144,8 +144,6 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   },
 };
 
-export const PROXY_PROVIDER_KEYS = Object.keys(DEFAULT_PROXY_SETTINGS.providers);
-
 /**
  * Build the normalized `selectionKey` for any tier row. Kept here so both the
  * API layer and the UI agree on the contract without re-deriving it.

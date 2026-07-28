@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_SESSION_COOKIE = 'admin_session';
@@ -101,19 +100,6 @@ export function clearAdminSessionCookie(response: NextResponse): NextResponse {
 // Check if request has valid admin session (for API routes)
 export async function hasValidAdminSession(req: NextRequest): Promise<boolean> {
   const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  if (!token) return false;
-  return verifyAdminSession(token);
-}
-
-// Get admin session from cookies (for server components)
-export async function getAdminSession(): Promise<string | null> {
-  const cookieStore = await cookies();
-  return cookieStore.get(ADMIN_SESSION_COOKIE)?.value || null;
-}
-
-// Verify admin session from cookies (for server components)
-export async function isAdminAuthenticated(): Promise<boolean> {
-  const token = await getAdminSession();
   if (!token) return false;
   return verifyAdminSession(token);
 }
