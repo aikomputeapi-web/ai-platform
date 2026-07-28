@@ -11,7 +11,16 @@ function AdminLoginForm() {
   const [isChecking, setIsChecking] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/admin';
+  // The only legitimate producer of ?redirect is middleware.ts, which always
+  // sets an /admin-local pathname. Anything else — an absolute URL, a
+  // protocol-relative //host — is a crafted link: router.push() hard-navigates
+  // to external URLs, which would open-redirect a just-authenticated admin to
+  // an attacker's page. Fall back to /admin for anything off-pattern.
+  const rawRedirect = searchParams.get('redirect');
+  const redirect =
+    rawRedirect === '/admin' || rawRedirect?.startsWith('/admin/')
+      ? rawRedirect
+      : '/admin';
 
   // Check if already authenticated
   useEffect(() => {
