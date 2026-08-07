@@ -11,7 +11,8 @@
     "test:headed": "playwright test --headed",
     "test:report": "playwright show-report",
     "deliver:reports": "node scripts/deliver-scheduled-reports.mjs",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
