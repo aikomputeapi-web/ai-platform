@@ -1,10 +1,13 @@
-FROM node:22-alpine AS builder
+﻿FROM node:22-alpine AS builder
 WORKDIR /app
+# prisma generate (postinstall hook) needs openssl; alpine ships none
+RUN apk add --no-cache openssl
 COPY package*.json ./
+COPY prisma ./prisma
 RUN npm install --no-audit --no-fund
 COPY . .
 RUN npx prisma generate
-RUN npm run build
+RUN NODE_OPTIONS=--max-old-space-size=3072 npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

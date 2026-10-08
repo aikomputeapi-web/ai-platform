@@ -1,0 +1,27 @@
+# ══════════════════════════════════════════════════════════════════════════
+# Registry-based override: use GitHub-published images instead of building
+# on small (free-tier) boxes. Active only when passed explicitly:
+#   docker compose -f docker-compose.unified.yml -f compose.registry.yml up -d
+#
+# - omniroute: diegosouzapw/omniroute:latest is published by the Docker Hub
+#   workflow in OmniRoute/.github/workflows/docker-publish.yml on every
+#   main push / release. (GHCR mirror: ghcr.io/diegosouzapw/omniroute:latest.)
+# - customer-portal: NOT published anywhere yet, so it still builds — but
+#   only enable the build when the box can handle it, or build it in CI.
+#   On a 908MB free-tier box: build inside 2GB swap (slow but works),
+#   or build the image on a bigger machine and `docker load | ssh`.
+# ══════════════════════════════════════════════════════════════════════════
+
+services:
+  omniroute:
+    image: diegosouzapw/omniroute:latest
+    build: !reset null
+  customer-portal:
+    build:
+      context: ./customer-portal
+    image: customer-portal:latest
+
+  report-deliverer:
+    build:
+      context: ./customer-portal
+    image: customer-portal:latest

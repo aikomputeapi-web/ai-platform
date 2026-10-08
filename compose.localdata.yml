@@ -1,0 +1,72 @@
+# ══════════════════════════════════════════════════════════════════════════
+# Enable postgres + redis on the new host. The unified compose kept them
+# commented (the dead EC2 box used externals). This server is standalone, so
+# run the DB and cache locally. Active with compose.registry.yml:
+#   docker compose -f docker-compose.unified.yml -f compose.registry.yml \
+#     -f compose.localdata.yml up -d
+# ══════════════════════════════════════════════════════════════════════════
+
+services:
+  cliproxyapi:
+    # image is a bare Go binary (no wget/curl/node/sh builtins for TCP). Probe
+    # by exec-ing the binary with an invalid flag: it loads config and binds
+    # check-path fast, exit code 2 either way, so instead piggyback on the
+    # second container (host curl) reaching the published 127.0.0.1:8085 is
+    # not possible for other services; simplest reliable check: process liveness.
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiplatform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-aiplatform}
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiplatform}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    networks:
+      - ai-network
+
+volumes:
+  postgres_data:
+    name: ai-postgres-data
+  redis_data:
+    name: ai-redis-data
