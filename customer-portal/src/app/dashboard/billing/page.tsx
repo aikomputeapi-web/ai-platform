@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const plans = [
   {
@@ -30,14 +31,68 @@ const plans = [
 ];
 
 export default function BillingPage() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState('');
   const [canceling, setCanceling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [balanceCents, setBalanceCents] = useState(0);
+  const [creditEntries, setCreditEntries] = useState<any[]>([]);
+  const [customAmount, setCustomAmount] = useState('');
+  const [topUpLoading, setTopUpLoading] = useState(false);
+  const [creditMessage, setCreditMessage] = useState('');
+
+  async function loadCredits() {
+    const res = await fetch('/api/billing/credits');
+    if (res.ok) {
+      const data = await res.json();
+      setBalanceCents(data.balanceCents ?? 0);
+      setCreditEntries(data.entries ?? []);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json()).then((d) => setUser(d.user));
+    loadCredits();
   }, []);
+
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (searchParams.get('topup') !== 'success' || !sessionId) return;
+    let active = true;
+    (async () => {
+      const res = await fetch('/api/billing/topup/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }),
+      });
+      if (!active) return;
+      const data = await res.json();
+      setCreditMessage(res.ok ? 'Payment received. Your account credit is ready.' : data.error || 'Payment confirmation is still processing.');
+      await loadCredits();
+      window.history.replaceState({}, '', '/dashboard/billing');
+    })();
+    return () => { active = false; };
+  }, [searchParams]);
+
+  async function handleTopUp(amount: number) {
+    if (!Number.isInteger(amount) || amount < 5 || amount > 500) {
+      setCreditMessage('Enter an amount from $5 to $500.');
+      return;
+    }
+    setTopUpLoading(true);
+    setCreditMessage('');
+    try {
+      const res = await fetch('/api/billing/topup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amountCents: amount * 100 }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.assign(data.url);
+      else setCreditMessage(data.error || 'Could not start checkout.');
+    } catch {
+      setCreditMessage('Could not connect to checkout. Please try again.');
+    } finally {
+      setTopUpLoading(false);
+    }
+  }
 
   async function handleUpgrade(planId: string) {
     setLoading(planId);
@@ -83,11 +138,51 @@ export default function BillingPage() {
   return (
     <div>
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Billing &amp; Plans</h1>
+        <h1 className="dash-page-title">Billing</h1>
         <p className="dash-page-sub">
           Current plan: <span className="dash-plan-badge">{user?.plan?.name || 'Free'}</span>
         </p>
       </div>
+
+      <section className="dash-card" aria-labelledby="account-credit-title" style={{ marginBottom: 24, padding: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <div className="dash-card-title" id="account-credit-title">Account credit</div>
+            <p className="text-13 text-muted mb-16">Add funds securely with Stripe. Your credit balance is shown here.</p>
+            <div aria-live="polite" style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.04em' }}>
+              ${(balanceCents / 100).toFixed(2)} <span className="text-13 text-muted" style={{ fontWeight: 400, letterSpacing: 0 }}>USD</span>
+            </div>
+          </div>
+          <div style={{ minWidth: 260, flex: '1 1 320px', maxWidth: 480 }}>
+            <p className="text-13 text-muted mb-16">Choose an amount</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+              {[10, 25, 50].map((amount) => (
+                <button key={amount} className="btn-border" disabled={topUpLoading} onClick={() => handleTopUp(amount)}>${amount}</button>
+              ))}
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleTopUp(Number(customAmount)); }} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <label htmlFor="custom-credit" className="sr-only">Custom amount in dollars</label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, padding: '0 10px', flex: '1 1 120px' }}>
+                <span aria-hidden="true">$</span><input id="custom-credit" type="number" min="5" max="500" step="1" required value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="Custom" style={{ background: 'transparent', border: 0, padding: '10px 8px', color: 'inherit', width: '100%', outline: 'none' }} />
+              </div>
+              <button className="btn-accent" disabled={topUpLoading}>{topUpLoading ? 'Opening…' : 'Add credit'}</button>
+            </form>
+            <p className="text-13 text-muted" style={{ marginTop: 10 }}>Custom top-ups: $5–$500 USD. API usage deductions will be added separately.</p>
+          </div>
+        </div>
+        {creditMessage && <p role="status" className="text-13" style={{ marginTop: 14 }}>{creditMessage}</p>}
+        {creditEntries.length > 0 && (
+          <div style={{ marginTop: 22, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <div className="text-13" style={{ fontWeight: 600, marginBottom: 10 }}>Recent credit activity</div>
+            {creditEntries.slice(0, 5).map((entry) => (
+              <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '7px 0', fontSize: 13 }}>
+                <span className="text-muted">{entry.type === 'account_credit_refund' ? 'Refund' : 'Top-up'} · {new Date(entry.createdAt).toLocaleDateString()}</span>
+                <strong>{entry.amountCents < 0 ? '−' : '+'}${(Math.abs(entry.amountCents) / 100).toFixed(2)}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="billing-grid">
         {plans.map((plan) => (

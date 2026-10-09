@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import prisma from "@/lib/db";
 import { planKeyLimits, updateKeyLimits } from "@/lib/omniroute";
+import { recordTopUp } from "@/lib/account-credit";
+import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -193,6 +195,21 @@ export async function POST(req: NextRequest) {
   } catch {
     console.error("Webhook signature verification failed");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // One-time credit is persisted before acknowledging Stripe, so failed DB
+  // writes receive Stripe's retry. The unique session reference makes retries
+  // and return-page confirmation safe to replay.
+  if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type) && (event.data.object as Stripe.Checkout.Session).metadata?.purpose === "account_credit") {
+    // A Checkout session can complete before a delayed payment clears. Only
+    // the paid state is credited; later asynchronous success retries here.
+    try {
+      await recordTopUp(event.data.object as Stripe.Checkout.Session);
+    } catch (error) {
+      console.error("Account credit webhook could not be applied:", error);
+      return NextResponse.json({ error: "Could not apply account credit" }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
   }
 
   // Process event in the background to return 200 OK immediately and avoid timeouts

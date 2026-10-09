@@ -99,6 +99,7 @@ model BillingAdjustment {
   reason      String
   status      String   @default("applied")
   actor       String   @default("admin")
+  stripeReference String? @unique @map("stripe_reference")
   createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
