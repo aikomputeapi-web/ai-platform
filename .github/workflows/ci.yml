@@ -49,21 +49,4 @@ jobs:
           cd customer-portal
           npm run lint
 
-  build-portal-image:
-    name: Build Linux portal image for deployment
-    if: github.event_name == 'workflow_dispatch'
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build production image
-        run: docker build --tag customer-portal:helios-${GITHUB_SHA} ./customer-portal
-      - name: Save production image
-        run: docker save customer-portal:helios-${GITHUB_SHA} --output customer-portal-image.tar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: customer-portal-image
-          path: customer-portal-image.tar
-          retention-days: 1
 
