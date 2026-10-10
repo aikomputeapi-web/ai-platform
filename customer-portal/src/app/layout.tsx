@@ -3,8 +3,8 @@ import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "aikompute — All Anthropic & OpenAI models, plus top open source",
-  description: "We provide all Anthropic and OpenAI models, plus all the top open source models are included. One API key, unified billing.",
+  title: "AIKompute — All the intelligence. One connection.",
+  description: "Bring the world's AI models into your product through one beautifully simple API. One connection for OpenAI, Anthropic, Google, and more.",
 };
 
 export default function RootLayout({

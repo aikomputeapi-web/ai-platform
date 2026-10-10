@@ -1700,7 +1700,7 @@
   overflow: hidden;
   background: var(--helios-paper);
   color: var(--helios-ink);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-family: 'Space Grotesk', Arial, sans-serif;
 }
 .helios-page .site-nav { background: rgba(247,248,241,.9); border-bottom: 1px solid var(--helios-line); backdrop-filter: blur(16px); }
 .helios-page .nav-brand, .helios-page .nav-links a, .helios-page .nav-signin { color: var(--helios-ink); }
@@ -1710,7 +1710,7 @@
 .helios-hero { min-height: 700px; position: relative; isolation: isolate; display: grid; grid-template-columns: 1.02fr .98fr; align-items: center; gap: 6vw; padding: 108px max(7.4vw, 28px) 102px; background: radial-gradient(ellipse at 72% 44%, rgba(245,205,123,.32), transparent 37%), linear-gradient(135deg,#f8f9f3 0%,#f4f3e9 100%); }
 .helios-hero::before { content: ''; z-index: -1; position: absolute; inset: 0; opacity: .24; background-image: radial-gradient(#819080 0.65px,transparent .65px); background-size: 22px 22px; mask-image: linear-gradient(90deg,#000,transparent 82%); }
 .helios-hero-copy { max-width: 630px; position: relative; z-index: 1; }
-.helios-kicker,.helios-section-tag { display: flex; align-items: center; gap: 10px; color: #68776c; font: 700 10px/1.4 var(--font-geist-mono),monospace; letter-spacing: .15em; }
+.helios-kicker,.helios-section-tag { display: flex; align-items: center; gap: 10px; color: #68776c; font: 700 10px/1.4 'Space Mono',monospace; letter-spacing: .15em; }
 .helios-kicker span { width: 7px; height: 7px; border-radius: 50%; background: #d88b24; box-shadow: 0 0 0 5px rgba(216,139,36,.13); }
 .helios-hero h1 { margin: 27px 0 19px; font-size: clamp(54px,6.1vw,91px); line-height: .99; letter-spacing: -.072em; font-weight: 580; }
 .helios-hero h1 em,.helios-intro h2 em,.helios-bottom-cta h2 em { color: #b97520; font-family: Georgia,serif; font-weight: 400; }
@@ -1723,36 +1723,36 @@
 .helios-proof { display: flex; align-items: center; gap: 9px; margin-top: 37px; color: #758078; font-size: 11px; }
 .helios-proof-dot { width: 6px; height: 6px; border-radius: 100%; background: #78a27b; }
 .helios-console { position: relative; z-index: 1; width: min(100%,540px); justify-self: end; transform: perspective(1200px) rotateY(-3deg) rotateX(1deg); border: 1px solid rgba(43,61,49,.16); border-radius: 15px; overflow: visible; background: #17251f; box-shadow: 0 32px 90px rgba(38,51,38,.21),0 4px 12px rgba(38,51,38,.12); }
-.helios-console-top,.helios-console-foot { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #809087; font: 10px var(--font-geist-mono),monospace; border-bottom: 1px solid rgba(235,242,231,.09); }
+.helios-console-top,.helios-console-foot { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #809087; font: 10px 'Space Mono',monospace; border-bottom: 1px solid rgba(235,242,231,.09); }
 .helios-console-top span:first-child { display: flex; gap: 5px; }
 .helios-console-top i { height: 7px; width: 7px; display: block; background: #d9786a; border-radius: 50%; }
 .helios-console-top i:nth-child(2) { background: #e8b85e; }.helios-console-top i:nth-child(3) { background: #85aa7b; }
 .helios-console-body { padding: 20px 0 22px; }
-.helios-line { display: flex; min-height: 23px; align-items: center; white-space: pre; font: 11px/1.8 var(--font-geist-mono),monospace; color: #d9e3d9; overflow: hidden; }
+.helios-line { display: flex; min-height: 23px; align-items: center; white-space: pre; font: 11px/1.8 'Space Mono',monospace; color: #d9e3d9; overflow: hidden; }
 .helios-line b { width: 42px; padding-right: 13px; text-align: right; color: #65756c; font-size: 10px; font-weight: 400; }
 .hl-violet { color: #d7a8ec; }.hl-green { color: #b8d890; }.hl-blue { color: #93c6dc; }
 .helios-console-foot { border-top: 1px solid rgba(235,242,231,.09); border-bottom: 0; }
 .helios-console-foot span:first-child { display: flex; align-items: center; gap: 7px; }.helios-console-foot i { width: 6px; height: 6px; background: #96c888; border-radius: 50%; }
-.helios-sun { position: absolute; right: -34px; top: -37px; height: 92px; width: 92px; display: grid; place-items: center; border-radius: 50%; color: #603b0c; font: 700 13px var(--font-geist-mono),monospace; letter-spacing: .06em; background: radial-gradient(circle at 33% 29%,#fff2bb,#f1c05b 52%,#e59932 75%); box-shadow: 0 10px 40px rgba(207,139,41,.33),0 0 0 10px rgba(238,180,75,.12); }
+.helios-sun { position: absolute; right: -34px; top: -37px; height: 92px; width: 92px; display: grid; place-items: center; border-radius: 50%; color: #603b0c; font: 700 13px 'Space Mono',monospace; letter-spacing: .06em; background: radial-gradient(circle at 33% 29%,#fff2bb,#f1c05b 52%,#e59932 75%); box-shadow: 0 10px 40px rgba(207,139,41,.33),0 0 0 10px rgba(238,180,75,.12); }
 .helios-hero { min-height: 710px; grid-template-columns: .95fr 1.05fr; gap: 2vw; padding-top: 75px; padding-bottom: 70px; }
 .helios-hero h1 { font-size: clamp(55px,6.8vw,99px); line-height: 1.02; letter-spacing: -.07em; }
 .helios-hero h1 em { display: inline-block; white-space: nowrap; font-size: .83em; letter-spacing: -.055em; }
 .helios-hero-copy { max-width: 650px; }
 .helios-lede { max-width: 445px; }
 .helios-artwork { min-height: 505px; position: relative; display: grid; place-items: center; }
-.helios-figure-label { position: absolute; top: 13%; left: 4%; color: #837b68; font: 9px var(--font-geist-mono),monospace; }
+.helios-figure-label { position: absolute; top: 13%; left: 4%; color: #837b68; font: 9px 'Space Mono',monospace; }
 .helios-torus { position: relative; width: min(37vw,465px); aspect-ratio: 1.5; border-radius: 50%; transform: rotate(-24deg) skewX(-11deg); background: linear-gradient(137deg,#b57822 3%,#e0ae47 18%,#f4d478 35%,#9e702f 51%,#dfb752 68%,#f5d274 86%); box-shadow: inset 8px 10px 15px rgba(255,243,183,.78),inset -10px -15px 24px rgba(119,75,24,.36),0 35px 44px rgba(157,117,41,.16); mask: radial-gradient(ellipse at 50% 50%,transparent 0 28%,#000 29% 100%); }
 .helios-torus::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: repeating-linear-gradient(0deg,transparent 0 8px,rgba(255,244,197,.2) 8.5px 9px),repeating-linear-gradient(90deg,transparent 0 8px,rgba(255,244,197,.17) 8.5px 9px); mask: radial-gradient(ellipse at 50% 50%,transparent 0 28%,#000 29% 100%); }
 .helios-torus::after { content: ''; position: absolute; inset: 1% 1% 47%; border-radius: 50%; background: linear-gradient(180deg,rgba(255,245,196,.58),transparent); filter: blur(10px); }
 .helios-torus div { position: absolute; inset: 26% 30%; border-radius: 50%; box-shadow: 0 -12px 24px rgba(255,248,213,.55),0 9px 16px rgba(102,65,22,.28); }
-.helios-artwork-caption { position: absolute; right: 1%; bottom: 11%; display: grid; gap: 7px; padding-left: 13px; border-left: 1px solid #bd8b3d; color: #786e5c; font: 10px var(--font-geist-mono),monospace; }
-.helios-proof { letter-spacing: .08em; font: 9px var(--font-geist-mono),monospace; }
+.helios-artwork-caption { position: absolute; right: 1%; bottom: 11%; display: grid; gap: 7px; padding-left: 13px; border-left: 1px solid #bd8b3d; color: #786e5c; font: 10px 'Space Mono',monospace; }
+.helios-proof { letter-spacing: .08em; font: 9px 'Space Mono',monospace; }
 .helios-orbit { position: absolute; z-index: -1; pointer-events: none; width: 590px; height: 240px; border: 1px solid rgba(199,147,63,.2); border-radius: 50%; transform: rotate(-31deg); right: -5%; top: 32%; }
 .helios-orbit-two { width: 700px; height: 310px; right: -9%; top: 26%; border-color: rgba(199,147,63,.12); }
-.helios-coordinate { position: absolute; bottom: 22px; left: max(7.4vw,28px); display: flex; gap: 18px; color: #839087; font: 9px var(--font-geist-mono),monospace; letter-spacing: .12em; }
+.helios-coordinate { position: absolute; bottom: 22px; left: max(7.4vw,28px); display: flex; gap: 18px; color: #839087; font: 9px 'Space Mono',monospace; letter-spacing: .12em; }
 .helios-coordinate span { opacity: .7; }
 .helios-marquee { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding: 24px max(7.4vw,28px); border-bottom: 1px solid var(--helios-line); background: #f9faf5; }
-.helios-marquee>span { flex: 0 0 auto; color: #78847b; font: 9px var(--font-geist-mono),monospace; letter-spacing: .1em; }
+.helios-marquee>span { flex: 0 0 auto; color: #78847b; font: 9px 'Space Mono',monospace; letter-spacing: .1em; }
 .helios-marquee>div { display: flex; justify-content: space-between; gap: 24px; width: 72%; color: #59675d; font-size: 12px; font-weight: 640; }
 .helios-intro { display: grid; grid-template-columns: .72fr 1.28fr; gap: 4vw; padding: 120px max(12vw,40px) 70px; }
 .helios-intro .helios-section-tag { padding-top: 17px; align-items: flex-start; }
@@ -1760,7 +1760,7 @@
 .helios-intro p { max-width: 520px; margin: 21px 0 0; color: var(--helios-muted); font-size: 15px; line-height: 1.8; }
 .helios-capabilities { margin: 0 max(12vw,40px); border-top: 1px solid var(--helios-line); }
 .helios-capability { min-height: 125px; display: grid; grid-template-columns: 90px 1fr 40px; align-items: center; gap: 15px; border-bottom: 1px solid var(--helios-line); }
-.helios-capability>span:first-child { color: #b38140; font: 11px var(--font-geist-mono),monospace; }
+.helios-capability>span:first-child { color: #b38140; font: 11px 'Space Mono',monospace; }
 .helios-capability h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.025em; font-weight: 620; }
 .helios-capability p { margin: 0; max-width: 620px; color: var(--helios-muted); font-size: 13px; line-height: 1.65; }
 .helios-capability-arrow { justify-self: end; color: #9b784b; font-size: 18px; }
